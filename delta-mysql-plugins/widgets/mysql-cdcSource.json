@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "spec-version": "1.5"
+  },
+  "display-name": "MySQL",
+  "configuration-groups": [
+    {
+      "label": "Database Location",
+      "properties": [
+        {
+          "name": "host",
+          "label": "Host",
+          "widget-type": "textbox"
+        },
+        {
+          "name": "port",
+          "label": "Port",
+          "widget-type": "textbox"
+        },
+        {
+          "name": "consumerID",
+          "label": "Consumer ID",
+          "widget-type": "textbox"
+        },
+        {
+          "name": "serverTimezone",
+          "label": "Server Timezone",
+          "widget-type": "textbox"
+        }
+      ]
+    },
+    {
+      "label": "User Account",
+      "properties": [
+        {
+          "name": "user",
+          "label": "User",
+          "widget-type": "textbox"
+        },
+        {
+          "name": "password",
+          "label": "Password",
+          "widget-type": "password"
+        }
+      ]
+    },
+    {
+      "label" : "CDC Configuration",
+      "properties" : [
+        {
+          "name": "databaseWhiteList",
+          "label": "Database White List",
+          "widget-type": "textbox"
+        },
+        {
+          "name": "tableWhiteList",
+          "label": "Table White List",
+          "widget-type": "textbox"
+        }
+      ]
+    },
+  ],
+  "outputs": [],
+}
