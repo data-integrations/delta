@@ -75,6 +75,7 @@
     <module>delta-bigquery-plugins</module>
     <module>delta-mysql-plugins</module>
     <module>delta-test</module>
+      <module>delta-service</module>
   </modules>
 
   <dependencies>
