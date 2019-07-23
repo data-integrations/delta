@@ -25,6 +25,7 @@ import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.spi.data.transaction.TransactionRunners;
 import io.cdap.delta.protos.Instance;
 import io.cdap.delta.storages.InstanceStore;
+import java.net.HttpURLConnection;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -56,11 +57,18 @@ public class InstanceHandler extends AbstractSystemHttpServiceHandler {
   @TransactionPolicy(value = TransactionControl.EXPLICIT)
   public void create(HttpServiceRequest request, HttpServiceResponder responder,
                      @PathParam("context") String namespace) {
+    Instance instance = getRequestContent(request);
+    // validate that at least the name is present. The row ID is generated based on namespace and instance name.
+    String name = instance.getName();
+
+    if (name == null) {
+      responder.sendJson(HttpURLConnection.HTTP_BAD_REQUEST, "Instance name is required");
+      return;
+    }
+
+
     String id = TransactionRunners.run(getContext(), context -> {
       InstanceStore store = InstanceStore.get(context);
-
-      Instance instance = getRequestContent(request);
-
 
       return store.create(namespace, instance.getName(), instance.getDescription());
     });
@@ -118,6 +126,7 @@ public class InstanceHandler extends AbstractSystemHttpServiceHandler {
       InstanceStore store = InstanceStore.get(context);
       store.delete(namespace, id);
     });
+
     responder.sendString(String.format("Successfully deleted instance %s", id));
   }
 }
