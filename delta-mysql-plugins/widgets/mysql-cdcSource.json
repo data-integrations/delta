@@ -49,13 +49,13 @@
       "properties" : [
         {
           "name": "databaseWhiteList",
-          "label": "Database White List",
+          "label": "Database name",
           "widget-type": "textbox"
         },
         {
           "name": "tableWhiteList",
           "label": "Table White List",
-          "widget-type": "textbox"
+          "widget-type": "hidden"
         }
       ]
     },

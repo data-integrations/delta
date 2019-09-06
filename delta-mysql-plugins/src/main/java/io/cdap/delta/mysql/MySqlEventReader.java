@@ -103,6 +103,7 @@ public class MySqlEventReader implements EventReader {
       .with("database.whitelist", config.getDatabaseWhiteList())
       .with("database.server.name", "dummy") // this is the kafka topic for hosted debezium - it doesn't matter
       .with("database.serverTimezone", config.getServerTimezone())
+      .with("table.whitelist", config.getTableWhiteList())
       .build();
     MySqlConnectorConfig mysqlConf = new MySqlConnectorConfig(debeziumConf);
     DBSchemaHistory.deltaRuntimeContext = context;

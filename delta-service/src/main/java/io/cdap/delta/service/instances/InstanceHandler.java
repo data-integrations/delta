@@ -52,6 +52,12 @@ public class InstanceHandler extends AbstractSystemHttpServiceHandler {
     return instance;
   }
 
+  @GET
+  @Path("health")
+  public void healthChecck(HttpServiceRequest request, HttpServiceResponder responder) {
+    responder.sendStatus(HttpURLConnection.HTTP_OK);
+  }
+
   @POST
   @Path("contexts/{context}/instances/create")
   @TransactionPolicy(value = TransactionControl.EXPLICIT)

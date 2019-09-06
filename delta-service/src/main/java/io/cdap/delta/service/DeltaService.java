@@ -18,6 +18,7 @@ package io.cdap.delta.service;
 
 import io.cdap.cdap.api.service.AbstractSystemService;
 import io.cdap.delta.service.instances.InstanceHandler;
+import io.cdap.delta.service.mysql.MySqlHandler;
 import io.cdap.delta.storages.InstanceStore;
 
 /**
@@ -32,6 +33,7 @@ public class DeltaService extends AbstractSystemService {
     createTable(InstanceStore.TABLE_SPEC);
 
     addHandler(new InstanceHandler());
+    addHandler(new MySqlHandler());
 
   }
 }
