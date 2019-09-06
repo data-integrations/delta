@@ -65,7 +65,7 @@ public class MySqlHandler extends AbstractSystemHttpServiceHandler {
 
   private Connection getConnection(HttpServiceRequest request, String db) throws SQLException {
     Map<String, String> content = getRequestContent(request);
-    String hostname = content.get("hostname");
+    String hostname = content.get("host");
     String port = content.get("port");
     String user = content.get("user");
     String password = content.get("password");
