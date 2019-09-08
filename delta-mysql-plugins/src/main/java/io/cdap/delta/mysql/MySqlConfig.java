@@ -42,7 +42,6 @@ public class MySqlConfig extends PluginConfig {
   @Description("A unique numeric ID to identify this origin as an event consumer.")
   private int consumerID;
 
-  @Nullable
   @Description("Database to consume events for.")
   private String databaseWhiteList;
 

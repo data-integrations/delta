@@ -26,6 +26,16 @@
           "name": "serverTimezone",
           "label": "Server Timezone",
           "widget-type": "textbox"
+        },
+        {
+          "name": "databaseWhiteList",
+          "label": "Database name",
+          "widget-type": "textbox"
+        },
+        {
+          "name": "tableWhiteList",
+          "label": "Table White List",
+          "widget-type": "hidden"
         }
       ]
     },
@@ -43,22 +53,7 @@
           "widget-type": "password"
         }
       ]
-    },
-    {
-      "label" : "CDC Configuration",
-      "properties" : [
-        {
-          "name": "databaseWhiteList",
-          "label": "Database name",
-          "widget-type": "textbox"
-        },
-        {
-          "name": "tableWhiteList",
-          "label": "Table White List",
-          "widget-type": "hidden"
-        }
-      ]
-    },
+    }
   ],
   "outputs": [],
 }
