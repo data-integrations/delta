@@ -275,6 +275,22 @@ public class BigQueryEventConsumer implements EventConsumer {
     gcsWriter.write(sequencedEvent);
     latestOffset = sequencedEvent.getEvent().getOffset();
     currentBatchSize++;
+
+    switch (sequencedEvent.getEvent().getOperation()) {
+      case INSERT:
+        context.getMetrics().count("ddl.target.INSERT.count", 1);
+        break;
+      case UPDATE:
+        context.getMetrics().count("ddl.target.UPDATE.count", 1);
+        break;
+      case DELETE:
+        context.getMetrics().count("ddl.target.DELETE.count", 1);
+        break;
+      default:
+        context.getMetrics().count("ddl.target.OTHER.count", 1);
+    }
+
+
     if (currentBatchSize >= batchMaxRows) {
       try {
         flush();

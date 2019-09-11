@@ -235,12 +235,16 @@ public class MySqlEventReader implements EventReader {
           String opStr = val.get("op");
           if ("c".equals(opStr)) {
             op = DMLOperation.INSERT;
+            context.getMetrics().count("ddl.source.INSERT.count", 1);
           } else if ("u".equals(opStr)) {
             op = DMLOperation.UPDATE;
+            context.getMetrics().count("ddl.source.UPDATE.count", 1);
           } else if ("d".equals(opStr)) {
             op = DMLOperation.DELETE;
+            context.getMetrics().count("ddl.source.DELETE.count", 1);
           } else {
             LOG.warn("Skipping unknown operation type '{}'", opStr);
+            context.getMetrics().count("ddl.source.OTHER.count", 1);
             return;
           }
           StructuredRecord source = val.get("source");
