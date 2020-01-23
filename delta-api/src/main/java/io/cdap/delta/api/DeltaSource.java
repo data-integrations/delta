@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api;
 
+import io.cdap.delta.api.assessment.TableRegistry;
+
 /**
  * Pluggable interface for reading change events
  */
@@ -37,4 +39,12 @@ public interface DeltaSource {
    * @return an event reader used to read change events
    */
   EventReader createReader(DeltaSourceContext context, EventEmitter eventEmitter);
+
+  /**
+   * Create a table registry that is used to fetch information about tables in databases.
+   *
+   * @param context program context
+   * @return table registry used to fetch information about tables in databases.
+   */
+  TableRegistry createTableRegistry(DeltaRuntimeContext context);
 }

@@ -14,39 +14,31 @@
  * the License.
  */
 
-package io.cdap.delta.app.proto;
-
-import java.util.Map;
+package io.cdap.delta.proto;
 
 /**
- * Represents a plugin
+ * An artifact.
  */
-public class Plugin {
+public class Artifact {
   private final String name;
-  private final String type;
-  private final Map<String, String> properties;
-  private final Artifact artifact;
+  private final String version;
+  private final String scope;
 
-  public Plugin(String name, String type, Map<String, String> properties, Artifact artifact) {
+  public Artifact(String name, String version, String scope) {
     this.name = name;
-    this.type = type;
-    this.properties = properties;
-    this.artifact = artifact;
+    this.version = version;
+    this.scope = scope;
   }
 
   public String getName() {
     return name;
   }
 
-  public String getType() {
-    return type;
+  public String getVersion() {
+    return version;
   }
 
-  public Map<String, String> getProperties() {
-    return properties;
-  }
-
-  public Artifact getArtifact() {
-    return artifact;
+  public String getScope() {
+    return scope;
   }
 }
