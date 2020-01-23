@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api;
 
+import io.cdap.delta.api.assessment.TableAssessor;
+
 /**
  * A CDC target, responsible for writing data to a storage system.
  */
@@ -37,4 +39,13 @@ public interface DeltaTarget {
    * @throws Exception if the consumer could not be created, which will result in the program failure
    */
   EventConsumer createConsumer(DeltaTargetContext context) throws Exception;
+
+  /**
+   * Create a table assessor that will check if there will be potential problems replicating a table.
+   *
+   * @param context program context
+   * @return a table assessor
+   * @throws Exception if the table assessor could not be created
+   */
+  TableAssessor createTableAssessor(DeltaRuntimeContext context) throws Exception;
 }

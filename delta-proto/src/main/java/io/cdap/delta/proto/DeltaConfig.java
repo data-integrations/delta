@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.delta.app.proto;
+package io.cdap.delta.proto;
 
 import io.cdap.cdap.api.Config;
 import io.cdap.cdap.api.Resources;
@@ -31,6 +31,7 @@ public class DeltaConfig extends Config {
   private final List<Connection> connections;
   private final Resources resources;
   private final String offsetBasePath;
+  private final boolean service;
 
   public DeltaConfig(Stage source, Stage target) {
     this(source, target, null, null);
@@ -41,6 +42,7 @@ public class DeltaConfig extends Config {
     this.connections = Collections.singletonList(new Connection(source.getName(), target.getName()));
     this.resources = resources;
     this.offsetBasePath = offsetBasePath;
+    this.service = false;
   }
 
   public List<Stage> getStages() {
@@ -57,5 +59,9 @@ public class DeltaConfig extends Config {
 
   public Resources getResources() {
     return resources == null ? new Resources(8192, 4) : resources;
+  }
+
+  public boolean isService() {
+    return service;
   }
 }

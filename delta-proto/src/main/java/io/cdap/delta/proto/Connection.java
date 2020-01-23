@@ -14,31 +14,26 @@
  * the License.
  */
 
-package io.cdap.delta.app.proto;
+package io.cdap.delta.proto;
 
 /**
- * An artifact.
+ *
+ * A connection.
  */
-public class Artifact {
-  private final String name;
-  private final String version;
-  private final String scope;
+public class Connection {
+  private final String from;
+  private final String to;
 
-  public Artifact(String name, String version, String scope) {
-    this.name = name;
-    this.version = version;
-    this.scope = scope;
+  public Connection(String from, String to) {
+    this.from = from;
+    this.to = to;
   }
 
-  public String getName() {
-    return name;
+  public String getFrom() {
+    return from;
   }
 
-  public String getVersion() {
-    return version;
-  }
-
-  public String getScope() {
-    return scope;
+  public String getTo() {
+    return to;
   }
 }

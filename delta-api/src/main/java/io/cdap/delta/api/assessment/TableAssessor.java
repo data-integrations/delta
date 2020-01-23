@@ -14,25 +14,19 @@
  * the License.
  */
 
-package io.cdap.delta.app.proto;
+package io.cdap.delta.api.assessment;
 
 /**
- * Represent a stage in the delta pipeline.
+ * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
+ * users early feedback on configuration or environmental issues.
  */
-public class Stage {
-  private final String name;
-  private final Plugin plugin;
+public interface TableAssessor {
 
-  public Stage(String name, Plugin plugin) {
-    this.name = name;
-    this.plugin = plugin;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public Plugin getPlugin() {
-    return plugin;
-  }
+  /**
+   * Assess whether there will be potential problems replicating data from the specified table.
+   *
+   * @param tableDetail detail about the table to replicate
+   * @return assessment of potential problems
+   */
+  TableAssessment assess(TableDetail tableDetail);
 }

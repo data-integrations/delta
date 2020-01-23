@@ -21,9 +21,10 @@ import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
-import io.cdap.delta.app.proto.Connection;
-import io.cdap.delta.app.proto.DeltaConfig;
-import io.cdap.delta.app.proto.Stage;
+import io.cdap.delta.app.service.AssessmentService;
+import io.cdap.delta.proto.Connection;
+import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.Stage;
 
 import java.util.List;
 
@@ -35,6 +36,11 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
   @Override
   public void configure() {
     DeltaConfig conf = getConfig();
+
+    if (conf.isService()) {
+      addService(new AssessmentService());
+      return;
+    }
 
     List<Connection> connections = conf.getConnections();
     if (connections.size() != 1 || conf.getStages().size() != 2) {

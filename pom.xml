@@ -83,6 +83,7 @@
   <modules>
     <module>delta-api</module>
     <module>delta-app</module>
+    <module>delta-proto</module>
   </modules>
 
   <dependencies>

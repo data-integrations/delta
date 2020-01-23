@@ -14,26 +14,19 @@
  * the License.
  */
 
-package io.cdap.delta.app.proto;
+package io.cdap.delta.app.service;
+
+import io.cdap.cdap.api.service.AbstractSystemService;
 
 /**
- *
- * A connection.
+ * System service for storing drafts and performing assessments.
  */
-public class Connection {
-  private final String from;
-  private final String to;
+public class AssessmentService extends AbstractSystemService {
+  static final String NAME = "assessor";
 
-  public Connection(String from, String to) {
-    this.from = from;
-    this.to = to;
-  }
-
-  public String getFrom() {
-    return from;
-  }
-
-  public String getTo() {
-    return to;
+  @Override
+  protected void configure() {
+    setName(NAME);
+    addHandler(new AssessmentHandler());
   }
 }
