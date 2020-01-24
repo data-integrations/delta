@@ -39,6 +39,7 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
 
     if (conf.isService()) {
       addService(new AssessmentService());
+      setDescription("Delta Pipeline System Service");
       return;
     }
 
@@ -67,6 +68,12 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     target.configure(configurer);
 
     addWorker(new DeltaWorker(sourceConf.getName(), targetConf.getName(), conf.getOffsetBasePath()));
+
+    String description = conf.getDescription();
+    if (description == null) {
+      description = String.format("%s to %s", sourceConf.getName(), targetConf.getName());
+    }
+    setDescription(description);
   }
 
   private <T> T registerPlugin(Stage stageConf) {

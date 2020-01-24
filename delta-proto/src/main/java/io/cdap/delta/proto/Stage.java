@@ -16,6 +16,8 @@
 
 package io.cdap.delta.proto;
 
+import java.util.Objects;
+
 /**
  * Represent a stage in the delta pipeline.
  */
@@ -34,5 +36,23 @@ public class Stage {
 
   public Plugin getPlugin() {
     return plugin;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Stage stage = (Stage) o;
+    return Objects.equals(name, stage.name) &&
+      Objects.equals(plugin, stage.plugin);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, plugin);
   }
 }
