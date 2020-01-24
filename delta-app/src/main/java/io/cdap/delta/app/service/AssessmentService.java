@@ -17,6 +17,7 @@
 package io.cdap.delta.app.service;
 
 import io.cdap.cdap.api.service.AbstractSystemService;
+import io.cdap.delta.store.DraftStore;
 
 /**
  * System service for storing drafts and performing assessments.
@@ -28,5 +29,6 @@ public class AssessmentService extends AbstractSystemService {
   protected void configure() {
     setName(NAME);
     addHandler(new AssessmentHandler());
+    createTable(DraftStore.TABLE_SPEC);
   }
 }

@@ -17,6 +17,7 @@
 package io.cdap.delta.proto;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Represents a plugin
@@ -48,5 +49,25 @@ public class Plugin {
 
   public Artifact getArtifact() {
     return artifact;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Plugin plugin = (Plugin) o;
+    return Objects.equals(name, plugin.name) &&
+      Objects.equals(type, plugin.type) &&
+      Objects.equals(properties, plugin.properties) &&
+      Objects.equals(artifact, plugin.artifact);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, type, properties, artifact);
   }
 }

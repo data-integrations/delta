@@ -16,6 +16,8 @@
 
 package io.cdap.delta.proto;
 
+import java.util.Objects;
+
 /**
  * An artifact.
  */
@@ -40,5 +42,24 @@ public class Artifact {
 
   public String getScope() {
     return scope;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Artifact artifact = (Artifact) o;
+    return Objects.equals(name, artifact.name) &&
+      Objects.equals(version, artifact.version) &&
+      Objects.equals(scope, artifact.scope);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, version, scope);
   }
 }

@@ -14,29 +14,28 @@
  * the License.
  */
 
-package io.cdap.delta.proto;
+package io.cdap.delta.store;
 
 import java.util.Objects;
 
 /**
- *
- * A connection.
+ * A namespace name and generation.
  */
-public class Connection {
-  private final String from;
-  private final String to;
+public class Namespace {
+  private final String name;
+  private final long generation;
 
-  public Connection(String from, String to) {
-    this.from = from;
-    this.to = to;
+  public Namespace(String name, long generation) {
+    this.name = name;
+    this.generation = generation;
   }
 
-  public String getFrom() {
-    return from;
+  public String getName() {
+    return name;
   }
 
-  public String getTo() {
-    return to;
+  public long getGeneration() {
+    return generation;
   }
 
   @Override
@@ -47,13 +46,13 @@ public class Connection {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    Connection that = (Connection) o;
-    return Objects.equals(from, that.from) &&
-      Objects.equals(to, that.to);
+    Namespace namespace = (Namespace) o;
+    return generation == namespace.generation &&
+      Objects.equals(name, namespace.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(from, to);
+    return Objects.hash(name, generation);
   }
 }

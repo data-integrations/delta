@@ -48,6 +48,12 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>io.cdap.cdap</groupId>
+      <artifactId>cdap-system-app-unit-test</artifactId>
+      <version>${cdap.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.cdap.delta</groupId>
       <artifactId>delta-api</artifactId>
       <version>${project.version}</version>
@@ -55,6 +61,11 @@
     <dependency>
       <groupId>io.cdap.delta</groupId>
       <artifactId>delta-proto</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.cdap.delta</groupId>
+      <artifactId>delta-storage</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

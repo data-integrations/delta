@@ -14,29 +14,28 @@
  * the License.
  */
 
-package io.cdap.delta.proto;
+package io.cdap.delta.store;
 
 import java.util.Objects;
 
 /**
- *
- * A connection.
+ * Uniquely identifies a draft.
  */
-public class Connection {
-  private final String from;
-  private final String to;
+public class DraftId {
+  private final Namespace namespace;
+  private final String name;
 
-  public Connection(String from, String to) {
-    this.from = from;
-    this.to = to;
+  public DraftId(Namespace namespace, String name) {
+    this.namespace = namespace;
+    this.name = name;
   }
 
-  public String getFrom() {
-    return from;
+  public Namespace getNamespace() {
+    return namespace;
   }
 
-  public String getTo() {
-    return to;
+  public String getName() {
+    return name;
   }
 
   @Override
@@ -47,13 +46,13 @@ public class Connection {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    Connection that = (Connection) o;
-    return Objects.equals(from, that.from) &&
-      Objects.equals(to, that.to);
+    DraftId draftId = (DraftId) o;
+    return Objects.equals(namespace, draftId.namespace) &&
+      Objects.equals(name, draftId.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(from, to);
+    return Objects.hash(namespace, name);
   }
 }
