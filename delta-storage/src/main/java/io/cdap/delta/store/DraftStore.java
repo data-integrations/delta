@@ -39,7 +39,7 @@ import java.util.Optional;
 /**
  * Stores pipeline drafts.
  */
-public class DraftStore {
+class DraftStore {
   private static final Gson GSON = new Gson();
   private static final StructuredTableId TABLE_ID = new StructuredTableId("delta_drafts");
   private static final String NAMESPACE_COL = "namespace";
@@ -65,7 +65,7 @@ public class DraftStore {
     this.table = table;
   }
 
-  public static DraftStore get(StructuredTableContext context) {
+  static DraftStore get(StructuredTableContext context) {
     try {
       StructuredTable table = context.getTable(TABLE_ID);
       return new DraftStore(table);
