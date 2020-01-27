@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import io.cdap.cdap.api.metrics.Metrics;
+import io.cdap.cdap.api.plugin.PluginContext;
 
 import java.io.IOException;
 import javax.annotation.Nullable;
@@ -24,7 +25,7 @@ import javax.annotation.Nullable;
 /**
  * Runtime context for a CDC component.
  */
-public interface DeltaRuntimeContext {
+public interface DeltaRuntimeContext extends PluginContext {
 
   /**
    * @return the application name

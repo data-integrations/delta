@@ -27,7 +27,7 @@ public interface DeltaSource {
   /**
    * Configure the source. This is called when the application is deployed.
    *
-   * @param configurer configurer used to set configuration settings
+   * @param configurer configurer used to set configuration settings and register plugins
    */
   void configure(Configurer configurer);
 
@@ -42,9 +42,10 @@ public interface DeltaSource {
 
   /**
    * Create a table registry that is used to fetch information about tables in databases.
+   * This is called when the pipeline is being configured, before it is deployed.
    *
-   * @param context program context
+   * @param configurer configurer used to instantiate plugins
    * @return table registry used to fetch information about tables in databases.
    */
-  TableRegistry createTableRegistry(DeltaRuntimeContext context);
+  TableRegistry createTableRegistry(Configurer configurer);
 }

@@ -18,11 +18,14 @@ package io.cdap.delta.proto;
 
 import io.cdap.cdap.api.Config;
 import io.cdap.cdap.api.Resources;
+import io.cdap.delta.api.DeltaSource;
+import io.cdap.delta.api.DeltaTarget;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nullable;
 
 /**
@@ -72,6 +75,70 @@ public class DeltaConfig extends Config {
 
   public boolean isService() {
     return service;
+  }
+
+  /**
+   * Validate that the config is a valid draft. A valid draft must contain a single valid source stage.
+   * If it contains a target, the target must also be valid.
+   */
+  public void validateDraft() {
+    validate();
+  }
+
+  /**
+   * Validate that the config is a valid pipeline. A valid pipeline must contain a single valid source stage
+   * and a single valid target stage.
+   */
+  public void validatePipeline() {
+    validate().orElseThrow(() -> new IllegalArgumentException("A target must be specified."));
+  }
+
+  public Stage getSource() {
+    return getStages().stream()
+      .filter(s -> DeltaSource.PLUGIN_TYPE.equals(s.getPlugin().getType()))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException("No source stage found."));
+  }
+
+  public Stage getTarget() {
+    return getStages().stream()
+      .filter(s -> DeltaTarget.PLUGIN_TYPE.equals(s.getPlugin().getType()))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException("No source stage found."));
+  }
+
+  /**
+   * Validate that the stages contain all required fields and that there is a source defined.
+   *
+   * @return an array with the source stage as the first element and the target as the next element. The target
+   *   may be null if this is a draft.
+   */
+  private Optional<Stage> validate() {
+    Stage sourceStage = null;
+    Stage targetStage = null;
+    for (Stage stage : stages) {
+      stage.validate();
+      if (DeltaSource.PLUGIN_TYPE.equals(stage.getPlugin().getType())) {
+        if (sourceStage != null) {
+          throw new IllegalArgumentException(
+            String.format("Pipeline can only have one source, but '%s' and '%s' are both sources.",
+                          sourceStage.getName(), stage.getName()));
+        }
+        sourceStage = stage;
+      }
+      if (DeltaTarget.PLUGIN_TYPE.equals(stage.getPlugin().getType())) {
+        if (targetStage != null) {
+          throw new IllegalArgumentException(
+            String.format("Pipeline can only have one target, but '%s' and '%s' are both targets.",
+                          targetStage.getName(), stage.getName()));
+        }
+        targetStage = stage;
+      }
+    }
+    if (sourceStage == null) {
+      throw new IllegalArgumentException("No source found.");
+    }
+    return Optional.ofNullable(targetStage);
   }
 
   @Override

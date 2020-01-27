@@ -38,6 +38,20 @@ public class Stage {
     return plugin;
   }
 
+  /**
+   * Validate that the stage contains all required information, throwing a {@link IllegalArgumentException} if not.
+   */
+  public void validate() {
+    if (name == null || name.isEmpty()) {
+      throw new IllegalArgumentException("Stage is missing a name.");
+    }
+    try {
+      plugin.validate();
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(String.format("Stage '%s' is invalid: %s", name, e.getMessage()));
+    }
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

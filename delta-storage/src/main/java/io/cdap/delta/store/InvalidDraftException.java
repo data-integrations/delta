@@ -21,12 +21,15 @@ import io.cdap.delta.proto.CodedException;
 import java.net.HttpURLConnection;
 
 /**
- * Thrown when a draft is not found when it is expected to be found.
+ * Thrown when a draft is not valid.
  */
-public class DraftNotFoundException extends CodedException {
+public class InvalidDraftException extends CodedException {
 
-  public DraftNotFoundException(DraftId draftId) {
-    super(HttpURLConnection.HTTP_NOT_FOUND,
-          String.format("Draft '%s' in namespace '%s' not found.", draftId.getName(), draftId.getNamespace()));
+  public InvalidDraftException(String message) {
+    super(HttpURLConnection.HTTP_BAD_REQUEST, message);
+  }
+
+  public InvalidDraftException(String message, Throwable cause) {
+    super(HttpURLConnection.HTTP_BAD_REQUEST, message, cause);
   }
 }

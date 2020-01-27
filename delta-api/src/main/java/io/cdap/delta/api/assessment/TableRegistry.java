@@ -16,12 +16,13 @@
 
 package io.cdap.delta.api.assessment;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
  * Fetches information about tables in a database. The registry is used when a user is configuring a delta pipeline.
  */
-public interface TableRegistry {
+public interface TableRegistry extends Closeable {
 
   /**
    * @return list of readable tables

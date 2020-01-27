@@ -20,18 +20,19 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import io.cdap.cdap.api.NamespaceSummary;
+import io.cdap.cdap.api.plugin.PluginConfigurer;
 import io.cdap.cdap.api.service.http.AbstractSystemHttpServiceHandler;
 import io.cdap.cdap.api.service.http.HttpServiceRequest;
 import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
 import io.cdap.delta.api.assessment.ColumnAssessment;
-import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.PipelineAssessment;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
-import io.cdap.delta.api.assessment.TableSummary;
+import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
+import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.store.Draft;
@@ -111,21 +112,26 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
                               @PathParam("draft") String draftName) {
     respond(namespaceName, responder, (draftService, namespace) -> {
       DraftId draftId = new DraftId(namespace, draftName);
-
-      responder.sendString(GSON.toJson(new TableList(Collections.singletonList(new TableSummary("db", "table", 1)))));
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      TableList tableList = draftService.listDraftTables(draftId, new DefaultConfigurer(pluginConfigurer));
+      responder.sendString(GSON.toJson(tableList));
     });
   }
 
   @POST
-  @Path("v1/contexts/{context}/databases/{database}/tables/{table}/describe")
+  @Path("v1/contexts/{context}/drafts/{draft}/databases/{database}/tables/{table}/describe")
   public void describeTable(HttpServiceRequest request, HttpServiceResponder responder,
                             @PathParam("context") String namespaceName,
+                            @PathParam("draft") String draftName,
                             @PathParam("database") String database,
                             @PathParam("table") String table) {
-    responder.sendString(
-      GSON.toJson(new TableDetail("db", "table",
-                                  Collections.singletonList("id"),
-                                  Collections.singletonList(new ColumnDetail("id", JDBCType.VARCHAR, false)))));
+    respond(namespaceName, responder, (draftService, namespace) -> {
+      DraftId draftId = new DraftId(namespace, draftName);
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      TableDetail tableDetail = draftService.describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer),
+                                                                database, table);
+      responder.sendString(GSON.toJson(tableDetail));
+    });
   }
 
   @POST
@@ -174,6 +180,8 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       endpoint.respond(new DraftService(context), namespace);
     } catch (CodedException e) {
       responder.sendError(e.getCode(), e.getMessage());
+    } catch (TableNotFoundException e) {
+      responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, e.getMessage());
     } catch (Exception e) {
       responder.sendError(HttpURLConnection.HTTP_INTERNAL_ERROR, e.getMessage());
     }

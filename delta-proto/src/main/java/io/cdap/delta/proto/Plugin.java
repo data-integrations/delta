@@ -16,6 +16,7 @@
 
 package io.cdap.delta.proto;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -44,11 +45,23 @@ public class Plugin {
   }
 
   public Map<String, String> getProperties() {
-    return properties;
+    return properties == null ? Collections.emptyMap() : properties;
   }
 
   public Artifact getArtifact() {
-    return artifact;
+    return artifact == null ? Artifact.EMPTY : artifact;
+  }
+
+  /**
+   * Validate that the plugin config is valid, throwing an {@link IllegalArgumentException} if not.
+   */
+  public void validate() {
+    if (name == null || name.isEmpty()) {
+      throw new IllegalArgumentException("Plugin name is missing.");
+    }
+    if (type == null || type.isEmpty()) {
+      throw new IllegalArgumentException("Plugin type is missing.");
+    }
   }
 
   @Override
