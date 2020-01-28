@@ -22,11 +22,8 @@ import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.app.service.AssessmentService;
-import io.cdap.delta.proto.Connection;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.Stage;
-
-import java.util.List;
 
 /**
  * App for Delta pipelines.
@@ -43,26 +40,12 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
       return;
     }
 
-    List<Connection> connections = conf.getConnections();
-    if (connections.size() != 1 || conf.getStages().size() != 2) {
-      throw new IllegalArgumentException("Delta pipelines currently only support a "
-                                           + "single source connected to a single target");
-    }
+    conf.validatePipeline();
+    Stage sourceConf = conf.getSource();
+    Stage targetConf = conf.getTarget();
 
-    Connection conn = connections.iterator().next();
-    Stage sourceConf = conf.getStages().stream()
-      .filter(s -> s.getName().equals(conn.getFrom()))
-      .findAny()
-      .orElseThrow(() -> new IllegalArgumentException(
-        String.format("Source stage '%s' was not specified.", conn.getFrom())));
-    Stage targetConf = conf.getStages().stream()
-      .filter(s -> s.getName().equals(conn.getTo()))
-      .findAny()
-      .orElseThrow(() -> new IllegalArgumentException(
-        String.format("Target stage '%s' was not specified.", conn.getTo())));
-
-    Configurer configurer = new DefaultConfigurer(getConfigurer());
     DeltaSource source = registerPlugin(sourceConf);
+    Configurer configurer = new DefaultConfigurer(getConfigurer());
     source.configure(configurer);
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);

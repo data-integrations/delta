@@ -17,11 +17,13 @@
 package io.cdap.delta.proto;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * An artifact.
  */
 public class Artifact {
+  public static final Artifact EMPTY = new Artifact(null, null, null);
   private final String name;
   private final String version;
   private final String scope;
@@ -32,14 +34,17 @@ public class Artifact {
     this.scope = scope;
   }
 
+  @Nullable
   public String getName() {
     return name;
   }
 
+  @Nullable
   public String getVersion() {
     return version;
   }
 
+  @Nullable
   public String getScope() {
     return scope;
   }

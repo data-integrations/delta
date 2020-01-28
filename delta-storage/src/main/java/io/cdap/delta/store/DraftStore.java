@@ -61,11 +61,11 @@ public class DraftStore {
 
   private final StructuredTable table;
 
-  DraftStore(StructuredTable table) {
+  private DraftStore(StructuredTable table) {
     this.table = table;
   }
 
-  public static DraftStore get(StructuredTableContext context) {
+  static DraftStore get(StructuredTableContext context) {
     try {
       StructuredTable table = context.getTable(TABLE_ID);
       return new DraftStore(table);
@@ -102,7 +102,7 @@ public class DraftStore {
     Optional<Draft> existing = getDraft(id);
     long now = System.currentTimeMillis();
     long createTime = existing.map(Draft::getCreatedTimeMillis).orElse(now);
-    long updatedTime = existing.map(Draft::getCreatedTimeMillis).orElse(now);
+    long updatedTime = existing.map(Draft::getUpdatedTimeMillis).orElse(now);
     table.upsert(getRow(id, new Draft(config, createTime, updatedTime)));
   }
 

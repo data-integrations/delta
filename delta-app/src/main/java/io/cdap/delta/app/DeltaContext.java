@@ -16,7 +16,11 @@
 
 package io.cdap.delta.app;
 
+import io.cdap.cdap.api.macro.InvalidMacroException;
+import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
+import io.cdap.cdap.api.plugin.PluginContext;
+import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.Offset;
@@ -33,12 +37,15 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final String runId;
   private final Metrics metrics;
   private final StateStore stateStore;
+  private final PluginContext pluginContext;
 
-  public DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore) {
+  public DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
+                      PluginContext pluginContext) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
     this.stateStore = stateStore;
+    this.pluginContext = pluginContext;
   }
 
   @Override
@@ -75,5 +82,31 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void putState(String key, byte[] val) throws IOException {
     stateStore.writeState(id, key, val);
+  }
+
+  @Override
+  public PluginProperties getPluginProperties(String pluginId) {
+    return pluginContext.getPluginProperties(pluginId);
+  }
+
+  @Override
+  public PluginProperties getPluginProperties(String pluginId, MacroEvaluator evaluator) throws InvalidMacroException {
+    return pluginContext.getPluginProperties(pluginId, evaluator);
+  }
+
+  @Override
+  public <T> Class<T> loadPluginClass(String pluginId) {
+    return pluginContext.loadPluginClass(pluginId);
+  }
+
+  @Override
+  public <T> T newPluginInstance(String pluginId) throws InstantiationException {
+    return pluginContext.newPluginInstance(pluginId);
+  }
+
+  @Override
+  public <T> T newPluginInstance(String pluginId, MacroEvaluator evaluator)
+    throws InstantiationException, InvalidMacroException {
+    return pluginContext.newPluginInstance(pluginId, evaluator);
   }
 }

@@ -43,9 +43,9 @@ public interface DeltaTarget {
   /**
    * Create a table assessor that will check if there will be potential problems replicating a table.
    *
-   * @param context program context
+   * @param configurer configurer used to instantiate plugins
    * @return a table assessor
    * @throws Exception if the table assessor could not be created
    */
-  TableAssessor createTableAssessor(DeltaRuntimeContext context) throws Exception;
+  TableAssessor createTableAssessor(Configurer configurer) throws Exception;
 }

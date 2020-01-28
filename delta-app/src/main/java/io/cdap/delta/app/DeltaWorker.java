@@ -81,7 +81,7 @@ public class DeltaWorker extends AbstractWorker {
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
     StateStore stateStore = new StateStore(fs, path);
-    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore);
+    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context);
     source = context.newPluginInstance(sourceName);
     target = context.newPluginInstance(targetName);
     eventConsumer = target.createConsumer(deltaContext);

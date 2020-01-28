@@ -20,22 +20,24 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import io.cdap.cdap.api.NamespaceSummary;
+import io.cdap.cdap.api.plugin.PluginConfigurer;
 import io.cdap.cdap.api.service.http.AbstractSystemHttpServiceHandler;
 import io.cdap.cdap.api.service.http.HttpServiceRequest;
 import io.cdap.cdap.api.service.http.HttpServiceResponder;
-import io.cdap.cdap.spi.data.transaction.TransactionRunners;
+import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
 import io.cdap.delta.api.assessment.ColumnAssessment;
-import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.PipelineAssessment;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
-import io.cdap.delta.api.assessment.TableSummary;
+import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
+import io.cdap.delta.app.DefaultConfigurer;
+import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
-import io.cdap.delta.store.DraftStore;
+import io.cdap.delta.store.DraftService;
 import io.cdap.delta.store.Namespace;
 
 import java.io.IOException;
@@ -45,7 +47,6 @@ import java.sql.JDBCType;
 import java.sql.SQLType;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -65,10 +66,8 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   @Path("v1/contexts/{context}/drafts")
   public void listDrafts(HttpServiceRequest request, HttpServiceResponder responder,
                          @PathParam("context") String namespaceName) {
-    respond(namespaceName, responder, namespace -> {
-      List<Draft> drafts = TransactionRunners.run(getContext(), context -> {
-        return DraftStore.get(context).listDrafts(namespace);
-      });
+    respond(namespaceName, responder, (draftService, namespace) -> {
+      List<Draft> drafts = draftService.listDrafts(namespace);
       responder.sendJson(drafts);
     });
   }
@@ -78,16 +77,9 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   public void getDraft(HttpServiceRequest request, HttpServiceResponder responder,
                        @PathParam("context") String namespaceName,
                        @PathParam("draft") String draftName) {
-    respond(namespaceName, responder, namespace -> {
-      Optional<Draft> draft = TransactionRunners.run(getContext(), context -> {
-        return DraftStore.get(context).getDraft(new DraftId(namespace, draftName));
-      });
-      if (draft.isPresent()) {
-        responder.sendJson(draft);
-      } else {
-        responder.sendError(HttpURLConnection.HTTP_NOT_FOUND,
-                            String.format("Draft '%s' not found in namespace '%s'", draftName, namespaceName));
-      }
+    respond(namespaceName, responder, (draftService, namespace) -> {
+      Draft draft = draftService.getDraft(new DraftId(namespace, draftName));
+      responder.sendJson(draft);
     });
   }
 
@@ -96,7 +88,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   public void putDraft(HttpServiceRequest request, HttpServiceResponder responder,
                        @PathParam("context") String namespaceName,
                        @PathParam("draft") String draftName) {
-    respond(namespaceName, responder, namespace -> {
+    respond(namespaceName, responder, (draftService, namespace) -> {
       DeltaConfig config;
       try {
         config = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(), DeltaConfig.class);
@@ -108,10 +100,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
         return;
       }
 
-      TransactionRunners.run(getContext(), context -> {
-        DraftStore draftStore = DraftStore.get(context);
-        draftStore.writeDraft(new DraftId(namespace, draftName), config);
-      });
+      draftService.saveDraft(new DraftId(namespace, draftName), config);
       responder.sendStatus(HttpURLConnection.HTTP_OK);
     });
   }
@@ -119,27 +108,36 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   @POST
   @Path("v1/contexts/{context}/drafts/{draft}/listTables")
   public void listDraftTables(HttpServiceRequest request, HttpServiceResponder responder,
-                              @PathParam("context") String namespace,
+                              @PathParam("context") String namespaceName,
                               @PathParam("draft") String draftName) {
-    responder.sendString(GSON.toJson(new TableList(Collections.singletonList(new TableSummary("db", "table", 1)))));
+    respond(namespaceName, responder, (draftService, namespace) -> {
+      DraftId draftId = new DraftId(namespace, draftName);
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      TableList tableList = draftService.listDraftTables(draftId, new DefaultConfigurer(pluginConfigurer));
+      responder.sendString(GSON.toJson(tableList));
+    });
   }
 
   @POST
-  @Path("v1/contexts/{context}/databases/{database}/tables/{table}/describe")
+  @Path("v1/contexts/{context}/drafts/{draft}/databases/{database}/tables/{table}/describe")
   public void describeTable(HttpServiceRequest request, HttpServiceResponder responder,
-                            @PathParam("context") String namespace,
+                            @PathParam("context") String namespaceName,
+                            @PathParam("draft") String draftName,
                             @PathParam("database") String database,
                             @PathParam("table") String table) {
-    responder.sendString(
-      GSON.toJson(new TableDetail("db", "table",
-                                  Collections.singletonList("id"),
-                                  Collections.singletonList(new ColumnDetail("id", JDBCType.VARCHAR, false)))));
+    respond(namespaceName, responder, (draftService, namespace) -> {
+      DraftId draftId = new DraftId(namespace, draftName);
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      TableDetail tableDetail = draftService.describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer),
+                                                                database, table);
+      responder.sendString(GSON.toJson(tableDetail));
+    });
   }
 
   @POST
   @Path("v1/contexts/{context}/drafts/{draft}/assess")
   public void assessDraft(HttpServiceRequest request, HttpServiceResponder responder,
-                          @PathParam("context") String namespace,
+                          @PathParam("context") String namespaceName,
                           @PathParam("draft") String draftName) {
     responder.sendString(GSON.toJson(new PipelineAssessment(new TableSummaryAssessment("db", "table", 1, 0, 0),
                                                             Collections.emptyList(),
@@ -162,9 +160,11 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
    * Utility method that checks that the namespace exists before responding.
    */
   private void respond(String namespaceName, HttpServiceResponder responder, NamespacedEndpoint endpoint) {
+    SystemHttpServiceContext context = getContext();
+
     Namespace namespace;
     try {
-      NamespaceSummary namespaceSummary = getContext().getAdmin().getNamespaceSummary(namespaceName);
+      NamespaceSummary namespaceSummary = context.getAdmin().getNamespaceSummary(namespaceName);
       if (namespaceSummary == null) {
         responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, String.format("Namespace '%s' not found", namespaceName));
         return;
@@ -177,7 +177,11 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     }
 
     try {
-      endpoint.respond(namespace);
+      endpoint.respond(new DraftService(context), namespace);
+    } catch (CodedException e) {
+      responder.sendError(e.getCode(), e.getMessage());
+    } catch (TableNotFoundException e) {
+      responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, e.getMessage());
     } catch (Exception e) {
       responder.sendError(HttpURLConnection.HTTP_INTERNAL_ERROR, e.getMessage());
     }
@@ -191,6 +195,6 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     /**
      * Create the response that should be returned by the endpoint.
      */
-    void respond(Namespace namespace) throws Exception;
+    void respond(DraftService draftService, Namespace namespace) throws Exception;
   }
 }
