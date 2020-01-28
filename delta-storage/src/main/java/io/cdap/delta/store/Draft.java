@@ -24,11 +24,13 @@ import java.util.Objects;
  * A pipeline draft.
  */
 public class Draft {
+  private final String name;
   private final DeltaConfig config;
   private final long createdTimeMillis;
   private final long updatedTimeMillis;
 
-  public Draft(DeltaConfig config, long createdTimeMillis, long updatedTimeMillis) {
+  public Draft(String name, DeltaConfig config, long createdTimeMillis, long updatedTimeMillis) {
+    this.name = name;
     this.config = config;
     this.createdTimeMillis = createdTimeMillis;
     this.updatedTimeMillis = updatedTimeMillis;
@@ -46,6 +48,10 @@ public class Draft {
     return updatedTimeMillis;
   }
 
+  public String getName() {
+    return name;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -57,11 +63,12 @@ public class Draft {
     Draft draft = (Draft) o;
     return createdTimeMillis == draft.createdTimeMillis &&
       updatedTimeMillis == draft.updatedTimeMillis &&
+      Objects.equals(name, draft.name) &&
       Objects.equals(config, draft.config);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(config, createdTimeMillis, updatedTimeMillis);
+    return Objects.hash(name, config, createdTimeMillis, updatedTimeMillis);
   }
 }

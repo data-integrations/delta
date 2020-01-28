@@ -103,7 +103,7 @@ public class DraftStore {
     long now = System.currentTimeMillis();
     long createTime = existing.map(Draft::getCreatedTimeMillis).orElse(now);
     long updatedTime = existing.map(Draft::getUpdatedTimeMillis).orElse(now);
-    table.upsert(getRow(id, new Draft(config, createTime, updatedTime)));
+    table.upsert(getRow(id, new Draft(id.getName(), config, createTime, updatedTime)));
   }
 
   private void addKeyFields(DraftId id, List<Field<?>> fields) {
@@ -133,6 +133,6 @@ public class DraftStore {
     long updateTime = row.getLong(UPDATED_COL);
     String configStr = new String(row.getBytes(CONFIG_COL), StandardCharsets.UTF_8);
     DeltaConfig config = GSON.fromJson(configStr, DeltaConfig.class);
-    return new Draft(config, createTime, updateTime);
+    return new Draft(row.getString(NAME_COL), config, createTime, updateTime);
   }
 }
