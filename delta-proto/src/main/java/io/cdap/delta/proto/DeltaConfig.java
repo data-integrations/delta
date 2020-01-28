@@ -30,6 +30,7 @@ import javax.annotation.Nullable;
 
 /**
  * Config for a Delta app.
+ * Null checks in the getters are done since this object is normally created by GSON deserialization of user input.
  */
 public class DeltaConfig extends Config {
   private final String description;
@@ -110,8 +111,7 @@ public class DeltaConfig extends Config {
   /**
    * Validate that the stages contain all required fields and that there is a source defined.
    *
-   * @return an array with the source stage as the first element and the target as the next element. The target
-   *   may be null if this is a draft.
+   * @return the target stage if it exists
    */
   private Optional<Stage> validate() {
     Stage sourceStage = null;

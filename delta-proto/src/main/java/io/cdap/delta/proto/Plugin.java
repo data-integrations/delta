@@ -21,7 +21,8 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Represents a plugin
+ * Represents a plugin.
+ * Null checks in the getters are done since this object is normally created by GSON deserialization of user input.
  */
 public class Plugin {
   private final String name;

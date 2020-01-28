@@ -16,21 +16,15 @@
 
 package io.cdap.delta.store;
 
-import io.cdap.cdap.api.plugin.PluginProperties;
-import io.cdap.cdap.api.plugin.PluginSelector;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.test.SystemAppTestBase;
 import io.cdap.cdap.test.TestConfiguration;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
-import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.DeltaTarget;
-import io.cdap.delta.api.EventEmitter;
-import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
-import io.cdap.delta.api.assessment.TableRegistry;
 import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DeltaConfig;
@@ -47,7 +41,6 @@ import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import javax.annotation.Nullable;
 
 /**
  * Tests for {@link DraftService}.
@@ -114,83 +107,4 @@ public class DraftServiceTest extends SystemAppTestBase {
                             new MockConfigurer(null, null));
   }
 
-  /**
-   * Mock source that returns pre-determined table list and table detail.
-   */
-  private static class MockSource implements DeltaSource {
-    private final TableList tableList;
-    private final TableDetail tableDetail;
-
-    public MockSource(TableList tableList, TableDetail tableDetail) {
-      this.tableList = tableList;
-      this.tableDetail = tableDetail;
-    }
-
-    @Override
-    public void configure(Configurer configurer) {
-      // no-op
-    }
-
-    @Override
-    public EventReader createReader(DeltaSourceContext context, EventEmitter eventEmitter) {
-      return null;
-    }
-
-    @Override
-    public TableRegistry createTableRegistry(Configurer configurer) {
-      return new TableRegistry() {
-        @Override
-        public TableList listTables() {
-          return tableList;
-        }
-
-        @Override
-        public TableDetail describeTable(String database, String table) {
-          return tableDetail;
-        }
-
-        @Override
-        public void close() {
-          // no-op
-        }
-      };
-    }
-  }
-
-  /**
-   * Mock configurer that returns existing source and target instances.
-   */
-  private static class MockConfigurer implements Configurer {
-    private final DeltaSource source;
-    private final DeltaTarget target;
-
-    private MockConfigurer(DeltaSource source, DeltaTarget target) {
-      this.source = source;
-      this.target = target;
-    }
-
-    @Nullable
-    @Override
-    public <T> T usePlugin(String pluginType, String pluginName, String pluginId, PluginProperties properties,
-                           PluginSelector selector) {
-      if (DeltaSource.PLUGIN_TYPE.equals(pluginType)) {
-        return (T) source;
-      } else if (DeltaTarget.PLUGIN_TYPE.equals(pluginType)) {
-        return (T) target;
-      }
-      return null;
-    }
-
-    @Nullable
-    @Override
-    public <T> Class<T> usePluginClass(String pluginType, String pluginName, String pluginId,
-                                       PluginProperties properties, PluginSelector selector) {
-      if (DeltaSource.PLUGIN_TYPE.equals(pluginType)) {
-        return (Class<T>) source.getClass();
-      } else if (DeltaTarget.PLUGIN_TYPE.equals(pluginType)) {
-        return (Class<T>) target.getClass();
-      }
-      return null;
-    }
-  }
 }
