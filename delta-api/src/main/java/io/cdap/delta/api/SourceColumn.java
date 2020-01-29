@@ -14,25 +14,24 @@
  * the License.
  */
 
-package io.cdap.delta.api.assessment;
+package io.cdap.delta.api;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 /**
- * A detailed assessment of issues related to a table.
+ * Information about a column to read from a source table.
+ *
+ * In the future, this may contain additional information, such as transformations to perform on the column.
  */
-public class TableAssessment {
-  private final List<ColumnAssessment> columns;
+public class SourceColumn {
+  private final String name;
 
-  public TableAssessment(List<ColumnAssessment> columns) {
-    this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
+  public SourceColumn(String name) {
+    this.name = name;
   }
 
-  public List<ColumnAssessment> getColumns() {
-    return columns;
+  public String getName() {
+    return name;
   }
 
   @Override
@@ -43,12 +42,12 @@ public class TableAssessment {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TableAssessment that = (TableAssessment) o;
-    return Objects.equals(columns, that.columns);
+    SourceColumn that = (SourceColumn) o;
+    return Objects.equals(name, that.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(columns);
+    return Objects.hash(name);
   }
 }

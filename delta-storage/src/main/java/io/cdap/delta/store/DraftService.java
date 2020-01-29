@@ -16,26 +16,43 @@
 
 package io.cdap.delta.store;
 
+import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.plugin.InvalidPluginConfigException;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.cdap.spi.data.transaction.TransactionRunner;
 import io.cdap.cdap.spi.data.transaction.TransactionRunners;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
+import io.cdap.delta.api.SourceColumn;
+import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.api.assessment.ColumnAssessment;
+import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.PipelineAssessment;
+import io.cdap.delta.api.assessment.Problem;
+import io.cdap.delta.api.assessment.SourceTableDetail;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
+import io.cdap.delta.api.assessment.Support;
+import io.cdap.delta.api.assessment.TableAssessment;
+import io.cdap.delta.api.assessment.TableAssessor;
+import io.cdap.delta.api.assessment.TableAssessorSupplier;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.api.assessment.TableRegistry;
+import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Handles logic around storage, retrieval, and assessment of drafts.
@@ -111,7 +128,8 @@ public class DraftService {
    * @throws IOException if the was an IO error fetching the table list
    */
   public TableList listDraftTables(DraftId draftId, Configurer configurer) throws IOException {
-    try (TableRegistry tableRegistry = createTableRegistry(draftId, configurer)) {
+    Draft draft = getDraft(draftId);
+    try (TableRegistry tableRegistry = createTableRegistry(draft, configurer)) {
       return tableRegistry.listTables();
     }
   }
@@ -133,15 +151,142 @@ public class DraftService {
    * @throws TableNotFoundException if the table does not exist
    * @throws IOException if the was an IO error fetching the table detail
    */
-  public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database, String table)
+  public TableDetail<List<ColumnDetail>> describeDraftTable(DraftId draftId, Configurer configurer,
+                                                            String database, String table)
     throws IOException, TableNotFoundException {
-    try (TableRegistry tableRegistry = createTableRegistry(draftId, configurer)) {
+    Draft draft = getDraft(draftId);
+    try (TableRegistry tableRegistry = createTableRegistry(draft, configurer)) {
       return tableRegistry.describeTable(database, table);
     }
   }
 
-  private TableRegistry createTableRegistry(DraftId draftId, Configurer configurer) {
+  /**
+   * Assess the given table detail using the target from the given draft id. An instance of the plugin will be
+   * instantiated in order to generate this list. This is an expensive operation.
+   *
+   * If the plugin cannot be instantiated due to missing draft information,
+   * an {@link InvalidDraftException} will be thrown.
+   *
+   * @param draftId id of the draft
+   * @param configurer configurer used to instantiate plugins
+   * @param db the database the table lives in
+   * @param table the table to assess
+   * @return list of tables readable by the source in the draft
+   * @throws DraftNotFoundException if the draft does not exist
+   * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
+   * @throws TableNotFoundException if the table does not exist
+   * @throws IOException if the table detail could not be read
+   */
+  public TableAssessment assessTable(DraftId draftId, Configurer configurer, String db, String table)
+    throws IOException, TableNotFoundException {
     Draft draft = getDraft(draftId);
+    DeltaConfig deltaConfig = draft.getConfig();
+    TableRegistry tableRegistry = createTableRegistry(draft, configurer);
+    TableAssessor<List<ColumnDetail>> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+    TableAssessor<Schema> targetTableAssessor = createTableAssessor(configurer, deltaConfig.getTarget());
+    return assessTable(new SourceTable(db, table), tableRegistry, sourceTableAssessor, targetTableAssessor);
+  }
+
+  /**
+   * Assess the entire pipeline based on the tables the source will read and the capabilities of the target.
+   * An instance of the target plugin will be instantiated in order to generate this list.
+   * This is an expensive operation.
+   *
+   * If the plugin cannot be instantiated due to missing draft information,
+   * an {@link InvalidDraftException} will be thrown.
+   *
+   * @param draftId id of the draft
+   * @param configurer configurer used to instantiate plugins
+   * @return list of tables readable by the source in the draft
+   * @throws DraftNotFoundException if the draft does not exist
+   * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
+   */
+  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) {
+    Draft draft = getDraft(draftId);
+    DeltaConfig deltaConfig = draft.getConfig();
+    deltaConfig.validatePipeline();
+
+    TableRegistry tableRegistry = createTableRegistry(draft, configurer);
+    TableAssessor<List<ColumnDetail>> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+    TableAssessor<Schema> targetTableAssessor = createTableAssessor(configurer, deltaConfig.getTarget());
+
+    List<Problem> connectivityIssues = new ArrayList<>();
+    List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
+    // go through all tables that the pipeline should read, fetching detail about each of the tables
+    for (SourceTable sourceTable : draft.getConfig().getTables()) {
+      String db = sourceTable.getDatabase();
+      String table = sourceTable.getTable();
+      try {
+        TableAssessment assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor, targetTableAssessor);
+        tableAssessments.add(summarize(db, table, assessment));
+      } catch (TableNotFoundException e) {
+        connectivityIssues.add(
+          new Problem("Table Not Found",
+                      String.format("Table '%s' in database '%s' was not found.", db, table),
+                      "Check the table information and permissions",
+                      null));
+      } catch (IOException e) {
+        connectivityIssues.add(
+          new Problem("Table Describe Error",
+                      String.format("Unable to fetch details about table '%s' in database '%s': %s",
+                                    db, table, e.getMessage()),
+                      "Check permissions and database connectivity",
+                      null));
+      }
+    }
+    return new PipelineAssessment(tableAssessments, Collections.emptyList(), connectivityIssues);
+  }
+
+  private TableAssessment assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
+                                      TableAssessor<List<ColumnDetail>> sourceTableAssessor,
+                                      TableAssessor<Schema> targetTableAssesor)
+    throws IOException, TableNotFoundException {
+    String db = sourceTable.getDatabase();
+    String table = sourceTable.getTable();
+    Set<String> columnWhitelist = sourceTable.getColumns().stream()
+      .map(SourceColumn::getName)
+      .collect(Collectors.toSet());
+
+    // fetch detail about the table, then filter out columns that will not be read by the source
+    SourceTableDetail detail = tableRegistry.describeTable(db, table);
+    List<ColumnDetail> selectedColumns = detail.getColumns().stream()
+      // if there are no columns specified, it means all columns should be read
+      .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
+      .collect(Collectors.toList());
+    SourceTableDetail filteredDetail = new SourceTableDetail(db, table, detail.getPrimaryKey(), selectedColumns);
+    TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
+
+    Schema standardSchema = tableRegistry.standardizeSchema(filteredDetail.getColumns());
+    StandardizedTableDetail standardizedDetail = new StandardizedTableDetail(db, table, detail.getPrimaryKey(),
+                                                                             standardSchema);
+    TableAssessment targetAssessment = targetTableAssesor.assess(standardizedDetail);
+
+    return merge(srcAssessment, targetAssessment);
+  }
+
+  private TableAssessment merge(TableAssessment srcAssessment, TableAssessment targetAssessment) {
+    List<ColumnAssessment> columnAssessments = new ArrayList<>();
+    Iterator<ColumnAssessment> targetColumnAssessments = targetAssessment.getColumns().iterator();
+    for (ColumnAssessment columnAssessment : srcAssessment.getColumns()) {
+      columnAssessments.add(merge(columnAssessment, targetColumnAssessments.next()));
+    }
+    return new TableAssessment(columnAssessments);
+  }
+
+  private ColumnAssessment merge(ColumnAssessment srcAssessment, ColumnAssessment targetAssessment) {
+    if (srcAssessment.getSupport() == Support.NO) {
+      return srcAssessment;
+    } else if (targetAssessment.getSupport() == Support.NO) {
+      return targetAssessment;
+    } else if (srcAssessment.getSupport() == Support.PARTIAL) {
+      return srcAssessment;
+    } else if (targetAssessment.getSupport() == Support.PARTIAL) {
+      return targetAssessment;
+    }
+    return targetAssessment;
+  }
+
+  private TableRegistry createTableRegistry(Draft draft, Configurer configurer) {
     DeltaConfig deltaConfig = draft.getConfig();
     Stage stage = deltaConfig.getSource();
 
@@ -158,6 +303,45 @@ public class DraftService {
       throw new InvalidDraftException(String.format("Unable to find plugin '%s'", pluginConfig.getName()));
     }
 
-    return deltaSource.createTableRegistry(configurer);
+    return new ValidatingTableRegistry(deltaSource.createTableRegistry(configurer));
+  }
+
+  private <T> TableAssessor<T> createTableAssessor(Configurer configurer, Stage stage) {
+    Plugin pluginConfig = stage.getPlugin();
+    TableAssessorSupplier<T> plugin;
+    try {
+      plugin = configurer.usePlugin(pluginConfig.getType(), pluginConfig.getName(), UUID.randomUUID().toString(),
+                                    PluginProperties.builder().addAll(pluginConfig.getProperties()).build());
+    } catch (InvalidPluginConfigException e) {
+      throw new InvalidDraftException(
+        String.format("Unable to instantiate plugin for stage '%s': %s", stage.getName(), e.getMessage()), e);
+    }
+
+    if (plugin == null) {
+      throw new InvalidDraftException(String.format("Unable to find plugin '%s' for stage '%s'",
+                                                    pluginConfig.getName(), stage.getName()));
+    }
+
+    try {
+      return plugin.createTableAssessor(configurer);
+    } catch (Exception e) {
+      throw new InvalidDraftException(String.format("Unable to instantiate table assessor for stage '%s': %s",
+                                                    stage.getName(), e.getMessage()), e);
+    }
+  }
+
+  private TableSummaryAssessment summarize(String db, String table, TableAssessment assessment) {
+    int numUnsupported = 0;
+    int numPartial = 0;
+    int numColumns = 0;
+    for (ColumnAssessment columnAssessment : assessment.getColumns()) {
+      if (columnAssessment.getSupport() == Support.NO) {
+        numUnsupported++;
+      } else if (columnAssessment.getSupport() == Support.PARTIAL) {
+        numPartial++;
+      }
+      numColumns++;
+    }
+    return new TableSummaryAssessment(db, table, numColumns, numUnsupported, numPartial);
   }
 }

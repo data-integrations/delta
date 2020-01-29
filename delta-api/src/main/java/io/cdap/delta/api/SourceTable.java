@@ -14,24 +14,39 @@
  * the License.
  */
 
-package io.cdap.delta.api.assessment;
+package io.cdap.delta.api;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * A detailed assessment of issues related to a table.
+ * Object representing what data from a table should be read by the source.
  */
-public class TableAssessment {
-  private final List<ColumnAssessment> columns;
+public class SourceTable {
+  private final String database;
+  private final String table;
+  private final List<SourceColumn> columns;
 
-  public TableAssessment(List<ColumnAssessment> columns) {
-    this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
+  public SourceTable(String database, String table) {
+    this(database, table, Collections.emptyList());
   }
 
-  public List<ColumnAssessment> getColumns() {
+  public SourceTable(String database, String table, List<SourceColumn> columns) {
+    this.database = database;
+    this.table = table;
+    this.columns = columns;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getTable() {
+    return table;
+  }
+
+  public List<SourceColumn> getColumns() {
     return columns;
   }
 
@@ -43,12 +58,14 @@ public class TableAssessment {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TableAssessment that = (TableAssessment) o;
-    return Objects.equals(columns, that.columns);
+    SourceTable that = (SourceTable) o;
+    return Objects.equals(database, that.database) &&
+      Objects.equals(table, that.table) &&
+      Objects.equals(columns, that.columns);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(columns);
+    return Objects.hash(database, table, columns);
   }
 }

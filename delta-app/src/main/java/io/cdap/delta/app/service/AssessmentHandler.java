@@ -25,13 +25,11 @@ import io.cdap.cdap.api.service.http.AbstractSystemHttpServiceHandler;
 import io.cdap.cdap.api.service.http.HttpServiceRequest;
 import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
-import io.cdap.delta.api.assessment.ColumnAssessment;
 import io.cdap.delta.api.assessment.PipelineAssessment;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
-import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DeltaConfig;
@@ -43,9 +41,7 @@ import io.cdap.delta.store.Namespace;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.sql.JDBCType;
 import java.sql.SQLType;
-import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -139,21 +135,28 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   public void assessDraft(HttpServiceRequest request, HttpServiceResponder responder,
                           @PathParam("context") String namespaceName,
                           @PathParam("draft") String draftName) {
-    responder.sendString(GSON.toJson(new PipelineAssessment(new TableSummaryAssessment("db", "table", 1, 0, 0),
-                                                            Collections.emptyList(),
-                                                            Collections.emptyList())));
+    respond(namespaceName, responder, ((draftService, namespace) -> {
+      DraftId draftId = new DraftId(namespace, draftName);
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      PipelineAssessment assessment = draftService.assessPipeline(draftId, new DefaultConfigurer(pluginConfigurer));
+      responder.sendString(GSON.toJson(assessment));
+    }));
   }
 
   @POST
-  @Path("v1/contexts/{context}/databases/{database}/tables/{table}/assess")
+  @Path("v1/contexts/{context}/drafts/{draft}/databases/{database}/tables/{table}/assess")
   public void assessTable(HttpServiceRequest request, HttpServiceResponder responder,
-                          @PathParam("context") String namespace,
+                          @PathParam("context") String namespaceName,
+                          @PathParam("draft") String draftName,
                           @PathParam("database") String database,
                           @PathParam("table") String table) {
-    responder.sendString(
-      GSON.toJson(new TableAssessment(Collections.singletonList(new ColumnAssessment("id", JDBCType.VARCHAR)),
-                                      Collections.emptyList(),
-                                      Collections.emptyList())));
+    respond(namespaceName, responder, ((draftService, namespace) -> {
+      DraftId draftId = new DraftId(namespace, draftName);
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      TableAssessment assessment = draftService.assessTable(draftId, new DefaultConfigurer(pluginConfigurer),
+                                                            database, table);
+      responder.sendString(GSON.toJson(assessment));
+    }));
   }
 
   /**

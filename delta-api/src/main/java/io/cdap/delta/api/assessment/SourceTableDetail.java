@@ -16,19 +16,14 @@
 
 package io.cdap.delta.api.assessment;
 
-/**
- * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
- * users early feedback on configuration or environmental issues.
- *
- * @param <T> type of table schema
- */
-public interface TableAssessor<T> {
+import java.util.List;
 
-  /**
-   * Assess whether there will be potential problems replicating data from the specified table.
-   *
-   * @param tableDescriptor descriptor about the table to replicate
-   * @return assessment of potential problems
-   */
-  TableAssessment assess(TableDetail<T> tableDescriptor);
+/**
+ * Detailed information about a source table.
+ */
+public class SourceTableDetail extends TableDetail<List<ColumnDetail>> {
+
+  public SourceTableDetail(String database, String table, List<String> primaryKey, List<ColumnDetail> columns) {
+    super(database, table, primaryKey, columns, columns.size());
+  }
 }

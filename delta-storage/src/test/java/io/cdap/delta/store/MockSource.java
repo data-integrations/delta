@@ -21,21 +21,24 @@ import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
-import io.cdap.delta.api.assessment.TableDetail;
-import io.cdap.delta.api.assessment.TableList;
+import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableRegistry;
+
+import java.util.List;
 
 
 /**
  * Mock source that returns pre-determined table list and table detail.
  */
 public class MockSource implements DeltaSource {
-  private final TableList tableList;
-  private final TableDetail tableDetail;
+  private final TableRegistry registry;
+  private final TableAssessor<List<ColumnDetail>> assessor;
 
-  public MockSource(TableList tableList, TableDetail tableDetail) {
-    this.tableList = tableList;
-    this.tableDetail = tableDetail;
+  public MockSource(TableRegistry registry, TableAssessor<List<ColumnDetail>> assessor) {
+    this.registry = registry;
+    this.assessor = assessor;
   }
 
   @Override
@@ -44,27 +47,17 @@ public class MockSource implements DeltaSource {
   }
 
   @Override
-  public EventReader createReader(DeltaSourceContext context, EventEmitter eventEmitter) {
+  public EventReader createReader(List<SourceTable> tables, DeltaSourceContext context, EventEmitter eventEmitter) {
     return null;
   }
 
   @Override
   public TableRegistry createTableRegistry(Configurer configurer) {
-    return new TableRegistry() {
-      @Override
-      public TableList listTables() {
-        return tableList;
-      }
+    return registry;
+  }
 
-      @Override
-      public TableDetail describeTable(String database, String table) {
-        return tableDetail;
-      }
-
-      @Override
-      public void close() {
-        // no-op
-      }
-    };
+  @Override
+  public TableAssessor<List<ColumnDetail>> createTableAssessor(Configurer configurer) {
+    return assessor;
   }
 }
