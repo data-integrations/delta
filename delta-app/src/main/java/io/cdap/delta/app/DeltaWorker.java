@@ -44,6 +44,7 @@ import java.util.concurrent.CountDownLatch;
  */
 public class DeltaWorker extends AbstractWorker {
   private static final Gson GSON = new Gson();
+  public static final String NAME = "DeltaWorker";
   private static final String SOURCE = "source";
   private static final String TARGET = "target";
   private static final String GENERATION = "generation";
@@ -70,6 +71,7 @@ public class DeltaWorker extends AbstractWorker {
 
   @Override
   protected void configure() {
+    setName(NAME);
     Map<String, String> props = new HashMap<>();
     props.put(SOURCE, sourceName);
     props.put(TARGET, targetName);
