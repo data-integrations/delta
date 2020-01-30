@@ -18,6 +18,7 @@ package io.cdap.delta.app;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.cdap.api.worker.AbstractWorker;
 import io.cdap.cdap.api.worker.WorkerContext;
@@ -27,6 +28,7 @@ import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.store.DefaultMacroEvaluator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -36,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import javax.xml.transform.Source;
 
 /**
  * Worker implementation of a Delta pipeline.
@@ -92,8 +93,10 @@ public class DeltaWorker extends AbstractWorker {
     Path path = new Path(offsetBasePath);
     StateStore stateStore = new StateStore(fs, path);
     deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context);
-    source = context.newPluginInstance(sourceName);
-    target = context.newPluginInstance(targetName);
+    MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
+                                                              context, context.getNamespace());
+    source = context.newPluginInstance(sourceName, macroEvaluator);
+    target = context.newPluginInstance(targetName, macroEvaluator);
     eventConsumer = target.createConsumer(deltaContext);
     sourceTables = GSON.fromJson(context.getSpecification().getProperty(SOURCE_TABLES),
                                  new TypeToken<List<SourceTable>>() { }.getType());

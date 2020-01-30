@@ -23,7 +23,6 @@ import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.SourceTable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -40,21 +39,18 @@ public class DeltaConfig extends Config {
   private final List<Connection> connections;
   private final Resources resources;
   private final String offsetBasePath;
-  private final boolean service;
   private final List<SourceTable> tables;
+  // should only be set by CDAP admin when creating the system service
+  private final boolean service;
 
-  public DeltaConfig(Stage source, Stage target, List<SourceTable> tables) {
-    this(source, target, tables, null, null);
-  }
-
-  public DeltaConfig(Stage source, Stage target, List<SourceTable> tables,
-                     Resources resources, String offsetBasePath) {
-    this.description = "";
-    this.stages = Collections.unmodifiableList(Arrays.asList(source, target));
-    this.connections = Collections.singletonList(new Connection(source.getName(), target.getName()));
-    this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
+  private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
+                      Resources resources, String offsetBasePath, List<SourceTable> tables) {
+    this.description = description;
+    this.stages = Collections.unmodifiableList(new ArrayList<>(stages));
+    this.connections = Collections.unmodifiableList(new ArrayList<>(connections));
     this.resources = resources;
     this.offsetBasePath = offsetBasePath;
+    this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
     this.service = false;
   }
 
@@ -101,9 +97,6 @@ public class DeltaConfig extends Config {
    */
   public void validatePipeline() {
     validate().orElseThrow(() -> new IllegalArgumentException("A target must be specified."));
-    if (getTables().isEmpty()) {
-      throw new IllegalArgumentException("At least one source table must be configured.");
-    }
   }
 
   public Stage getSource() {
@@ -113,11 +106,12 @@ public class DeltaConfig extends Config {
       .orElseThrow(() -> new IllegalArgumentException("No source stage found."));
   }
 
+  @Nullable
   public Stage getTarget() {
     return getStages().stream()
       .filter(s -> DeltaTarget.PLUGIN_TYPE.equals(s.getPlugin().getType()))
       .findFirst()
-      .orElseThrow(() -> new IllegalArgumentException("No target stage found."));
+      .orElse(null);
   }
 
   /**
@@ -173,5 +167,75 @@ public class DeltaConfig extends Config {
   @Override
   public int hashCode() {
     return Objects.hash(description, stages, connections, resources, offsetBasePath, service);
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Builds a DeltaConfig.
+   */
+  public static class Builder {
+    private Stage source;
+    private Stage target;
+    private String description;
+    private String offsetBasePath;
+    private Resources resources;
+    private List<SourceTable> tables;
+
+    private Builder() {
+      description = "";
+      resources = new Resources();
+      tables = new ArrayList<>();
+    }
+
+    public Builder setSource(Stage source) {
+      this.source = source;
+      return this;
+    }
+
+    public Builder setTarget(Stage target) {
+      this.target = target;
+      return this;
+    }
+
+    public Builder setDescription(String description) {
+      this.description = description;
+      return this;
+    }
+
+    public Builder setOffsetBasePath(String offsetBasePath) {
+      this.offsetBasePath = offsetBasePath;
+      return this;
+    }
+
+    public Builder setResources(Resources resources) {
+      this.resources = resources;
+      return this;
+    }
+
+    public Builder setTables(List<SourceTable> tables) {
+      this.tables.clear();
+      this.tables.addAll(tables);
+      return this;
+    }
+
+    public DeltaConfig build() {
+      List<Stage> stages = new ArrayList<>();
+      if (source != null) {
+        stages.add(source);
+      }
+      if (target != null) {
+        stages.add(target);
+      }
+      List<Connection> connections = new ArrayList<>();
+      if (source != null && target != null) {
+        connections.add(new Connection(source.getName(), target.getName()));
+      }
+      DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables);
+      config.validate();
+      return config;
+    }
   }
 }

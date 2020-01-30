@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -59,9 +60,11 @@ import java.util.stream.Collectors;
  */
 public class DraftService {
   private final TransactionRunner txRunner;
+  private final PropertyEvaluator propertyEvaluator;
 
-  public DraftService(TransactionRunner transactionRunner) {
+  public DraftService(TransactionRunner transactionRunner, PropertyEvaluator propertyEvaluator) {
     this.txRunner = transactionRunner;
+    this.propertyEvaluator = propertyEvaluator;
   }
 
   /**
@@ -129,7 +132,7 @@ public class DraftService {
    */
   public TableList listDraftTables(DraftId draftId, Configurer configurer) throws IOException {
     Draft draft = getDraft(draftId);
-    try (TableRegistry tableRegistry = createTableRegistry(draft, configurer)) {
+    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
       return tableRegistry.listTables();
     }
   }
@@ -154,16 +157,16 @@ public class DraftService {
   public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database, String table)
     throws IOException, TableNotFoundException {
     Draft draft = getDraft(draftId);
-    try (TableRegistry tableRegistry = createTableRegistry(draft, configurer)) {
+    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
       return tableRegistry.describeTable(database, table);
     }
   }
 
   /**
-   * Assess the given table detail using the target from the given draft id. An instance of the plugin will be
-   * instantiated in order to generate this list. This is an expensive operation.
+   * Assess the given table detail using the plugins from the given draft. Plugins will be
+   * instantiated in order to generate this assessment. This is an expensive operation.
    *
-   * If the plugin cannot be instantiated due to missing draft information,
+   * If a plugin cannot be instantiated due to missing draft information,
    * an {@link InvalidDraftException} will be thrown.
    *
    * @param draftId id of the draft
@@ -180,10 +183,14 @@ public class DraftService {
     throws IOException, TableNotFoundException {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
-    TableRegistry tableRegistry = createTableRegistry(draft, configurer);
+    deltaConfig = evaluateMacros(draftId, deltaConfig);
+    Stage target = deltaConfig.getTarget();
+    if (target == null) {
+      throw new InvalidDraftException("Cannot assess a table without a configured target.");
+    }
+    TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
     TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
-    TableAssessor<StandardizedTableDetail> targetTableAssessor =
-      createTableAssessor(configurer, deltaConfig.getTarget());
+    TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target);
     return assessTable(new SourceTable(db, table), tableRegistry, sourceTableAssessor, targetTableAssessor);
   }
 
@@ -206,9 +213,11 @@ public class DraftService {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
     deltaConfig.validatePipeline();
+    deltaConfig = evaluateMacros(draftId, deltaConfig);
 
-    TableRegistry tableRegistry = createTableRegistry(draft, configurer);
+    TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
     TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+    //noinspection ConstantConditions
     TableAssessor<StandardizedTableDetail> targetTableAssessor =
       createTableAssessor(configurer, deltaConfig.getTarget());
 
@@ -309,8 +318,9 @@ public class DraftService {
     return targetAssessment;
   }
 
-  private TableRegistry createTableRegistry(Draft draft, Configurer configurer) {
+  private TableRegistry createTableRegistry(DraftId id, Draft draft, Configurer configurer) {
     DeltaConfig deltaConfig = draft.getConfig();
+    deltaConfig = evaluateMacros(id, deltaConfig);
     Stage stage = deltaConfig.getSource();
 
     Plugin pluginConfig = stage.getPlugin();
@@ -366,5 +376,29 @@ public class DraftService {
       numColumns++;
     }
     return new TableSummaryAssessment(db, table, numColumns, numUnsupported, numPartial);
+  }
+
+  private DeltaConfig evaluateMacros(DraftId draftId, DeltaConfig config) {
+    DeltaConfig.Builder builder = DeltaConfig.builder()
+      .setDescription(config.getDescription())
+      .setResources(config.getResources())
+      .setSource(config.getSource())
+      .setOffsetBasePath(config.getOffsetBasePath())
+      .setTables(config.getTables())
+      .setSource(evaluateMacros(draftId.getNamespace().getName(), config.getSource()));
+
+    Stage target = config.getTarget();
+    if (target != null) {
+      builder.setTarget(evaluateMacros(draftId.getNamespace().getName(), target));
+    }
+
+    return builder.build();
+  }
+
+  private Stage evaluateMacros(String namespace, Stage stage) {
+    Plugin plugin = stage.getPlugin();
+    Map<String, String> evaluatedProperties = propertyEvaluator.evaluate(namespace, plugin.getProperties());
+    Plugin evaluatedPlugin = new Plugin(plugin.getName(), plugin.getType(), evaluatedProperties, plugin.getArtifact());
+    return new Stage(stage.getName(), evaluatedPlugin);
   }
 }

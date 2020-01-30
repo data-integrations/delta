@@ -19,6 +19,7 @@ package io.cdap.delta.api.assessment;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A list of tables in a database.
@@ -32,5 +33,22 @@ public class TableList {
 
   public List<TableSummary> getTables() {
     return tables;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TableList tableList = (TableList) o;
+    return Objects.equals(tables, tableList.tables);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tables);
   }
 }

@@ -32,12 +32,12 @@ import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.proto.CodedException;
-import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
 import io.cdap.delta.store.DraftService;
 import io.cdap.delta.store.Namespace;
+import io.cdap.delta.store.SystemServicePropertyEvaluator;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -181,7 +181,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     }
 
     try {
-      endpoint.respond(new DraftService(context), namespace);
+      endpoint.respond(new DraftService(context, new SystemServicePropertyEvaluator(context)), namespace);
     } catch (CodedException e) {
       responder.sendError(e.getCode(), e.getMessage());
     } catch (TableNotFoundException e) {

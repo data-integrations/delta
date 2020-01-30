@@ -45,8 +45,8 @@ public class DraftStore {
   private static final StructuredTableId TABLE_ID = new StructuredTableId("delta_drafts");
   private static final String NAMESPACE_COL = "namespace";
   private static final String GENERATION_COL = "generation";
-  private static final String NAME_COL = "name";
   private static final String LABEL_COL = "label";
+  private static final String NAME_COL = "name";
   private static final String CREATED_COL = "created";
   private static final String UPDATED_COL = "updated";
   private static final String CONFIG_COL = "config";
@@ -134,9 +134,9 @@ public class DraftStore {
 
   @SuppressWarnings("ConstantConditions")
   private Draft fromRow(StructuredRow row) {
+    String label = row.getString(LABEL_COL);
     long createTime = row.getLong(CREATED_COL);
     long updateTime = row.getLong(UPDATED_COL);
-    String label = row.getString(LABEL_COL);
     String configStr = new String(row.getBytes(CONFIG_COL), StandardCharsets.UTF_8);
     DeltaConfig config = GSON.fromJson(configStr, DeltaConfig.class);
     return new Draft(row.getString(NAME_COL), label, config, createTime, updateTime);
