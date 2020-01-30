@@ -17,18 +17,12 @@
 package io.cdap.delta.api.assessment;
 
 /**
- * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
- * users early feedback on configuration or environmental issues.
- *
- * @param <T> type of table descriptor to assess
+ * Level of support for a table column.
  */
-public interface TableAssessor<T> {
-
-  /**
-   * Assess whether there will be potential problems replicating data from the specified table.
-   *
-   * @param tableDescriptor descriptor about the table to replicate
-   * @return assessment of potential problems
-   */
-  TableAssessment assess(T tableDescriptor);
+public enum ColumnSupport {
+  YES,
+  NO,
+  // partial means the column cannot be replicated completely as-is
+  // for example, if a timestamp can be replicated, but at a lower granularity, it is partially supported
+  PARTIAL;
 }

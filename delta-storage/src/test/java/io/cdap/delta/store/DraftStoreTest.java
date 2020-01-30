@@ -75,14 +75,16 @@ public class DraftStoreTest extends SystemAppTestBase {
                                                                       new Artifact("plugins", "1.0.0", "SYSTEM"))),
                                           new Stage("target", new Plugin("bq", DeltaTarget.PLUGIN_TYPE,
                                                                          Collections.singletonMap("k2", "v2"),
-                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))));
+                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))),
+                                          Collections.emptyList());
     DraftId id2 = new DraftId(ns1, "xyz");
     DeltaConfig config2 = new DeltaConfig(new Stage("src", new Plugin("oracle", DeltaSource.PLUGIN_TYPE,
                                                                       Collections.singletonMap("k1", "v1"),
                                                                       new Artifact("plugins", "1.0.0", "SYSTEM"))),
                                           new Stage("target", new Plugin("bq", DeltaTarget.PLUGIN_TYPE,
                                                                          Collections.singletonMap("k2", "v2"),
-                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))));
+                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))),
+                                          Collections.emptyList());
     Namespace ns2 = new Namespace("n1", 10L);
     DraftId id3 = new DraftId(ns2, "xyz");
     DeltaConfig config3 = new DeltaConfig(new Stage("src", new Plugin("sqlserver", DeltaSource.PLUGIN_TYPE,
@@ -90,7 +92,8 @@ public class DraftStoreTest extends SystemAppTestBase {
                                                                       new Artifact("plugins", "1.0.0", "SYSTEM"))),
                                           new Stage("target", new Plugin("bq", DeltaTarget.PLUGIN_TYPE,
                                                                          Collections.singletonMap("k2", "v2"),
-                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))));
+                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))),
+                                          Collections.emptyList());
 
     // write all 3 drafts
     getTransactionRunner().run(context -> {
@@ -155,13 +158,15 @@ public class DraftStoreTest extends SystemAppTestBase {
                                                                       new Artifact("plugins", "1.0.0", "SYSTEM"))),
                                           new Stage("target", new Plugin("bq", DeltaTarget.PLUGIN_TYPE,
                                                                          Collections.singletonMap("k2", "v2"),
-                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))));
+                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))),
+                                          Collections.emptyList());
     DeltaConfig config2 = new DeltaConfig(new Stage("src", new Plugin("oracle", DeltaSource.PLUGIN_TYPE,
                                                                       Collections.singletonMap("k1", "v1"),
                                                                       new Artifact("plugins", "1.0.0", "SYSTEM"))),
                                           new Stage("target", new Plugin("bq", DeltaTarget.PLUGIN_TYPE,
                                                                          Collections.singletonMap("k2", "v2"),
-                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))));
+                                                                         new Artifact("plugins", "1.0.0", "SYSTEM"))),
+                                          Collections.emptyList());
 
     // test drafts in one generation aren't visible in other gen
     getTransactionRunner().run(context -> {

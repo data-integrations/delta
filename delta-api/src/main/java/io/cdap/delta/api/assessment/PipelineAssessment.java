@@ -25,14 +25,14 @@ import java.util.Objects;
  * An assessment about a potential pipeline, indicating possible errors and fixes for those errors.
  */
 public class PipelineAssessment {
-  private final TableSummaryAssessment tables;
+  private final List<TableSummaryAssessment> tables;
   private final List<Problem> features;
   private final List<Problem> connectivity;
 
-  public PipelineAssessment(TableSummaryAssessment tables,
+  public PipelineAssessment(List<TableSummaryAssessment> tables,
                             List<Problem> features,
                             List<Problem> connectivity) {
-    this.tables = tables;
+    this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
     this.features = Collections.unmodifiableList(new ArrayList<>(features));
     this.connectivity = Collections.unmodifiableList(new ArrayList<>(connectivity));
   }
@@ -40,7 +40,7 @@ public class PipelineAssessment {
   /**
    * @return summary of issues related to tables
    */
-  public TableSummaryAssessment getTables() {
+  public List<TableSummaryAssessment> getTables() {
     return tables;
   }
 

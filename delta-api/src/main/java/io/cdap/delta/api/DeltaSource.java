@@ -16,12 +16,16 @@
 
 package io.cdap.delta.api;
 
+import io.cdap.delta.api.assessment.TableAssessorSupplier;
+import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableRegistry;
+
+import java.util.List;
 
 /**
  * Pluggable interface for reading change events
  */
-public interface DeltaSource {
+public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
   String PLUGIN_TYPE = "cdcSource";
 
   /**
@@ -35,10 +39,12 @@ public interface DeltaSource {
    * Create an event reader used to read change events. This is called after the application is deployed, whenever
    * the program is started.
    *
+   * @param tables tables to read changes for
    * @param context program context
+   * @param eventEmitter emits events that need to be replicated
    * @return an event reader used to read change events
    */
-  EventReader createReader(DeltaSourceContext context, EventEmitter eventEmitter);
+  EventReader createReader(List<SourceTable> tables, DeltaSourceContext context, EventEmitter eventEmitter);
 
   /**
    * Create a table registry that is used to fetch information about tables in databases.

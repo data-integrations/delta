@@ -20,7 +20,9 @@ import io.cdap.cdap.api.Config;
 import io.cdap.cdap.api.Resources;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
+import io.cdap.delta.api.SourceTable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -39,15 +41,18 @@ public class DeltaConfig extends Config {
   private final Resources resources;
   private final String offsetBasePath;
   private final boolean service;
+  private final List<SourceTable> tables;
 
-  public DeltaConfig(Stage source, Stage target) {
-    this(source, target, null, null);
+  public DeltaConfig(Stage source, Stage target, List<SourceTable> tables) {
+    this(source, target, tables, null, null);
   }
 
-  public DeltaConfig(Stage source, Stage target, Resources resources, String offsetBasePath) {
+  public DeltaConfig(Stage source, Stage target, List<SourceTable> tables,
+                     Resources resources, String offsetBasePath) {
     this.description = "";
     this.stages = Collections.unmodifiableList(Arrays.asList(source, target));
     this.connections = Collections.singletonList(new Connection(source.getName(), target.getName()));
+    this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
     this.resources = resources;
     this.offsetBasePath = offsetBasePath;
     this.service = false;
@@ -74,6 +79,10 @@ public class DeltaConfig extends Config {
     return resources == null ? new Resources(8192, 4) : resources;
   }
 
+  public List<SourceTable> getTables() {
+    return tables == null ? Collections.emptyList() : tables;
+  }
+
   public boolean isService() {
     return service;
   }
@@ -92,6 +101,9 @@ public class DeltaConfig extends Config {
    */
   public void validatePipeline() {
     validate().orElseThrow(() -> new IllegalArgumentException("A target must be specified."));
+    if (getTables().isEmpty()) {
+      throw new IllegalArgumentException("At least one source table must be configured.");
+    }
   }
 
   public Stage getSource() {
@@ -105,7 +117,7 @@ public class DeltaConfig extends Config {
     return getStages().stream()
       .filter(s -> DeltaTarget.PLUGIN_TYPE.equals(s.getPlugin().getType()))
       .findFirst()
-      .orElseThrow(() -> new IllegalArgumentException("No source stage found."));
+      .orElseThrow(() -> new IllegalArgumentException("No target stage found."));
   }
 
   /**

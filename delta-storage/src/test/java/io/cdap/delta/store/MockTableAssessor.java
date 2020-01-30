@@ -14,21 +14,25 @@
  * the License.
  */
 
-package io.cdap.delta.api.assessment;
+package io.cdap.delta.store;
+
+import io.cdap.delta.api.assessment.TableAssessment;
+import io.cdap.delta.api.assessment.TableAssessor;
 
 /**
- * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
- * users early feedback on configuration or environmental issues.
+ * Mock assessor that just returns a pre-defined TableAssessment.
  *
- * @param <T> type of table descriptor to assess
+ * @param <T> type of schema
  */
-public interface TableAssessor<T> {
+public class MockTableAssessor<T> implements TableAssessor<T> {
+  private final TableAssessment assessment;
 
-  /**
-   * Assess whether there will be potential problems replicating data from the specified table.
-   *
-   * @param tableDescriptor descriptor about the table to replicate
-   * @return assessment of potential problems
-   */
-  TableAssessment assess(T tableDescriptor);
+  public MockTableAssessor(TableAssessment assessment) {
+    this.assessment = assessment;
+  }
+
+  @Override
+  public TableAssessment assess(T tableDescriptor) {
+    return assessment;
+  }
 }

@@ -16,19 +16,21 @@
 
 package io.cdap.delta.api.assessment;
 
+import io.cdap.delta.api.Configurer;
+
 /**
- * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
- * users early feedback on configuration or environmental issues.
+ * Creates TableAssessors
  *
- * @param <T> type of table descriptor to assess
+ * @param <T> type of schema the assessor examines.
  */
-public interface TableAssessor<T> {
+public interface TableAssessorSupplier<T> {
 
   /**
-   * Assess whether there will be potential problems replicating data from the specified table.
+   * Create a table assessor that will check if there will be potential problems replicating a table.
    *
-   * @param tableDescriptor descriptor about the table to replicate
-   * @return assessment of potential problems
+   * @param configurer configurer used to instantiate plugins
+   * @return a table assessor
+   * @throws Exception if the table assessor could not be created
    */
-  TableAssessment assess(T tableDescriptor);
+  TableAssessor<T> createTableAssessor(Configurer configurer) throws Exception;
 }

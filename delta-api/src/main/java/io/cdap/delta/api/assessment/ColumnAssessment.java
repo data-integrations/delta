@@ -16,7 +16,6 @@
 
 package io.cdap.delta.api.assessment;
 
-import java.sql.SQLType;
 import java.util.Objects;
 import javax.annotation.Nullable;
 
@@ -25,21 +24,21 @@ import javax.annotation.Nullable;
  */
 public class ColumnAssessment {
   private final String name;
-  private final SQLType type;
-  private final boolean supported;
+  private final String type;
+  private final ColumnSupport support;
   private final ColumnSuggestion suggestion;
 
-  public ColumnAssessment(String name, SQLType type) {
+  public ColumnAssessment(String name, String type) {
     this.name = name;
     this.type = type;
-    this.supported = true;
+    this.support = ColumnSupport.YES;
     this.suggestion = null;
   }
 
-  public ColumnAssessment(String name, SQLType type, ColumnSuggestion suggestion) {
+  public ColumnAssessment(String name, String type, ColumnSupport support, ColumnSuggestion suggestion) {
     this.name = name;
     this.type = type;
-    this.supported = false;
+    this.support = support;
     this.suggestion = suggestion;
   }
 
@@ -47,12 +46,12 @@ public class ColumnAssessment {
     return name;
   }
 
-  public SQLType getType() {
+  public String getType() {
     return type;
   }
 
-  public boolean isSupported() {
-    return supported;
+  public ColumnSupport getSupport() {
+    return support;
   }
 
   @Nullable
@@ -69,7 +68,7 @@ public class ColumnAssessment {
       return false;
     }
     ColumnAssessment that = (ColumnAssessment) o;
-    return supported == that.supported &&
+    return support == that.support &&
       Objects.equals(name, that.name) &&
       Objects.equals(type, that.type) &&
       Objects.equals(suggestion, that.suggestion);
@@ -77,6 +76,6 @@ public class ColumnAssessment {
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, supported, suggestion);
+    return Objects.hash(name, type, support, suggestion);
   }
 }

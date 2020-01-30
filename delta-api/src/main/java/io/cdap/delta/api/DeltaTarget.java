@@ -16,12 +16,13 @@
 
 package io.cdap.delta.api;
 
-import io.cdap.delta.api.assessment.TableAssessor;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
+import io.cdap.delta.api.assessment.TableAssessorSupplier;
 
 /**
  * A CDC target, responsible for writing data to a storage system.
  */
-public interface DeltaTarget {
+public interface DeltaTarget extends TableAssessorSupplier<StandardizedTableDetail> {
   String PLUGIN_TYPE = "cdcTarget";
 
   /**
@@ -39,13 +40,4 @@ public interface DeltaTarget {
    * @throws Exception if the consumer could not be created, which will result in the program failure
    */
   EventConsumer createConsumer(DeltaTargetContext context) throws Exception;
-
-  /**
-   * Create a table assessor that will check if there will be potential problems replicating a table.
-   *
-   * @param configurer configurer used to instantiate plugins
-   * @return a table assessor
-   * @throws Exception if the table assessor could not be created
-   */
-  TableAssessor createTableAssessor(Configurer configurer) throws Exception;
 }

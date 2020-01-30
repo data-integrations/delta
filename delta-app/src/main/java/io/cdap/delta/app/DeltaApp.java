@@ -50,7 +50,8 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
 
-    addWorker(new DeltaWorker(sourceConf.getName(), targetConf.getName(), conf.getOffsetBasePath()));
+    addWorker(new DeltaWorker(sourceConf.getName(), targetConf.getName(), conf.getOffsetBasePath(),
+                              conf.getTables()));
 
     String description = conf.getDescription();
     if (description == null) {
