@@ -16,14 +16,13 @@
 
 package io.cdap.delta.api.assessment;
 
-import java.util.List;
-
 /**
- * Detailed information about a source table.
+ * Level of support for a table column.
  */
-public class SourceTableDetail extends TableDetail<List<ColumnDetail>> {
-
-  public SourceTableDetail(String database, String table, List<String> primaryKey, List<ColumnDetail> columns) {
-    super(database, table, primaryKey, columns, columns.size());
-  }
+public enum ColumnSupport {
+  YES,
+  NO,
+  // partial means the column cannot be replicated completely as-is
+  // for example, if a timestamp can be replicated, but at a lower granularity, it is partially supported
+  PARTIAL;
 }

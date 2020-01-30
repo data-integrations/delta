@@ -27,11 +27,10 @@ import io.cdap.delta.api.SourceColumn;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.assessment.ColumnAssessment;
 import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.ColumnSupport;
 import io.cdap.delta.api.assessment.PipelineAssessment;
 import io.cdap.delta.api.assessment.Problem;
-import io.cdap.delta.api.assessment.SourceTableDetail;
 import io.cdap.delta.api.assessment.StandardizedTableDetail;
-import io.cdap.delta.api.assessment.Support;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableAssessorSupplier;
@@ -151,8 +150,7 @@ public class DraftService {
    * @throws TableNotFoundException if the table does not exist
    * @throws IOException if the was an IO error fetching the table detail
    */
-  public TableDetail<List<ColumnDetail>> describeDraftTable(DraftId draftId, Configurer configurer,
-                                                            String database, String table)
+  public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database, String table)
     throws IOException, TableNotFoundException {
     Draft draft = getDraft(draftId);
     try (TableRegistry tableRegistry = createTableRegistry(draft, configurer)) {
@@ -182,8 +180,9 @@ public class DraftService {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
     TableRegistry tableRegistry = createTableRegistry(draft, configurer);
-    TableAssessor<List<ColumnDetail>> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
-    TableAssessor<Schema> targetTableAssessor = createTableAssessor(configurer, deltaConfig.getTarget());
+    TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+    TableAssessor<StandardizedTableDetail> targetTableAssessor =
+      createTableAssessor(configurer, deltaConfig.getTarget());
     return assessTable(new SourceTable(db, table), tableRegistry, sourceTableAssessor, targetTableAssessor);
   }
 
@@ -200,20 +199,31 @@ public class DraftService {
    * @return list of tables readable by the source in the draft
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
+   * @throws IOException if there was an IO error getting the list of source tables
    */
-  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) {
+  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) throws IOException {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
     deltaConfig.validatePipeline();
 
     TableRegistry tableRegistry = createTableRegistry(draft, configurer);
-    TableAssessor<List<ColumnDetail>> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
-    TableAssessor<Schema> targetTableAssessor = createTableAssessor(configurer, deltaConfig.getTarget());
+    TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+    TableAssessor<StandardizedTableDetail> targetTableAssessor =
+      createTableAssessor(configurer, deltaConfig.getTarget());
 
     List<Problem> connectivityIssues = new ArrayList<>();
     List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
+
+    // if no source tables are given, this means all tables should be read
+    List<SourceTable> tablesToAssess = deltaConfig.getTables();
+    if (tablesToAssess.isEmpty()) {
+      tablesToAssess = tableRegistry.listTables().getTables().stream()
+        .map(t -> new SourceTable(t.getDatabase(), t.getTable()))
+        .collect(Collectors.toList());
+    }
+
     // go through all tables that the pipeline should read, fetching detail about each of the tables
-    for (SourceTable sourceTable : draft.getConfig().getTables()) {
+    for (SourceTable sourceTable : tablesToAssess) {
       String db = sourceTable.getDatabase();
       String table = sourceTable.getTable();
       try {
@@ -238,8 +248,8 @@ public class DraftService {
   }
 
   private TableAssessment assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
-                                      TableAssessor<List<ColumnDetail>> sourceTableAssessor,
-                                      TableAssessor<Schema> targetTableAssesor)
+                                      TableAssessor<TableDetail> sourceTableAssessor,
+                                      TableAssessor<StandardizedTableDetail> targetTableAssesor)
     throws IOException, TableNotFoundException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
@@ -248,12 +258,12 @@ public class DraftService {
       .collect(Collectors.toSet());
 
     // fetch detail about the table, then filter out columns that will not be read by the source
-    SourceTableDetail detail = tableRegistry.describeTable(db, table);
+    TableDetail detail = tableRegistry.describeTable(db, table);
     List<ColumnDetail> selectedColumns = detail.getColumns().stream()
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
-    SourceTableDetail filteredDetail = new SourceTableDetail(db, table, detail.getPrimaryKey(), selectedColumns);
+    TableDetail filteredDetail = new TableDetail(db, table, detail.getPrimaryKey(), selectedColumns);
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     Schema standardSchema = tableRegistry.standardizeSchema(filteredDetail.getColumns());
@@ -264,6 +274,10 @@ public class DraftService {
     return merge(srcAssessment, targetAssessment);
   }
 
+  /**
+   * Merge the assessment from the source and target into a single assessment.
+   * This amounts to merging the assessment for each column.
+   */
   private TableAssessment merge(TableAssessment srcAssessment, TableAssessment targetAssessment) {
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     Iterator<ColumnAssessment> targetColumnAssessments = targetAssessment.getColumns().iterator();
@@ -273,14 +287,22 @@ public class DraftService {
     return new TableAssessment(columnAssessments);
   }
 
+  /**
+   * Merge the assessment form the source and target into a single assessment.
+   * If one plugin supports a column but the other does not, that column is not supported from a pipeline perspective.
+   * Similarly if one plugin fully supports a column but the other only partially supports it, that column is
+   * partially supported from a pipeline perspective.
+   * If both plugins do not support the column, or both partially support the column, the assessment from the source
+   * is taken, because that is what needs to be addressed first.
+   */
   private ColumnAssessment merge(ColumnAssessment srcAssessment, ColumnAssessment targetAssessment) {
-    if (srcAssessment.getSupport() == Support.NO) {
+    if (srcAssessment.getSupport() == ColumnSupport.NO) {
       return srcAssessment;
-    } else if (targetAssessment.getSupport() == Support.NO) {
+    } else if (targetAssessment.getSupport() == ColumnSupport.NO) {
       return targetAssessment;
-    } else if (srcAssessment.getSupport() == Support.PARTIAL) {
+    } else if (srcAssessment.getSupport() == ColumnSupport.PARTIAL) {
       return srcAssessment;
-    } else if (targetAssessment.getSupport() == Support.PARTIAL) {
+    } else if (targetAssessment.getSupport() == ColumnSupport.PARTIAL) {
       return targetAssessment;
     }
     return targetAssessment;
@@ -303,7 +325,7 @@ public class DraftService {
       throw new InvalidDraftException(String.format("Unable to find plugin '%s'", pluginConfig.getName()));
     }
 
-    return new ValidatingTableRegistry(deltaSource.createTableRegistry(configurer));
+    return deltaSource.createTableRegistry(configurer);
   }
 
   private <T> TableAssessor<T> createTableAssessor(Configurer configurer, Stage stage) {
@@ -335,9 +357,9 @@ public class DraftService {
     int numPartial = 0;
     int numColumns = 0;
     for (ColumnAssessment columnAssessment : assessment.getColumns()) {
-      if (columnAssessment.getSupport() == Support.NO) {
+      if (columnAssessment.getSupport() == ColumnSupport.NO) {
         numUnsupported++;
-      } else if (columnAssessment.getSupport() == Support.PARTIAL) {
+      } else if (columnAssessment.getSupport() == ColumnSupport.PARTIAL) {
         numPartial++;
       }
       numColumns++;

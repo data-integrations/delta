@@ -16,11 +16,11 @@
 
 package io.cdap.delta.store;
 
-import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.EventConsumer;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessor;
 
 
@@ -28,9 +28,9 @@ import io.cdap.delta.api.assessment.TableAssessor;
  * Mock target that returns a pre-determined TableAssessment.
  */
 public class MockTarget implements DeltaTarget {
-  private final TableAssessor<Schema> assessor;
+  private final TableAssessor<StandardizedTableDetail> assessor;
 
-  public MockTarget(TableAssessor<Schema> assessor) {
+  public MockTarget(TableAssessor<StandardizedTableDetail> assessor) {
     this.assessor = assessor;
   }
 
@@ -45,7 +45,7 @@ public class MockTarget implements DeltaTarget {
   }
 
   @Override
-  public TableAssessor<Schema> createTableAssessor(Configurer configurer) {
+  public TableAssessor<StandardizedTableDetail> createTableAssessor(Configurer configurer) {
     return assessor;
   }
 }

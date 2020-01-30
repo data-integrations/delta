@@ -28,10 +28,10 @@ import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.assessment.ColumnAssessment;
 import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.ColumnSuggestion;
+import io.cdap.delta.api.assessment.ColumnSupport;
 import io.cdap.delta.api.assessment.PipelineAssessment;
-import io.cdap.delta.api.assessment.SourceTableDetail;
-import io.cdap.delta.api.assessment.Support;
 import io.cdap.delta.api.assessment.TableAssessment;
+import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
@@ -103,8 +103,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
     columns.add(new ColumnDetail("age", JDBCType.INTEGER, true));
-    SourceTableDetail expectedDetail =
-      new SourceTableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
 
     MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, null);
     DeltaSource mockSource = new MockSource(mockTableRegistry, null);
@@ -140,14 +139,13 @@ public class DraftServiceTest extends SystemAppTestBase {
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("age", Schema.nullableOf(Schema.of(Schema.Type.INT))));
-    SourceTableDetail expectedDetail =
-      new SourceTableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
 
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
     columnAssessments.add(
-      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), Support.NO,
+      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), ColumnSupport.NO,
                            new ColumnSuggestion("msg", Collections.emptyList())));
     columnAssessments.add(new ColumnAssessment("age", JDBCType.INTEGER.getName()));
 
@@ -163,7 +161,7 @@ public class DraftServiceTest extends SystemAppTestBase {
   }
 
   @Test
-  public void testAssessPipeline() {
+  public void testAssessPipeline() throws Exception {
     DraftService service = new DraftService(getTransactionRunner());
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
     Stage src = new Stage("src",
@@ -184,13 +182,12 @@ public class DraftServiceTest extends SystemAppTestBase {
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
-    SourceTableDetail expectedDetail =
-      new SourceTableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
     columnAssessments.add(
-      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), Support.NO,
+      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), ColumnSupport.NO,
                            new ColumnSuggestion("msg", Collections.emptyList())));
     TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments);
 

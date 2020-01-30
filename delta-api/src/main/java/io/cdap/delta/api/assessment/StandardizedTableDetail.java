@@ -18,14 +18,61 @@ package io.cdap.delta.api.assessment;
 
 import io.cdap.cdap.api.data.schema.Schema;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * Standardized information about a source table.
+ * Standardized information about a source table. This contains the schema of data that the target will see after the
+ * source has converted its native types into standard CDAP StructuredRecords.
  */
-public class StandardizedTableDetail extends TableDetail<Schema> {
+public class StandardizedTableDetail {
+  private final String database;
+  private final String table;
+  private final List<String> primaryKey;
+  private final Schema schema;
 
   public StandardizedTableDetail(String database, String table, List<String> primaryKey, Schema schema) {
-    super(database, table, primaryKey, schema, schema.getFields().size());
+    this.database = database;
+    this.table = table;
+    this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
+    this.schema = schema;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getTable() {
+    return table;
+  }
+
+  public List<String> getPrimaryKey() {
+    return primaryKey;
+  }
+
+  public Schema getSchema() {
+    return schema;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    StandardizedTableDetail that = (StandardizedTableDetail) o;
+    return Objects.equals(database, that.database) &&
+      Objects.equals(table, that.table) &&
+      Objects.equals(primaryKey, that.primaryKey) &&
+      Objects.equals(schema, that.schema);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(database, table, primaryKey, schema);
   }
 }

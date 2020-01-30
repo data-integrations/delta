@@ -25,17 +25,17 @@ import javax.annotation.Nullable;
 public class ColumnAssessment {
   private final String name;
   private final String type;
-  private final Support support;
+  private final ColumnSupport support;
   private final ColumnSuggestion suggestion;
 
   public ColumnAssessment(String name, String type) {
     this.name = name;
     this.type = type;
-    this.support = Support.YES;
+    this.support = ColumnSupport.YES;
     this.suggestion = null;
   }
 
-  public ColumnAssessment(String name, String type, Support support, ColumnSuggestion suggestion) {
+  public ColumnAssessment(String name, String type, ColumnSupport support, ColumnSuggestion suggestion) {
     this.name = name;
     this.type = type;
     this.support = support;
@@ -50,7 +50,7 @@ public class ColumnAssessment {
     return type;
   }
 
-  public Support getSupport() {
+  public ColumnSupport getSupport() {
     return support;
   }
 

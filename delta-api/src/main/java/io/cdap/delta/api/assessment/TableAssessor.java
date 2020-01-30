@@ -20,7 +20,7 @@ package io.cdap.delta.api.assessment;
  * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
  * users early feedback on configuration or environmental issues.
  *
- * @param <T> type of table schema
+ * @param <T> type of table descriptor to assess
  */
 public interface TableAssessor<T> {
 
@@ -30,5 +30,5 @@ public interface TableAssessor<T> {
    * @param tableDescriptor descriptor about the table to replicate
    * @return assessment of potential problems
    */
-  TableAssessment assess(TableDetail<T> tableDescriptor);
+  TableAssessment assess(T tableDescriptor);
 }

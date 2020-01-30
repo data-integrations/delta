@@ -16,8 +16,6 @@
 
 package io.cdap.delta.api;
 
-import io.cdap.delta.api.assessment.ColumnDetail;
-import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableAssessorSupplier;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableRegistry;
@@ -27,7 +25,7 @@ import java.util.List;
 /**
  * Pluggable interface for reading change events
  */
-public interface DeltaSource extends TableAssessorSupplier<List<ColumnDetail>> {
+public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
   String PLUGIN_TYPE = "cdcSource";
 
   /**

@@ -18,7 +18,6 @@ package io.cdap.delta.store;
 
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;
-import io.cdap.delta.api.assessment.TableDetail;
 
 /**
  * Mock assessor that just returns a pre-defined TableAssessment.
@@ -33,7 +32,7 @@ public class MockTableAssessor<T> implements TableAssessor<T> {
   }
 
   @Override
-  public TableAssessment assess(TableDetail<T> tableDescriptor) {
+  public TableAssessment assess(T tableDescriptor) {
     return assessment;
   }
 }

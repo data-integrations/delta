@@ -16,13 +16,13 @@
 
 package io.cdap.delta.api;
 
-import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessorSupplier;
 
 /**
  * A CDC target, responsible for writing data to a storage system.
  */
-public interface DeltaTarget extends TableAssessorSupplier<Schema> {
+public interface DeltaTarget extends TableAssessorSupplier<StandardizedTableDetail> {
   String PLUGIN_TYPE = "cdcTarget";
 
   /**

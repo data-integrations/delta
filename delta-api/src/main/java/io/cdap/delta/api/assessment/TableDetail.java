@@ -23,24 +23,22 @@ import java.util.Objects;
 
 /**
  * Detailed information about a table.
- *
- * @param <T> type of schema
  */
-public abstract class TableDetail<T> extends TableSummary {
+public class TableDetail extends TableSummary {
   private final List<String> primaryKey;
-  private final T columns;
+  private final List<ColumnDetail> columns;
 
-  public TableDetail(String database, String table, List<String> primaryKey, T columns, int numColumns) {
-    super(database, table, numColumns);
+  public TableDetail(String database, String table, List<String> primaryKey, List<ColumnDetail> columns) {
+    super(database, table, columns.size());
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
-    this.columns = columns;
+    this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
   }
 
   public List<String> getPrimaryKey() {
     return primaryKey;
   }
 
-  public T getColumns() {
+  public List<ColumnDetail> getColumns() {
     return columns;
   }
 

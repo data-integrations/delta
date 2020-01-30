@@ -22,8 +22,8 @@ import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.SourceTable;
-import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.TableAssessor;
+import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableRegistry;
 
 import java.util.List;
@@ -34,9 +34,9 @@ import java.util.List;
  */
 public class MockSource implements DeltaSource {
   private final TableRegistry registry;
-  private final TableAssessor<List<ColumnDetail>> assessor;
+  private final TableAssessor<TableDetail> assessor;
 
-  public MockSource(TableRegistry registry, TableAssessor<List<ColumnDetail>> assessor) {
+  public MockSource(TableRegistry registry, TableAssessor<TableDetail> assessor) {
     this.registry = registry;
     this.assessor = assessor;
   }
@@ -57,7 +57,7 @@ public class MockSource implements DeltaSource {
   }
 
   @Override
-  public TableAssessor<List<ColumnDetail>> createTableAssessor(Configurer configurer) {
+  public TableAssessor<TableDetail> createTableAssessor(Configurer configurer) {
     return assessor;
   }
 }
