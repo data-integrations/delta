@@ -34,6 +34,7 @@ import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
@@ -91,7 +92,7 @@ public class MockSource implements DeltaSource {
       }
 
       @Override
-      public Schema standardizeSchema(List<ColumnDetail> tableDetail) {
+      public StandardizedTableDetail standardize(TableDetail tableDetail) {
         return null;
       }
 

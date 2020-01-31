@@ -17,12 +17,10 @@
 package io.cdap.delta.test.mock;
 
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableRegistry;
-
-import java.util.List;
 
 /**
  * Mock TableRegistry that just returns pre-defined objects.
@@ -49,8 +47,9 @@ public class MockTableRegistry implements TableRegistry {
   }
 
   @Override
-  public Schema standardizeSchema(List<ColumnDetail> tableDetail) {
-    return schema;
+  public StandardizedTableDetail standardize(TableDetail tableDetail) {
+    return new StandardizedTableDetail(tableDetail.getDatabase(), tableDetail.getTable(),
+                                       tableDetail.getPrimaryKey(), schema);
   }
 
   @Override
