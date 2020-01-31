@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Tests for {@link DraftService}.
@@ -73,31 +74,21 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   @Test(expected = DraftNotFoundException.class)
   public void testDraftNotFound() {
-    DraftService service = new DraftService(getTransactionRunner());
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     service.getDraft(new DraftId(new Namespace("ns", 0L), "testDraftNotFound"));
-  }
-
-  @Test(expected = InvalidDraftException.class)
-  public void testSaveInvalidDraftFails() {
-    DraftService service = new DraftService(getTransactionRunner());
-    Stage invalidSrc = new Stage("src",
-                                 new Plugin(null, DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    Stage target = new Stage("t",
-                             new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    service.saveDraft(new DraftId(new Namespace("ns", 0L), "testSaveInvalidDraftFails"),
-                      new DraftRequest("label", new DeltaConfig(invalidSrc, target, Collections.emptyList())));
   }
 
   @Test
   public void testTableListAndDetail() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner());
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
 
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testTableListAndDetail");
     Stage src = new Stage("src",
                           new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
     Stage target = new Stage("t",
                              new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    service.saveDraft(draftId, new DraftRequest("label", new DeltaConfig(src, target, Collections.emptyList())));
+    DeltaConfig deltaConfig = DeltaConfig.builder().setSource(src).setTarget(target).build();
+    service.saveDraft(draftId, new DraftRequest("label", deltaConfig));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
     List<ColumnDetail> columns = new ArrayList<>();
@@ -115,20 +106,20 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   @Test(expected = DraftNotFoundException.class)
   public void testListTablesFromNonexistantDraft() throws IOException {
-    DraftService service = new DraftService(getTransactionRunner());
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     service.listDraftTables(new DraftId(new Namespace("ns", 0L), "testListTablesFromNonexistantDraft"),
                             new MockConfigurer(null, null));
   }
 
   @Test
   public void testAssessTable() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner());
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessTable");
-    Stage src = new Stage("src",
-                          new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    Stage target = new Stage("t",
-                             new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    service.saveDraft(draftId, new DraftRequest("label", new DeltaConfig(src, target, Collections.emptyList())));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .build();
+    service.saveDraft(draftId, new DraftRequest("label", config));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
     List<ColumnDetail> columns = new ArrayList<>();
@@ -141,7 +132,6 @@ public class DraftServiceTest extends SystemAppTestBase {
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("age", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
-
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
@@ -163,17 +153,17 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   @Test
   public void testAssessPipeline() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner());
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
-    Stage src = new Stage("src",
-                          new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    Stage target = new Stage("t",
-                             new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable("deebee", "taybull",
                                               Arrays.asList(new SourceColumn("id"), new SourceColumn("name")));
-    service.saveDraft(draftId, new DraftRequest("label",
-                                                new DeltaConfig(src, target, Collections.singletonList(sourceTable))));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTables(Collections.singletonList(sourceTable))
+      .build();
+    service.saveDraft(draftId, new DraftRequest("label", config));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
     List<ColumnDetail> columns = new ArrayList<>();
@@ -204,5 +194,45 @@ public class DraftServiceTest extends SystemAppTestBase {
                                                          Collections.emptyList(), Collections.emptyList());
     PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
     Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMacroEvaluation() throws Exception {
+    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
+
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
+    List<ColumnDetail> columns = new ArrayList<>();
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true));
+    Schema schema = Schema.recordOf(
+      "taybull",
+      Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
+
+    List<ColumnAssessment> columnAssessments = new ArrayList<>();
+    columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
+    columnAssessments.add(
+      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), ColumnSupport.NO,
+                           new ColumnSuggestion("msg", Collections.emptyList())));
+    TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments);
+
+    Map<String, String> pluginProps = PropertyBasedMockConfigurer.createMap(expectedList, expectedDetail,
+                                                                            schema, expectedTableAssessment,
+                                                                            expectedTableAssessment);
+    PropertyEvaluator propertyEvaluator = new MockPropertyEvaluator(pluginProps);
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTarget(new Stage("tgt", new Plugin("mock", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .build();
+
+    DraftService service = new DraftService(getTransactionRunner(), propertyEvaluator);
+    service.saveDraft(draftId, new DraftRequest("label", config));
+
+    Configurer configurer = new PropertyBasedMockConfigurer();
+    Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
+    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", "taybull"));
+    Assert.assertEquals(expectedTableAssessment, service.assessTable(draftId, configurer, "deebee", "taybull"));
   }
 }
