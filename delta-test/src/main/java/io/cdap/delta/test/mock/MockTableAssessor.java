@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.delta.store;
+package io.cdap.delta.test.mock;
 
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;

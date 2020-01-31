@@ -31,6 +31,8 @@ import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableRegistry;
+import io.cdap.delta.test.mock.MockTableAssessor;
+import io.cdap.delta.test.mock.MockTableRegistry;
 
 import java.sql.SQLType;
 import java.util.HashMap;
