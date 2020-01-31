@@ -33,6 +33,7 @@ import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
 import io.cdap.delta.store.DraftService;
@@ -85,9 +86,9 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
                        @PathParam("context") String namespaceName,
                        @PathParam("draft") String draftName) {
     respond(namespaceName, responder, (draftService, namespace) -> {
-      DeltaConfig config;
+      DraftRequest draft;
       try {
-        config = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(), DeltaConfig.class);
+        draft = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(), DraftRequest.class);
       } catch (JsonSyntaxException e) {
         responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Unable to decode request body: " + e.getMessage());
         return;
@@ -96,7 +97,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
         return;
       }
 
-      draftService.saveDraft(new DraftId(namespace, draftName), config);
+      draftService.saveDraft(new DraftId(namespace, draftName), draft);
       responder.sendStatus(HttpURLConnection.HTTP_OK);
     });
   }

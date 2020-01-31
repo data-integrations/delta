@@ -37,6 +37,7 @@ import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
 import org.junit.After;
@@ -84,7 +85,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     Stage target = new Stage("t",
                              new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
     service.saveDraft(new DraftId(new Namespace("ns", 0L), "testSaveInvalidDraftFails"),
-                      new DeltaConfig(invalidSrc, target, Collections.emptyList()));
+                      new DraftRequest("label", new DeltaConfig(invalidSrc, target, Collections.emptyList())));
   }
 
   @Test
@@ -96,7 +97,7 @@ public class DraftServiceTest extends SystemAppTestBase {
                           new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
     Stage target = new Stage("t",
                              new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    service.saveDraft(draftId, new DeltaConfig(src, target, Collections.emptyList()));
+    service.saveDraft(draftId, new DraftRequest("label", new DeltaConfig(src, target, Collections.emptyList())));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
     List<ColumnDetail> columns = new ArrayList<>();
@@ -127,7 +128,7 @@ public class DraftServiceTest extends SystemAppTestBase {
                           new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
     Stage target = new Stage("t",
                              new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY));
-    service.saveDraft(draftId, new DeltaConfig(src, target, Collections.emptyList()));
+    service.saveDraft(draftId, new DraftRequest("label", new DeltaConfig(src, target, Collections.emptyList())));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
     List<ColumnDetail> columns = new ArrayList<>();
@@ -171,7 +172,8 @@ public class DraftServiceTest extends SystemAppTestBase {
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable("deebee", "taybull",
                                               Arrays.asList(new SourceColumn("id"), new SourceColumn("name")));
-    service.saveDraft(draftId, new DeltaConfig(src, target, Collections.singletonList(sourceTable)));
+    service.saveDraft(draftId, new DraftRequest("label",
+                                                new DeltaConfig(src, target, Collections.singletonList(sourceTable))));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
     List<ColumnDetail> columns = new ArrayList<>();

@@ -29,6 +29,7 @@ import io.cdap.cdap.spi.data.table.field.FieldType;
 import io.cdap.cdap.spi.data.table.field.Fields;
 import io.cdap.cdap.spi.data.table.field.Range;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.DraftRequest;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -45,6 +46,7 @@ public class DraftStore {
   private static final String NAMESPACE_COL = "namespace";
   private static final String GENERATION_COL = "generation";
   private static final String NAME_COL = "name";
+  private static final String LABEL_COL = "label";
   private static final String CREATED_COL = "created";
   private static final String UPDATED_COL = "updated";
   private static final String CONFIG_COL = "config";
@@ -53,6 +55,7 @@ public class DraftStore {
     .withFields(new FieldType(NAMESPACE_COL, FieldType.Type.STRING),
                 new FieldType(GENERATION_COL, FieldType.Type.LONG),
                 new FieldType(NAME_COL, FieldType.Type.STRING),
+                new FieldType(LABEL_COL, FieldType.Type.STRING),
                 new FieldType(CREATED_COL, FieldType.Type.LONG),
                 new FieldType(UPDATED_COL, FieldType.Type.LONG),
                 new FieldType(CONFIG_COL, FieldType.Type.BYTES))
@@ -98,12 +101,13 @@ public class DraftStore {
     table.delete(getKey(id));
   }
 
-  public void writeDraft(DraftId id, DeltaConfig config) throws IOException {
+  public void writeDraft(DraftId id, DraftRequest draftRequest) throws IOException {
     Optional<Draft> existing = getDraft(id);
     long now = System.currentTimeMillis();
     long createTime = existing.map(Draft::getCreatedTimeMillis).orElse(now);
     long updatedTime = existing.map(Draft::getUpdatedTimeMillis).orElse(now);
-    table.upsert(getRow(id, new Draft(id.getName(), config, createTime, updatedTime)));
+    table.upsert(getRow(id, new Draft(id.getName(), draftRequest.getLabel(), draftRequest.getConfig(),
+                                      createTime, updatedTime)));
   }
 
   private void addKeyFields(DraftId id, List<Field<?>> fields) {
@@ -121,6 +125,7 @@ public class DraftStore {
   private List<Field<?>> getRow(DraftId id, Draft draft) {
     List<Field<?>> fields = new ArrayList<>(6);
     addKeyFields(id, fields);
+    fields.add(Fields.stringField(LABEL_COL, draft.getLabel()));
     fields.add(Fields.longField(CREATED_COL, draft.getCreatedTimeMillis()));
     fields.add(Fields.longField(UPDATED_COL, draft.getUpdatedTimeMillis()));
     fields.add(Fields.bytesField(CONFIG_COL, GSON.toJson(draft.getConfig()).getBytes(StandardCharsets.UTF_8)));
@@ -131,8 +136,9 @@ public class DraftStore {
   private Draft fromRow(StructuredRow row) {
     long createTime = row.getLong(CREATED_COL);
     long updateTime = row.getLong(UPDATED_COL);
+    String label = row.getString(LABEL_COL);
     String configStr = new String(row.getBytes(CONFIG_COL), StandardCharsets.UTF_8);
     DeltaConfig config = GSON.fromJson(configStr, DeltaConfig.class);
-    return new Draft(row.getString(NAME_COL), config, createTime, updateTime);
+    return new Draft(row.getString(NAME_COL), label, config, createTime, updateTime);
   }
 }

@@ -24,6 +24,7 @@ import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
 import org.junit.After;
@@ -98,9 +99,9 @@ public class DraftStoreTest extends SystemAppTestBase {
     // write all 3 drafts
     getTransactionRunner().run(context -> {
       DraftStore store = DraftStore.get(context);
-      store.writeDraft(id1, config1);
-      store.writeDraft(id2, config2);
-      store.writeDraft(id3, config3);
+      store.writeDraft(id1, new DraftRequest("label", config1));
+      store.writeDraft(id2, new DraftRequest("label", config2));
+      store.writeDraft(id3, new DraftRequest("label", config3));
     });
 
     // test get and list
@@ -172,8 +173,8 @@ public class DraftStoreTest extends SystemAppTestBase {
     getTransactionRunner().run(context -> {
       DraftStore store = DraftStore.get(context);
 
-      store.writeDraft(id1, config1);
-      store.writeDraft(id2, config2);
+      store.writeDraft(id1, new DraftRequest("label", config1));
+      store.writeDraft(id2, new DraftRequest("label", config2));
     });
 
     getTransactionRunner().run(context -> {
