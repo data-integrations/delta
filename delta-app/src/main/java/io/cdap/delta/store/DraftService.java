@@ -117,6 +117,18 @@ public class DraftService {
   }
 
   /**
+   * Delete the given draft.
+   *
+   * @param draftId id of the draft to delete
+   */
+  public void deleteDraft(DraftId draftId) {
+    TransactionRunners.run(txRunner, context -> {
+      DraftStore draftStore = DraftStore.get(context);
+      draftStore.deleteDraft(draftId);
+    });
+  }
+
+  /**
    * List the database tables readable by the source in the given draft id. An instance of the plugin will be
    * instantiated in order to generate this list. This is an expensive operation.
    *

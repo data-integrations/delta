@@ -32,6 +32,7 @@ import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.proto.CodedException;
+import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
@@ -44,6 +45,7 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLType;
 import java.util.List;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -102,6 +104,17 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     });
   }
 
+  @DELETE
+  @Path("v1/contexts/{context}/drafts/{draft}")
+  public void deleteDraft(HttpServiceRequest request, HttpServiceResponder responder,
+                          @PathParam("context") String namespaceName,
+                          @PathParam("draft") String draftName) {
+    respond(namespaceName, responder, (draftService, namespace) -> {
+      draftService.deleteDraft(new DraftId(namespace, draftName));
+      responder.sendStatus(HttpURLConnection.HTTP_OK);
+    });
+  }
+
   @POST
   @Path("v1/contexts/{context}/drafts/{draft}/listTables")
   public void listDraftTables(HttpServiceRequest request, HttpServiceResponder responder,
@@ -116,23 +129,33 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   }
 
   @POST
-  @Path("v1/contexts/{context}/drafts/{draft}/databases/{database}/tables/{table}/describe")
+  @Path("v1/contexts/{context}/drafts/{draft}/describeTable")
   public void describeTable(HttpServiceRequest request, HttpServiceResponder responder,
                             @PathParam("context") String namespaceName,
-                            @PathParam("draft") String draftName,
-                            @PathParam("database") String database,
-                            @PathParam("table") String table) {
+                            @PathParam("draft") String draftName) {
     respond(namespaceName, responder, (draftService, namespace) -> {
+      DBTable dbTable;
+      try {
+        dbTable = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(), DBTable.class);
+        dbTable.validate();
+      } catch (JsonSyntaxException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Unable to decode request body: " + e.getMessage());
+        return;
+      } catch (IllegalArgumentException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid request: " + e.getMessage());
+        return;
+      }
+
       DraftId draftId = new DraftId(namespace, draftName);
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       TableDetail tableDetail = draftService.describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer),
-                                                                database, table);
+                                                                dbTable.getDatabase(), dbTable.getTable());
       responder.sendString(GSON.toJson(tableDetail));
     });
   }
 
   @POST
-  @Path("v1/contexts/{context}/drafts/{draft}/assess")
+  @Path("v1/contexts/{context}/drafts/{draft}/assessPipeline")
   public void assessDraft(HttpServiceRequest request, HttpServiceResponder responder,
                           @PathParam("context") String namespaceName,
                           @PathParam("draft") String draftName) {
@@ -145,17 +168,27 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   }
 
   @POST
-  @Path("v1/contexts/{context}/drafts/{draft}/databases/{database}/tables/{table}/assess")
+  @Path("v1/contexts/{context}/drafts/{draft}/assessTable")
   public void assessTable(HttpServiceRequest request, HttpServiceResponder responder,
                           @PathParam("context") String namespaceName,
-                          @PathParam("draft") String draftName,
-                          @PathParam("database") String database,
-                          @PathParam("table") String table) {
+                          @PathParam("draft") String draftName) {
     respond(namespaceName, responder, ((draftService, namespace) -> {
       DraftId draftId = new DraftId(namespace, draftName);
+      DBTable dbTable;
+      try {
+        dbTable = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(), DBTable.class);
+        dbTable.validate();
+      } catch (JsonSyntaxException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Unable to decode request body: " + e.getMessage());
+        return;
+      } catch (IllegalArgumentException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid request: " + e.getMessage());
+        return;
+      }
+
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       TableAssessment assessment = draftService.assessTable(draftId, new DefaultConfigurer(pluginConfigurer),
-                                                            database, table);
+                                                            dbTable.getDatabase(), dbTable.getTable());
       responder.sendString(GSON.toJson(assessment));
     }));
   }
