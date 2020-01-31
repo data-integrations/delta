@@ -40,6 +40,7 @@ import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.api.assessment.TableRegistry;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
 
@@ -97,18 +98,18 @@ public class DraftService {
    * Throws an {@link InvalidDraftException} if the given DeltaConfig is invalid.
    *
    * @param draftId if of the draft to save
-   * @param config pipeline config to save as a draft
+   * @param draft draft to save
    * @throws InvalidDraftException if the draft is invalid
    */
-  public void saveDraft(DraftId draftId, DeltaConfig config) {
+  public void saveDraft(DraftId draftId, DraftRequest draft) {
     try {
-      config.validateDraft();
+      draft.getConfig().validateDraft();
     } catch (IllegalArgumentException e) {
       throw new InvalidDraftException(e.getMessage(), e);
     }
     TransactionRunners.run(txRunner, context -> {
       DraftStore draftStore = DraftStore.get(context);
-      draftStore.writeDraft(draftId, config);
+      draftStore.writeDraft(draftId, draft);
     });
   }
 

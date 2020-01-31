@@ -17,28 +17,25 @@
 package io.cdap.delta.store;
 
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.DraftRequest;
 
 import java.util.Objects;
 
 /**
  * A pipeline draft.
  */
-public class Draft {
+public class Draft extends DraftRequest {
   private final String name;
-  private final DeltaConfig config;
   private final long createdTimeMillis;
   private final long updatedTimeMillis;
 
-  public Draft(String name, DeltaConfig config, long createdTimeMillis, long updatedTimeMillis) {
+  public Draft(String name, String label, DeltaConfig config, long createdTimeMillis, long updatedTimeMillis) {
+    super(label, config);
     this.name = name;
-    this.config = config;
     this.createdTimeMillis = createdTimeMillis;
     this.updatedTimeMillis = updatedTimeMillis;
   }
 
-  public DeltaConfig getConfig() {
-    return config;
-  }
 
   public long getCreatedTimeMillis() {
     return createdTimeMillis;
@@ -60,15 +57,17 @@ public class Draft {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
+    if (!super.equals(o)) {
+      return false;
+    }
     Draft draft = (Draft) o;
     return createdTimeMillis == draft.createdTimeMillis &&
       updatedTimeMillis == draft.updatedTimeMillis &&
-      Objects.equals(name, draft.name) &&
-      Objects.equals(config, draft.config);
+      Objects.equals(name, draft.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, config, createdTimeMillis, updatedTimeMillis);
+    return Objects.hash(super.hashCode(), name, createdTimeMillis, updatedTimeMillis);
   }
 }
