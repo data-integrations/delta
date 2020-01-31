@@ -18,6 +18,7 @@ package io.cdap.delta.api;
 
 import io.cdap.cdap.api.data.format.StructuredRecord;
 
+import java.util.Objects;
 import javax.annotation.Nullable;
 
 /**
@@ -67,6 +68,31 @@ public class DMLEvent extends ChangeEvent {
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DMLEvent dmlEvent = (DMLEvent) o;
+    return ingestTimestampMillis == dmlEvent.ingestTimestampMillis &&
+      operation == dmlEvent.operation &&
+      Objects.equals(database, dmlEvent.database) &&
+      Objects.equals(table, dmlEvent.table) &&
+      Objects.equals(row, dmlEvent.row) &&
+      Objects.equals(transactionId, dmlEvent.transactionId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), operation, database, table, row, transactionId, ingestTimestampMillis);
+  }
+
+  @Override
   public String toString() {
     return "DMLEvent{" +
       "operation=" + operation +
@@ -75,5 +101,61 @@ public class DMLEvent extends ChangeEvent {
       ", transactionId='" + transactionId + '\'' +
       ", ingestTimestampMillis=" + ingestTimestampMillis +
       '}';
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Builder for a DML event.
+   */
+  public static class Builder {
+    private DMLOperation operation;
+    private String database;
+    private String table;
+    private StructuredRecord row;
+    private String transactionId;
+    private long ingestTimestampMillis;
+    private Offset offset;
+
+    public Builder setOffset(Offset offset) {
+      this.offset = offset;
+      return this;
+    }
+
+    public Builder setOperation(DMLOperation operation) {
+      this.operation = operation;
+      return this;
+    }
+
+    public Builder setDatabase(String database) {
+      this.database = database;
+      return this;
+    }
+
+    public Builder setTable(String table) {
+      this.table = table;
+      return this;
+    }
+
+    public Builder setRow(StructuredRecord row) {
+      this.row = row;
+      return this;
+    }
+
+    public Builder setTransactionId(String transactionId) {
+      this.transactionId = transactionId;
+      return this;
+    }
+
+    public Builder setIngestTimestamp(long ingestTimestampMillis) {
+      this.ingestTimestampMillis = ingestTimestampMillis;
+      return this;
+    }
+
+    public DMLEvent build() {
+      return new DMLEvent(offset, operation, database, table, row, transactionId, ingestTimestampMillis);
+    }
   }
 }

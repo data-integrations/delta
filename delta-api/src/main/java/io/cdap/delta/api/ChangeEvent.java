@@ -16,10 +16,12 @@
 
 package io.cdap.delta.api;
 
+import java.util.Objects;
+
 /**
  * A change event.
  */
-abstract class ChangeEvent {
+public abstract class ChangeEvent {
   private final Offset offset;
 
   protected ChangeEvent(Offset offset) {
@@ -28,5 +30,22 @@ abstract class ChangeEvent {
 
   public Offset getOffset() {
     return offset;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ChangeEvent that = (ChangeEvent) o;
+    return Objects.equals(offset, that.offset);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(offset);
   }
 }

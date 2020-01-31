@@ -21,6 +21,7 @@ import io.cdap.cdap.api.data.schema.Schema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import javax.annotation.Nullable;
 
 /**
@@ -69,6 +70,31 @@ public class DDLEvent extends ChangeEvent {
 
   public List<String> getPrimaryKey() {
     return primaryKey;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DDLEvent ddlEvent = (DDLEvent) o;
+    return operation == ddlEvent.operation &&
+      Objects.equals(schema, ddlEvent.schema) &&
+      Objects.equals(database, ddlEvent.database) &&
+      Objects.equals(prevTable, ddlEvent.prevTable) &&
+      Objects.equals(table, ddlEvent.table) &&
+      Objects.equals(primaryKey, ddlEvent.primaryKey);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), operation, schema, database, prevTable, table, primaryKey);
   }
 
   public static Builder builder() {
