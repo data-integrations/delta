@@ -34,7 +34,6 @@ import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.assessment.ColumnDetail;
-import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;

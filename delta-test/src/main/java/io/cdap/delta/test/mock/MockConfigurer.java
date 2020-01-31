@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.delta.store;
+package io.cdap.delta.test.mock;
 
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.cdap.api.plugin.PluginSelector;
