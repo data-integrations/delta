@@ -288,9 +288,7 @@ public class DraftService {
     TableDetail filteredDetail = new TableDetail(db, table, detail.getPrimaryKey(), selectedColumns);
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
-    Schema standardSchema = tableRegistry.standardizeSchema(filteredDetail.getColumns());
-    StandardizedTableDetail standardizedDetail = new StandardizedTableDetail(db, table, detail.getPrimaryKey(),
-                                                                             standardSchema);
+    StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);
     TableAssessment targetAssessment = targetTableAssesor.assess(standardizedDetail);
 
     return merge(srcAssessment, targetAssessment);

@@ -16,11 +16,8 @@
 
 package io.cdap.delta.api.assessment;
 
-import io.cdap.cdap.api.data.schema.Schema;
-
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Fetches information about tables in a database. The registry is used when a user is configuring a delta pipeline.
@@ -51,5 +48,5 @@ public interface TableRegistry extends Closeable {
    * @param tableDetail raw table descriptor
    * @return standardized table descriptor
    */
-  Schema standardizeSchema(List<ColumnDetail> tableDetail);
+  StandardizedTableDetail standardize(TableDetail tableDetail);
 }
