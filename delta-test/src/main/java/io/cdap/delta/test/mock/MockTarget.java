@@ -65,7 +65,7 @@ public class MockTarget implements DeltaTarget {
 
   @Override
   public TableAssessor<StandardizedTableDetail> createTableAssessor(Configurer configurer) {
-    return tableDetail -> new TableAssessment(Collections.emptyList());
+    return tableDetail -> new TableAssessment(Collections.emptyList(), Collections.emptyList());
   }
 
   /**
