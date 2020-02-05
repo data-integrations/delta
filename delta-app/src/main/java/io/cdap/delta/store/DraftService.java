@@ -16,7 +16,6 @@
 
 package io.cdap.delta.store;
 
-import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.plugin.InvalidPluginConfigException;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.cdap.spi.data.transaction.TransactionRunner;
@@ -27,6 +26,7 @@ import io.cdap.delta.api.SourceColumn;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.assessment.ColumnAssessment;
 import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.ColumnSuggestion;
 import io.cdap.delta.api.assessment.ColumnSupport;
 import io.cdap.delta.api.assessment.PipelineAssessment;
 import io.cdap.delta.api.assessment.Problem;
@@ -41,13 +41,15 @@ import io.cdap.delta.api.assessment.TableRegistry;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
+import io.cdap.delta.proto.FullColumnAssessment;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
+import io.cdap.delta.proto.TableAssessmentResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -191,7 +193,7 @@ public class DraftService {
    * @throws TableNotFoundException if the table does not exist
    * @throws IOException if the table detail could not be read
    */
-  public TableAssessment assessTable(DraftId draftId, Configurer configurer, String db, String table)
+  public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, String db, String table)
     throws IOException, TableNotFoundException {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
@@ -249,7 +251,8 @@ public class DraftService {
       String db = sourceTable.getDatabase();
       String table = sourceTable.getTable();
       try {
-        TableAssessment assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor, targetTableAssessor);
+        TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
+                                                         targetTableAssessor);
         tableAssessments.add(summarize(db, table, assessment));
       } catch (TableNotFoundException e) {
         connectivityIssues.add(
@@ -269,9 +272,9 @@ public class DraftService {
     return new PipelineAssessment(tableAssessments, Collections.emptyList(), connectivityIssues);
   }
 
-  private TableAssessment assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
-                                      TableAssessor<TableDetail> sourceTableAssessor,
-                                      TableAssessor<StandardizedTableDetail> targetTableAssesor)
+  private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
+                                              TableAssessor<TableDetail> sourceTableAssessor,
+                                              TableAssessor<StandardizedTableDetail> targetTableAssesor)
     throws IOException, TableNotFoundException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
@@ -298,13 +301,29 @@ public class DraftService {
    * Merge the assessment from the source and target into a single assessment.
    * This amounts to merging the assessment for each column.
    */
-  private TableAssessment merge(TableAssessment srcAssessment, TableAssessment targetAssessment) {
-    List<ColumnAssessment> columnAssessments = new ArrayList<>();
-    Iterator<ColumnAssessment> targetColumnAssessments = targetAssessment.getColumns().iterator();
-    for (ColumnAssessment columnAssessment : srcAssessment.getColumns()) {
-      columnAssessments.add(merge(columnAssessment, targetColumnAssessments.next()));
+  private TableAssessmentResponse merge(TableAssessment srcAssessment, TableAssessment targetAssessment) {
+    Map<String, ColumnAssessment> targetColumns = targetAssessment.getColumns().stream()
+      .filter(c -> c.getSourceName() != null)
+      .collect(Collectors.toMap(ColumnAssessment::getSourceName, c -> c));
+
+    List<FullColumnAssessment> fullColumns = new ArrayList<>();
+    Set<String> addedColumns = new HashSet<>();
+    // add columns from the source
+    for (ColumnAssessment srcColumn : srcAssessment.getColumns()) {
+      String name = srcColumn.getName();
+      ColumnAssessment targetColumn = targetColumns.get(name);
+      fullColumns.add(merge(srcColumn, targetColumn));
+      addedColumns.add(name);
     }
-    return new TableAssessment(columnAssessments);
+    // add columns present only in the target and not the source
+    targetAssessment.getColumns().stream()
+      .filter(t -> !addedColumns.contains(t.getName()))
+      .forEach(t -> fullColumns.add(new FullColumnAssessment(t.getSupport(), null, null, t.getName(), t.getType(),
+                                                             t.getSuggestion())));
+
+    List<Problem> features = new ArrayList<>(srcAssessment.getFeatureProblems());
+    features.addAll(targetAssessment.getFeatureProblems());
+    return new TableAssessmentResponse(fullColumns, features);
   }
 
   /**
@@ -315,17 +334,21 @@ public class DraftService {
    * If both plugins do not support the column, or both partially support the column, the assessment from the source
    * is taken, because that is what needs to be addressed first.
    */
-  private ColumnAssessment merge(ColumnAssessment srcAssessment, ColumnAssessment targetAssessment) {
-    if (srcAssessment.getSupport() == ColumnSupport.NO) {
-      return srcAssessment;
-    } else if (targetAssessment.getSupport() == ColumnSupport.NO) {
-      return targetAssessment;
-    } else if (srcAssessment.getSupport() == ColumnSupport.PARTIAL) {
-      return srcAssessment;
-    } else if (targetAssessment.getSupport() == ColumnSupport.PARTIAL) {
-      return targetAssessment;
+  private FullColumnAssessment merge(ColumnAssessment srcAssessment, ColumnAssessment targetAssessment) {
+    ColumnSupport support = ColumnSupport.YES;
+    if (srcAssessment.getSupport() == ColumnSupport.NO || targetAssessment.getSupport() == ColumnSupport.NO) {
+      support = ColumnSupport.NO;
+    } else if (srcAssessment.getSupport() == ColumnSupport.PARTIAL ||
+      targetAssessment.getSupport() == ColumnSupport.PARTIAL) {
+      support = ColumnSupport.PARTIAL;
     }
-    return targetAssessment;
+    ColumnSuggestion suggestion = srcAssessment.getSuggestion();
+    if (suggestion == null) {
+      suggestion = targetAssessment.getSuggestion();
+    }
+    return new FullColumnAssessment(support, srcAssessment.getName(), srcAssessment.getType(),
+                                    targetAssessment.getName(), targetAssessment.getType(),
+                                    suggestion);
   }
 
   private TableRegistry createTableRegistry(DraftId id, Draft draft, Configurer configurer) {
@@ -373,11 +396,11 @@ public class DraftService {
     }
   }
 
-  private TableSummaryAssessment summarize(String db, String table, TableAssessment assessment) {
+  private TableSummaryAssessment summarize(String db, String table, TableAssessmentResponse assessment) {
     int numUnsupported = 0;
     int numPartial = 0;
     int numColumns = 0;
-    for (ColumnAssessment columnAssessment : assessment.getColumns()) {
+    for (FullColumnAssessment columnAssessment : assessment.getColumns()) {
       if (columnAssessment.getSupport() == ColumnSupport.NO) {
         numUnsupported++;
       } else if (columnAssessment.getSupport() == ColumnSupport.PARTIAL) {

@@ -26,7 +26,6 @@ import io.cdap.cdap.api.service.http.HttpServiceRequest;
 import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
 import io.cdap.delta.api.assessment.PipelineAssessment;
-import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
@@ -34,6 +33,7 @@ import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DraftRequest;
+import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
 import io.cdap.delta.store.DraftService;
@@ -187,8 +187,8 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       }
 
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
-      TableAssessment assessment = draftService.assessTable(draftId, new DefaultConfigurer(pluginConfigurer),
-                                                            dbTable.getDatabase(), dbTable.getTable());
+      TableAssessmentResponse assessment = draftService.assessTable(draftId, new DefaultConfigurer(pluginConfigurer),
+                                                                    dbTable.getDatabase(), dbTable.getTable());
       responder.sendString(GSON.toJson(assessment));
     }));
   }

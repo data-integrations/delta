@@ -14,30 +14,31 @@
  * the License.
  */
 
-package io.cdap.delta.api.assessment;
+package io.cdap.delta.proto;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import io.cdap.delta.api.assessment.Problem;
+
 import java.util.List;
 import java.util.Objects;
 
 /**
- * A detailed assessment of issues related to a table.
+ * Full table assessment using assessments from both the source and target, and containing any problems that may
+ * occur if the table were to be replicated as-is.
  */
-public class TableAssessment {
-  private final List<ColumnAssessment> columns;
+public class TableAssessmentResponse {
+  private final List<FullColumnAssessment> columns;
   private final List<Problem> features;
 
-  public TableAssessment(List<ColumnAssessment> columns, List<Problem> featureProblems) {
-    this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
-    this.features = Collections.unmodifiableList(new ArrayList<>(featureProblems));
+  public TableAssessmentResponse(List<FullColumnAssessment> columns, List<Problem> features) {
+    this.columns = columns;
+    this.features = features;
   }
 
-  public List<ColumnAssessment> getColumns() {
+  public List<FullColumnAssessment> getColumns() {
     return columns;
   }
 
-  public List<Problem> getFeatureProblems() {
+  public List<Problem> getFeatures() {
     return features;
   }
 
@@ -49,7 +50,7 @@ public class TableAssessment {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TableAssessment that = (TableAssessment) o;
+    TableAssessmentResponse that = (TableAssessmentResponse) o;
     return Objects.equals(columns, that.columns) &&
       Objects.equals(features, that.features);
   }

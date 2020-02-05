@@ -38,8 +38,10 @@ import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
+import io.cdap.delta.proto.FullColumnAssessment;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
+import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.test.mock.MockConfigurer;
 import io.cdap.delta.test.mock.MockTableAssessor;
 import io.cdap.delta.test.mock.MockTableRegistry;
@@ -56,6 +58,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Tests for {@link DraftService}.
@@ -137,20 +140,27 @@ public class DraftServiceTest extends SystemAppTestBase {
     TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
-    columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
-    columnAssessments.add(
-      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), ColumnSupport.NO,
-                           new ColumnSuggestion("msg", Collections.emptyList())));
-    columnAssessments.add(new ColumnAssessment("age", JDBCType.INTEGER.getName()));
+    columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
+    columnAssessments.add(ColumnAssessment.builder("name", "varchar")
+                            .setSourceColumn("name")
+                            .setSupport(ColumnSupport.NO)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    columnAssessments.add(ColumnAssessment.builder("age", "int").setSourceColumn("age").build());
 
-    TableAssessment expected = new TableAssessment(columnAssessments);
-    MockTableAssessor mockAssessor = new MockTableAssessor<>(expected);
+    TableAssessment expectedAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
+    MockTableAssessor mockAssessor = new MockTableAssessor<>(expectedAssessment);
     MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, schema);
     DeltaSource mockSource = new MockSource(mockTableRegistry, mockAssessor);
     DeltaTarget mockTarget = new MockTarget(mockAssessor);
     Configurer mockConfigurer = new MockConfigurer(mockSource, mockTarget);
 
-    TableAssessment actual = service.assessTable(draftId, mockConfigurer, "deebee", "taybull");
+    List<FullColumnAssessment> fullColumns = columnAssessments.stream()
+      .map(c -> new FullColumnAssessment(c.getSupport(), c.getName(), c.getType(), c.getName(), c.getType(),
+                                         c.getSuggestion()))
+      .collect(Collectors.toList());
+    TableAssessmentResponse expected = new TableAssessmentResponse(fullColumns, Collections.emptyList());
+    TableAssessmentResponse actual = service.assessTable(draftId, mockConfigurer, "deebee", "taybull");
     Assert.assertEquals(expected, actual);
   }
 
@@ -180,11 +190,13 @@ public class DraftServiceTest extends SystemAppTestBase {
     TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
-    columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
-    columnAssessments.add(
-      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), ColumnSupport.NO,
-                           new ColumnSuggestion("msg", Collections.emptyList())));
-    TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments);
+    columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
+    columnAssessments.add(ColumnAssessment.builder("name", "varchar")
+                            .setSourceColumn("name")
+                            .setSupport(ColumnSupport.NO)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
 
     MockTableAssessor mockAssessor = new MockTableAssessor(expectedTableAssessment);
     MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, schema);
@@ -215,11 +227,13 @@ public class DraftServiceTest extends SystemAppTestBase {
     TableDetail expectedDetail = new TableDetail("deebee", "taybull", Collections.singletonList("id"), columns);
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
-    columnAssessments.add(new ColumnAssessment("id", JDBCType.INTEGER.getName()));
-    columnAssessments.add(
-      new ColumnAssessment("name", JDBCType.VARCHAR.getName(), ColumnSupport.NO,
-                           new ColumnSuggestion("msg", Collections.emptyList())));
-    TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments);
+    columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
+    columnAssessments.add(ColumnAssessment.builder("name", "varchar")
+                            .setSourceColumn("name")
+                            .setSupport(ColumnSupport.NO)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
 
     Map<String, String> pluginProps = PropertyBasedMockConfigurer.createMap(expectedList, expectedDetail,
                                                                             schema, expectedTableAssessment,
@@ -233,9 +247,14 @@ public class DraftServiceTest extends SystemAppTestBase {
     DraftService service = new DraftService(getTransactionRunner(), propertyEvaluator);
     service.saveDraft(draftId, new DraftRequest("label", config));
 
+    List<FullColumnAssessment> fullColumns = columnAssessments.stream()
+      .map(c -> new FullColumnAssessment(c.getSupport(), c.getName(), c.getType(), c.getName(), c.getType(),
+                                         c.getSuggestion()))
+      .collect(Collectors.toList());
+    TableAssessmentResponse expectedAssessment = new TableAssessmentResponse(fullColumns, Collections.emptyList());
     Configurer configurer = new PropertyBasedMockConfigurer();
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
     Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", "taybull"));
-    Assert.assertEquals(expectedTableAssessment, service.assessTable(draftId, configurer, "deebee", "taybull"));
+    Assert.assertEquals(expectedAssessment, service.assessTable(draftId, configurer, "deebee", "taybull"));
   }
 }

@@ -30,11 +30,11 @@ public class PipelineAssessment {
   private final List<Problem> connectivity;
 
   public PipelineAssessment(List<TableSummaryAssessment> tables,
-                            List<Problem> features,
-                            List<Problem> connectivity) {
+                            List<Problem> featureProblems,
+                            List<Problem> connectivityProblems) {
     this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
-    this.features = Collections.unmodifiableList(new ArrayList<>(features));
-    this.connectivity = Collections.unmodifiableList(new ArrayList<>(connectivity));
+    this.features = Collections.unmodifiableList(new ArrayList<>(featureProblems));
+    this.connectivity = Collections.unmodifiableList(new ArrayList<>(connectivityProblems));
   }
 
   /**
@@ -47,14 +47,14 @@ public class PipelineAssessment {
   /**
    * @return potential problems related to features
    */
-  public List<Problem> getFeatures() {
+  public List<Problem> getFeatureProblems() {
     return features;
   }
 
   /**
    * @return potential problems related to connectivity
    */
-  public List<Problem> getConnectivity() {
+  public List<Problem> getConnectivityProblem() {
     return connectivity;
   }
 

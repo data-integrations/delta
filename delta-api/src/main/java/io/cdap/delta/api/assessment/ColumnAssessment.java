@@ -25,35 +25,52 @@ import javax.annotation.Nullable;
 public class ColumnAssessment {
   private final String name;
   private final String type;
+  private final String sourceName;
   private final ColumnSupport support;
   private final ColumnSuggestion suggestion;
 
-  public ColumnAssessment(String name, String type) {
+  private ColumnAssessment(ColumnSupport support, String name, String type,
+                           @Nullable String sourceName, @Nullable ColumnSuggestion suggestion) {
     this.name = name;
     this.type = type;
-    this.support = ColumnSupport.YES;
-    this.suggestion = null;
-  }
-
-  public ColumnAssessment(String name, String type, ColumnSupport support, ColumnSuggestion suggestion) {
-    this.name = name;
-    this.type = type;
+    this.sourceName = sourceName;
     this.support = support;
     this.suggestion = suggestion;
   }
 
+  /**
+   * @return the name of the column as seen by the source. This only needs to be set for column assessments on the
+   *   target, in case the column name was normalized or transformed in some way.
+   */
+  @Nullable
+  public String getSourceName() {
+    return sourceName;
+  }
+
+  /**
+   * @return name of the column
+   */
   public String getName() {
     return name;
   }
 
+  /**
+   * @return type of the column
+   */
   public String getType() {
     return type;
   }
 
+  /**
+   * @return level of support for the column
+   */
   public ColumnSupport getSupport() {
     return support;
   }
 
+  /**
+   * @return a suggestion to improve support level for the column
+   */
   @Nullable
   public ColumnSuggestion getSuggestion() {
     return suggestion;
@@ -68,14 +85,58 @@ public class ColumnAssessment {
       return false;
     }
     ColumnAssessment that = (ColumnAssessment) o;
-    return support == that.support &&
-      Objects.equals(name, that.name) &&
+    return Objects.equals(name, that.name) &&
       Objects.equals(type, that.type) &&
+      Objects.equals(sourceName, that.sourceName) &&
+      support == that.support &&
       Objects.equals(suggestion, that.suggestion);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, support, suggestion);
+    return Objects.hash(name, type, sourceName, support, suggestion);
+  }
+
+  /**
+   * return a Builder to create column assessments
+   */
+  public static Builder builder(String name, String type) {
+    return new Builder(name, type);
+  }
+
+  /**
+   * Builds a ColumnAssessment
+   */
+  public static class Builder {
+    private String name;
+    private String type;
+    private String sourceName;
+    private ColumnSupport support;
+    private ColumnSuggestion suggestion;
+
+    private Builder(String name, String type) {
+      this.name = name;
+      this.type = type;
+      this.support = ColumnSupport.YES;
+    }
+
+    public Builder setSupport(ColumnSupport support) {
+      this.support = support;
+      return this;
+    }
+
+    public Builder setSuggestion(ColumnSuggestion suggestion) {
+      this.suggestion = suggestion;
+      return this;
+    }
+
+    public Builder setSourceColumn(String sourceColumnName) {
+      this.sourceName = sourceColumnName;
+      return this;
+    }
+
+    public ColumnAssessment build() {
+      return new ColumnAssessment(support, name, type, sourceName, suggestion);
+    }
   }
 }
