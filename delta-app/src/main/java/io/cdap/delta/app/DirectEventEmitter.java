@@ -27,7 +27,6 @@ import io.cdap.delta.api.Sequenced;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DBTable;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;

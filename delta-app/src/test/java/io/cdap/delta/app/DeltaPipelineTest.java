@@ -47,8 +47,11 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Tests for delta pipelines
@@ -106,8 +109,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    // TODO: replace with a polling metrics check once metrics are implemented
-    TimeUnit.SECONDS.sleep(30L);
+    waitForMetric(appId, "target.ddl", 1);
+    waitForMetric(appId, "target.dml.insert", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -138,8 +141,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    // TODO: replace with a polling metrics check once metrics are implemented
-    TimeUnit.SECONDS.sleep(30L);
+    waitForMetric(appId, "target.ddl", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -151,8 +153,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     // offset should have been saved, with the next run starting from that offset
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    // TODO: replace with a polling metrics check once metrics are implemented
-    TimeUnit.SECONDS.sleep(30L);
+    waitForMetric(appId, "target.dml.insert", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -162,4 +163,12 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Assert.assertEquals(expected, actual);
   }
 
+  private void waitForMetric(ApplicationId appId, String metric, int expected)
+    throws TimeoutException, InterruptedException {
+    Map<String, String> tags = new HashMap<>();
+    tags.put(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace());
+    tags.put(Constants.Metrics.Tag.APP, appId.getEntityName());
+    tags.put(Constants.Metrics.Tag.WORKER, DeltaWorker.NAME);
+    getMetricsManager().waitForTotalMetricCount(tags, "user." + metric, expected, 20, TimeUnit.SECONDS);
+  }
 }

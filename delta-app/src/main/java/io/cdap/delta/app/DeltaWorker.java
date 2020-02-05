@@ -93,7 +93,8 @@ public class DeltaWorker extends AbstractWorker {
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
     StateStore stateStore = new StateStore(fs, path);
-    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context);
+    EventMetrics eventMetrics = new EventMetrics(metrics, targetName);
+    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context, eventMetrics);
     MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
                                                               context, context.getNamespace());
     source = context.newPluginInstance(sourceName, macroEvaluator);
@@ -102,9 +103,9 @@ public class DeltaWorker extends AbstractWorker {
     readerDefinition = GSON.fromJson(context.getSpecification().getProperty(READER_DEFINITION),
                                      EventReaderDefinition.class);
     // TODO: load sequence number from offset store
-    eventReader = source.createReader(readerDefinition, deltaContext,
-                                      new DirectEventEmitter(eventConsumer, deltaContext, System.currentTimeMillis(),
-                                                             readerDefinition));
+    DirectEventEmitter emitter = new DirectEventEmitter(eventConsumer, deltaContext, System.currentTimeMillis(),
+                                                        readerDefinition);
+    eventReader = source.createReader(readerDefinition, deltaContext, emitter);
   }
 
   @Override

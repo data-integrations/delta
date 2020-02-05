@@ -21,6 +21,8 @@ import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.cdap.api.plugin.PluginContext;
 import io.cdap.cdap.api.plugin.PluginProperties;
+import io.cdap.delta.api.DDLOperation;
+import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.Offset;
@@ -38,19 +40,32 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final Metrics metrics;
   private final StateStore stateStore;
   private final PluginContext pluginContext;
+  private final EventMetrics eventMetrics;
 
   public DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
-                      PluginContext pluginContext) {
+                      PluginContext pluginContext, EventMetrics eventMetrics) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
     this.stateStore = stateStore;
     this.pluginContext = pluginContext;
+    this.eventMetrics = eventMetrics;
+  }
+
+  @Override
+  public void incrementCount(DMLOperation op) {
+    eventMetrics.incrementDMLCount(op);
+  }
+
+  @Override
+  public void incrementCount(DDLOperation op) {
+    eventMetrics.incrementDDLCount();
   }
 
   @Override
   public void commitOffset(Offset offset) throws IOException {
     stateStore.writeOffset(id, offset);
+    eventMetrics.emitMetrics();
   }
 
   public Offset loadOffset() throws IOException {
