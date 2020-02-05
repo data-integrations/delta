@@ -17,8 +17,10 @@
 package io.cdap.delta.api;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Object representing what data from a table should be read by the source.
@@ -26,16 +28,25 @@ import java.util.Objects;
 public class SourceTable {
   private final String database;
   private final String table;
-  private final List<SourceColumn> columns;
+  private final Set<SourceColumn> columns;
+  private final Set<DMLOperation> dmlBlacklist;
+  private final Set<DDLOperation> ddlBlacklist;
 
   public SourceTable(String database, String table) {
-    this(database, table, Collections.emptyList());
+    this(database, table, Collections.emptySet());
   }
 
-  public SourceTable(String database, String table, List<SourceColumn> columns) {
+  public SourceTable(String database, String table, Set<SourceColumn> columns) {
+    this(database, table, columns, Collections.emptySet(), Collections.emptySet());
+  }
+
+  public SourceTable(String database, String table, Set<SourceColumn> columns, Set<DMLOperation> dmlBlacklist,
+                     Set<DDLOperation> ddlBlacklist) {
     this.database = database;
     this.table = table;
     this.columns = columns;
+    this.dmlBlacklist = new HashSet<>(dmlBlacklist);
+    this.ddlBlacklist = new HashSet<>(ddlBlacklist);
   }
 
   public String getDatabase() {
@@ -46,8 +57,26 @@ public class SourceTable {
     return table;
   }
 
-  public List<SourceColumn> getColumns() {
-    return columns;
+  /**
+   * @return table columns that should be replicated. If empty, all columns should be replicated.
+   */
+  public Set<SourceColumn> getColumns() {
+    // check for null because this object can be created through deserialization of user provided input
+    return columns == null ? Collections.emptySet() : Collections.unmodifiableSet(columns);
+  }
+
+  /**
+   * @return set of DML operations that should be ignored
+   */
+  public Set<DMLOperation> getDmlBlacklist() {
+    return dmlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(dmlBlacklist);
+  }
+
+  /**
+   * @return set of DDL operations that should be ignored
+   */
+  public Set<DDLOperation> getDdlBlacklist() {
+    return ddlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(ddlBlacklist);
   }
 
   @Override
@@ -61,11 +90,13 @@ public class SourceTable {
     SourceTable that = (SourceTable) o;
     return Objects.equals(database, that.database) &&
       Objects.equals(table, that.table) &&
-      Objects.equals(columns, that.columns);
+      Objects.equals(columns, that.columns) &&
+      Objects.equals(dmlBlacklist, that.dmlBlacklist) &&
+      Objects.equals(ddlBlacklist, that.ddlBlacklist);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table, columns);
+    return Objects.hash(database, table, columns, dmlBlacklist, ddlBlacklist);
   }
 }

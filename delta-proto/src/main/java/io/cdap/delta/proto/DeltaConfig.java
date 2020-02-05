@@ -18,15 +18,20 @@ package io.cdap.delta.proto;
 
 import io.cdap.cdap.api.Config;
 import io.cdap.cdap.api.Resources;
+import io.cdap.delta.api.DDLOperation;
+import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.SourceTable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Nullable;
 
 /**
@@ -39,19 +44,24 @@ public class DeltaConfig extends Config {
   private final List<Connection> connections;
   private final Resources resources;
   private final String offsetBasePath;
-  private final List<SourceTable> tables;
+  private final Set<SourceTable> tables;
+  private final Set<DMLOperation> dmlBlacklist;
+  private final Set<DDLOperation> ddlBlacklist;
   // should only be set by CDAP admin when creating the system service
   private final boolean service;
 
   private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
-                      Resources resources, String offsetBasePath, List<SourceTable> tables) {
+                      Resources resources, String offsetBasePath, Set<SourceTable> tables,
+                      Set<DMLOperation> dmlBlacklist, Set<DDLOperation> ddlBlacklist) {
     this.description = description;
-    this.stages = Collections.unmodifiableList(new ArrayList<>(stages));
-    this.connections = Collections.unmodifiableList(new ArrayList<>(connections));
+    this.stages = new ArrayList<>(stages);
+    this.connections = new ArrayList<>(connections);
     this.resources = resources;
     this.offsetBasePath = offsetBasePath;
-    this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
+    this.tables = new HashSet<>(tables);
     this.service = false;
+    this.dmlBlacklist = new HashSet<>(dmlBlacklist);
+    this.ddlBlacklist = new HashSet<>(ddlBlacklist);
   }
 
   @Nullable
@@ -60,7 +70,8 @@ public class DeltaConfig extends Config {
   }
 
   public List<Stage> getStages() {
-    return stages == null ? Collections.emptyList() : stages;
+    // can be null when this class is created through deserialization of user input
+    return stages == null ? Collections.emptyList() : Collections.unmodifiableList(stages);
   }
 
   public String getOffsetBasePath() {
@@ -68,15 +79,23 @@ public class DeltaConfig extends Config {
   }
 
   public List<Connection> getConnections() {
-    return connections == null ? Collections.emptyList() : connections;
+    return connections == null ? Collections.emptyList() : Collections.unmodifiableList(connections);
   }
 
   public Resources getResources() {
     return resources == null ? new Resources(8192, 4) : resources;
   }
 
-  public List<SourceTable> getTables() {
-    return tables == null ? Collections.emptyList() : tables;
+  public Set<SourceTable> getTables() {
+    return tables == null ? Collections.emptySet() : Collections.unmodifiableSet(tables);
+  }
+
+  public Set<DMLOperation> getDmlBlacklist() {
+    return dmlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(dmlBlacklist);
+  }
+
+  public Set<DDLOperation> getDdlBlacklist() {
+    return ddlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(ddlBlacklist);
   }
 
   public boolean isService() {
@@ -155,18 +174,22 @@ public class DeltaConfig extends Config {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DeltaConfig config = (DeltaConfig) o;
-    return service == config.service &&
-      Objects.equals(description, config.description) &&
-      Objects.equals(stages, config.stages) &&
-      Objects.equals(connections, config.connections) &&
-      Objects.equals(resources, config.resources) &&
-      Objects.equals(offsetBasePath, config.offsetBasePath);
+    DeltaConfig that = (DeltaConfig) o;
+    return service == that.service &&
+      Objects.equals(description, that.description) &&
+      Objects.equals(stages, that.stages) &&
+      Objects.equals(connections, that.connections) &&
+      Objects.equals(resources, that.resources) &&
+      Objects.equals(offsetBasePath, that.offsetBasePath) &&
+      Objects.equals(tables, that.tables) &&
+      Objects.equals(dmlBlacklist, that.dmlBlacklist) &&
+      Objects.equals(ddlBlacklist, that.ddlBlacklist);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(description, stages, connections, resources, offsetBasePath, service);
+    return Objects.hash(description, stages, connections, resources, offsetBasePath, tables,
+                        dmlBlacklist, ddlBlacklist, service);
   }
 
   public static Builder builder() {
@@ -182,12 +205,16 @@ public class DeltaConfig extends Config {
     private String description;
     private String offsetBasePath;
     private Resources resources;
-    private List<SourceTable> tables;
+    private Set<SourceTable> tables;
+    private Set<DMLOperation> dmlBlacklist;
+    private Set<DDLOperation> ddlBlacklist;
 
     private Builder() {
       description = "";
       resources = new Resources();
-      tables = new ArrayList<>();
+      tables = new HashSet<>();
+      dmlBlacklist = new HashSet<>();
+      ddlBlacklist = new HashSet<>();
     }
 
     public Builder setSource(Stage source) {
@@ -215,9 +242,21 @@ public class DeltaConfig extends Config {
       return this;
     }
 
-    public Builder setTables(List<SourceTable> tables) {
+    public Builder setTables(Collection<SourceTable> tables) {
       this.tables.clear();
       this.tables.addAll(tables);
+      return this;
+    }
+
+    public Builder setDMLBlacklist(Collection<DMLOperation> blacklist) {
+      this.dmlBlacklist.clear();
+      this.dmlBlacklist.addAll(blacklist);
+      return this;
+    }
+
+    public Builder setDDLBlacklist(Collection<DDLOperation> blacklist) {
+      this.ddlBlacklist.clear();
+      this.ddlBlacklist.addAll(blacklist);
       return this;
     }
 
@@ -233,7 +272,8 @@ public class DeltaConfig extends Config {
       if (source != null && target != null) {
         connections.add(new Connection(source.getName(), target.getName()));
       }
-      DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables);
+      DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables,
+                                           dmlBlacklist, ddlBlacklist);
       config.validate();
       return config;
     }

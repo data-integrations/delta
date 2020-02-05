@@ -32,6 +32,7 @@ import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
+import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.StandardizedTableDetail;
@@ -71,9 +72,9 @@ public class MockSource implements DeltaSource {
   }
 
   @Override
-  public EventReader createReader(List<SourceTable> tables, DeltaSourceContext context, EventEmitter eventEmitter) {
+  public EventReader createReader(EventReaderDefinition definition, DeltaSourceContext context, EventEmitter emitter) {
     return new MockEventReader(GSON.fromJson(conf.events, new TypeToken<List<? extends ChangeEvent>>() { }.getType()),
-                               eventEmitter, conf.maxEvents);
+                               emitter, conf.maxEvents);
   }
 
   @Override

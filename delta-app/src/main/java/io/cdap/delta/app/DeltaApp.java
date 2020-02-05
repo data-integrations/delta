@@ -21,6 +21,7 @@ import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
+import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.app.service.AssessmentService;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.Stage;
@@ -50,8 +51,11 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
 
+    EventReaderDefinition readerDefinition = new EventReaderDefinition(conf.getTables(),
+                                                                       conf.getDmlBlacklist(),
+                                                                       conf.getDdlBlacklist());
     addWorker(new DeltaWorker(sourceConf.getName(), targetConf.getName(), conf.getOffsetBasePath(),
-                              conf.getTables()));
+                              readerDefinition));
 
     String description = conf.getDescription();
     if (description == null) {

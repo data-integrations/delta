@@ -21,12 +21,10 @@ import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
-import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableRegistry;
-
-import java.util.List;
 
 
 /**
@@ -47,7 +45,7 @@ public class MockSource implements DeltaSource {
   }
 
   @Override
-  public EventReader createReader(List<SourceTable> tables, DeltaSourceContext context, EventEmitter eventEmitter) {
+  public EventReader createReader(EventReaderDefinition definition, DeltaSourceContext context, EventEmitter emitter) {
     return null;
   }
 
