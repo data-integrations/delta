@@ -37,14 +37,16 @@ public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
 
   /**
    * Create an event reader used to read change events. This is called after the application is deployed, whenever
-   * the program is started.
+   * the program is started. If an exception is thrown, the pipeline run will fail.
    *
    * @param definition defines what type of information the reader should read
    * @param context program context
    * @param eventEmitter emits events that need to be replicated
    * @return an event reader used to read change events
+   * @throws Exception if there was an error creating the event reader
    */
-  EventReader createReader(EventReaderDefinition definition, DeltaSourceContext context, EventEmitter eventEmitter);
+  EventReader createReader(EventReaderDefinition definition, DeltaSourceContext context,
+                           EventEmitter eventEmitter) throws Exception;
 
   /**
    * Create a table registry that is used to fetch information about tables in databases.
@@ -52,6 +54,7 @@ public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
    *
    * @param configurer configurer used to instantiate plugins
    * @return table registry used to fetch information about tables in databases.
+   * @throws Exception if there was an error creating the table registry
    */
-  TableRegistry createTableRegistry(Configurer configurer);
+  TableRegistry createTableRegistry(Configurer configurer) throws Exception;
 }

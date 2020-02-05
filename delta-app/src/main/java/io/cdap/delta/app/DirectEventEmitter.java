@@ -61,7 +61,12 @@ public class DirectEventEmitter implements EventEmitter {
       return;
     }
 
-    consumer.applyDDL(new Sequenced<>(event, sequenceNumber));
+    try {
+      consumer.applyDDL(new Sequenced<>(event, sequenceNumber));
+    } catch (Exception e) {
+      // TODO: (CDAP-16251) retry
+      throw new RuntimeException(e);
+    }
     sequenceNumber++;
   }
 
@@ -71,7 +76,12 @@ public class DirectEventEmitter implements EventEmitter {
       return;
     }
 
-    consumer.applyDML(new Sequenced<>(event, sequenceNumber));
+    try {
+      consumer.applyDML(new Sequenced<>(event, sequenceNumber));
+    } catch (Exception e) {
+      // TODO: (CDAP-16251) retry
+      throw new RuntimeException(e);
+    }
     sequenceNumber++;
   }
 
