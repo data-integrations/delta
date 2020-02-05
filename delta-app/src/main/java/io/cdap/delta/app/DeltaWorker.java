@@ -17,7 +17,6 @@
 package io.cdap.delta.app;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.cdap.api.worker.AbstractWorker;
@@ -26,8 +25,8 @@ import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.EventReader;
+import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.Offset;
-import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.store.DefaultMacroEvaluator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -35,7 +34,6 @@ import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -49,7 +47,7 @@ public class DeltaWorker extends AbstractWorker {
   private static final String TARGET = "target";
   private static final String GENERATION = "generation";
   private static final String OFFSET_BASE_PATH = "offset.base.path";
-  private static final String SOURCE_TABLES = "source.tables";
+  private static final String READER_DEFINITION = "source.reader.definition";
   private CountDownLatch stopLatch;
   private Metrics metrics;
   private String sourceName;
@@ -60,13 +58,14 @@ public class DeltaWorker extends AbstractWorker {
   private EventReader eventReader;
   private DeltaSource source;
   private DeltaTarget target;
-  private List<SourceTable> sourceTables;
+  private EventReaderDefinition readerDefinition;
 
-  public DeltaWorker(String sourceName, String targetName, String offsetBasePath, List<SourceTable> sourceTables) {
+  public DeltaWorker(String sourceName, String targetName, String offsetBasePath,
+                     EventReaderDefinition readerDefinition) {
     this.sourceName = sourceName;
     this.targetName = targetName;
     this.offsetBasePath = offsetBasePath;
-    this.sourceTables = sourceTables;
+    this.readerDefinition = readerDefinition;
   }
 
   @Override
@@ -77,7 +76,7 @@ public class DeltaWorker extends AbstractWorker {
     props.put(TARGET, targetName);
     props.put(GENERATION, String.valueOf(System.currentTimeMillis()));
     props.put(OFFSET_BASE_PATH, offsetBasePath);
-    props.put(SOURCE_TABLES, GSON.toJson(sourceTables));
+    props.put(READER_DEFINITION, GSON.toJson(readerDefinition));
     setProperties(props);
   }
 
@@ -100,11 +99,12 @@ public class DeltaWorker extends AbstractWorker {
     source = context.newPluginInstance(sourceName, macroEvaluator);
     target = context.newPluginInstance(targetName, macroEvaluator);
     eventConsumer = target.createConsumer(deltaContext);
-    sourceTables = GSON.fromJson(context.getSpecification().getProperty(SOURCE_TABLES),
-                                 new TypeToken<List<SourceTable>>() { }.getType());
+    readerDefinition = GSON.fromJson(context.getSpecification().getProperty(READER_DEFINITION),
+                                     EventReaderDefinition.class);
     // TODO: load sequence number from offset store
-    eventReader = source.createReader(sourceTables, deltaContext,
-                                      new DirectEventEmitter(eventConsumer, deltaContext, System.currentTimeMillis()));
+    eventReader = source.createReader(readerDefinition, deltaContext,
+                                      new DirectEventEmitter(eventConsumer, deltaContext, System.currentTimeMillis(),
+                                                             readerDefinition));
   }
 
   @Override

@@ -56,6 +56,7 @@ import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -169,8 +170,8 @@ public class DraftServiceTest extends SystemAppTestBase {
     DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
     // configure the pipeline to read 2 out of the 3 columns from the table
-    SourceTable sourceTable = new SourceTable("deebee", "taybull",
-                                              Arrays.asList(new SourceColumn("id"), new SourceColumn("name")));
+    SourceTable sourceTable = new SourceTable(
+      "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"))));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))

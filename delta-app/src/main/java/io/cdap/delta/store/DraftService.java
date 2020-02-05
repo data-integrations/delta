@@ -239,11 +239,11 @@ public class DraftService {
     List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
 
     // if no source tables are given, this means all tables should be read
-    List<SourceTable> tablesToAssess = deltaConfig.getTables();
+    Set<SourceTable> tablesToAssess = deltaConfig.getTables();
     if (tablesToAssess.isEmpty()) {
       tablesToAssess = tableRegistry.listTables().getTables().stream()
         .map(t -> new SourceTable(t.getDatabase(), t.getTable()))
-        .collect(Collectors.toList());
+        .collect(Collectors.toSet());
     }
 
     // go through all tables that the pipeline should read, fetching detail about each of the tables

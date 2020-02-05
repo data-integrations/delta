@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api;
 
+import java.util.Objects;
+
 /**
  * A Change event with a sequence number.
  *
@@ -36,5 +38,23 @@ public class Sequenced<T> {
 
   public long getSequenceNumber() {
     return sequenceNumber;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Sequenced<?> sequenced = (Sequenced<?>) o;
+    return sequenceNumber == sequenced.sequenceNumber &&
+      Objects.equals(event, sequenced.event);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(event, sequenceNumber);
   }
 }
