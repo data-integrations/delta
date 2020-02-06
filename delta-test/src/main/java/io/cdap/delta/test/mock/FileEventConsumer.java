@@ -74,12 +74,14 @@ public class FileEventConsumer implements EventConsumer {
   @Override
   public void applyDDL(Sequenced<DDLEvent> event) throws IOException {
     events.add(event.getEvent());
+    context.incrementCount(event.getEvent().getOperation());
     context.commitOffset(event.getEvent().getOffset());
   }
 
   @Override
   public void applyDML(Sequenced<DMLEvent> event) throws IOException {
     events.add(event.getEvent());
+    context.incrementCount(event.getEvent().getOperation());
     context.commitOffset(event.getEvent().getOffset());
   }
 
