@@ -39,15 +39,15 @@ public class EventMetrics {
     this.ddlEventCount = 0;
   }
 
-  public void incrementDMLCount(DMLOperation op) {
+  public synchronized void incrementDMLCount(DMLOperation op) {
     dmlEventCounts.put(op, dmlEventCounts.get(op) + 1);
   }
 
-  public void incrementDDLCount() {
+  public synchronized void incrementDDLCount() {
     ddlEventCount++;
   }
 
-  public void emitMetrics() {
+  public synchronized void emitMetrics() {
     for (DMLOperation op : dmlEventCounts.keySet()) {
       metrics.count(String.format("%s.dml.%s", prefix, op.name().toLowerCase()), dmlEventCounts.get(op));
       dmlEventCounts.put(op, 0);
