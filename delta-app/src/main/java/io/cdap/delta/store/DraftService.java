@@ -292,7 +292,7 @@ public class DraftService {
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
-    TableDetail filteredDetail = new TableDetail(db, table, detail.getPrimaryKey(), selectedColumns);
+    TableDetail filteredDetail = new TableDetail(db, table, null, detail.getPrimaryKey(), selectedColumns);
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);

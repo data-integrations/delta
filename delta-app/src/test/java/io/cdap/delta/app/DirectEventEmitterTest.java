@@ -71,7 +71,7 @@ public class DirectEventEmitterTest {
   public void testFiltering() {
     TrackingEventConsumer trackingEventConsumer = new TrackingEventConsumer();
     Set<SourceTable> tables = Collections.singleton(
-      new SourceTable("deebee", "taybull", Collections.emptySet(),
+      new SourceTable("deebee", "taybull", null, Collections.emptySet(),
                       Collections.singleton(DMLOperation.INSERT),
                       Collections.singleton(DDLOperation.CREATE_TABLE)));
     EventReaderDefinition readerDefinition = new EventReaderDefinition(tables, Collections.emptySet(),

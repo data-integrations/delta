@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import javax.annotation.Nullable;
 
 /**
  * Object representing what data from a table should be read by the source.
@@ -28,6 +29,10 @@ import java.util.Set;
 public class SourceTable {
   private final String database;
   private final String table;
+  // this schema is required for some db to uniquely identify the table, if this is not provided, it will not
+  // be able to fetch the records
+  // TODO: CDAP-16261 have a better way to identify the table
+  private final String schema;
   private final Set<SourceColumn> columns;
   private final Set<DMLOperation> dmlBlacklist;
   private final Set<DDLOperation> ddlBlacklist;
@@ -37,13 +42,15 @@ public class SourceTable {
   }
 
   public SourceTable(String database, String table, Set<SourceColumn> columns) {
-    this(database, table, columns, Collections.emptySet(), Collections.emptySet());
+    this(database, table, null, columns, Collections.emptySet(), Collections.emptySet());
   }
 
-  public SourceTable(String database, String table, Set<SourceColumn> columns, Set<DMLOperation> dmlBlacklist,
+  public SourceTable(String database, String table, @Nullable String schema,
+                     Set<SourceColumn> columns, Set<DMLOperation> dmlBlacklist,
                      Set<DDLOperation> ddlBlacklist) {
     this.database = database;
     this.table = table;
+    this.schema = schema;
     this.columns = columns;
     this.dmlBlacklist = new HashSet<>(dmlBlacklist);
     this.ddlBlacklist = new HashSet<>(ddlBlacklist);
@@ -72,6 +79,11 @@ public class SourceTable {
     return dmlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(dmlBlacklist);
   }
 
+  @Nullable
+  public String getSchema() {
+    return schema;
+  }
+
   /**
    * @return set of DDL operations that should be ignored
    */
@@ -92,11 +104,12 @@ public class SourceTable {
       Objects.equals(table, that.table) &&
       Objects.equals(columns, that.columns) &&
       Objects.equals(dmlBlacklist, that.dmlBlacklist) &&
-      Objects.equals(ddlBlacklist, that.ddlBlacklist);
+      Objects.equals(ddlBlacklist, that.ddlBlacklist) &&
+      Objects.equals(schema, that.schema);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table, columns, dmlBlacklist, ddlBlacklist);
+    return Objects.hash(database, table, columns, dmlBlacklist, ddlBlacklist, schema);
   }
 }
