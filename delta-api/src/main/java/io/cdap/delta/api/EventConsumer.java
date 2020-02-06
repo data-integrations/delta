@@ -44,8 +44,9 @@ public interface EventConsumer {
    * successfully.
    *
    * @param event ddl event to apply
+   * @throws Exception if there was an error applying the change
    */
-  void applyDDL(Sequenced<DDLEvent> event);
+  void applyDDL(Sequenced<DDLEvent> event) throws Exception;
 
   /**
    * Apply a DML event. This method must be idempotent. For example, if there is an insert and the row already exists,
@@ -57,7 +58,8 @@ public interface EventConsumer {
    * In failure scenarios the batch will be applied at least once.
    *
    * @param event DML event to apply
+   * @throws Exception if there was an error applying the change
    */
-  void applyDML(Sequenced<DMLEvent> event);
+  void applyDML(Sequenced<DMLEvent> event) throws Exception;
 
 }

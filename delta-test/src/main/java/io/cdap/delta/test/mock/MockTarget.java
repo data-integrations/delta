@@ -60,7 +60,7 @@ public class MockTarget implements DeltaTarget {
     if (outputFile.exists()) {
       outputFile.delete();
     }
-    return new FileEventConsumer(outputFile);
+    return new FileEventConsumer(outputFile, context);
   }
 
   @Override

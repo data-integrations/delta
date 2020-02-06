@@ -143,8 +143,9 @@ public class DraftService {
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws IOException if the was an IO error fetching the table list
+   * @throws Exception if there was an error creating the table registry
    */
-  public TableList listDraftTables(DraftId draftId, Configurer configurer) throws IOException {
+  public TableList listDraftTables(DraftId draftId, Configurer configurer) throws Exception {
     Draft draft = getDraft(draftId);
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
       return tableRegistry.listTables();
@@ -167,9 +168,10 @@ public class DraftService {
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws TableNotFoundException if the table does not exist
    * @throws IOException if the was an IO error fetching the table detail
+   * @throws Exception if there was an error creating the table registry
    */
   public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database, String table)
-    throws IOException, TableNotFoundException {
+    throws Exception {
     Draft draft = getDraft(draftId);
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
       return tableRegistry.describeTable(database, table);
@@ -192,9 +194,10 @@ public class DraftService {
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws TableNotFoundException if the table does not exist
    * @throws IOException if the table detail could not be read
+   * @throws Exception if there was an error creating the table registry
    */
   public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, String db, String table)
-    throws IOException, TableNotFoundException {
+    throws Exception {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
     deltaConfig = evaluateMacros(draftId, deltaConfig);
@@ -222,8 +225,9 @@ public class DraftService {
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws IOException if there was an IO error getting the list of source tables
+   * @throws Exception if there was an error creating the table registry
    */
-  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) throws IOException {
+  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) throws Exception {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
     deltaConfig.validatePipeline();
@@ -351,7 +355,7 @@ public class DraftService {
                                     suggestion);
   }
 
-  private TableRegistry createTableRegistry(DraftId id, Draft draft, Configurer configurer) {
+  private TableRegistry createTableRegistry(DraftId id, Draft draft, Configurer configurer) throws Exception {
     DeltaConfig deltaConfig = draft.getConfig();
     deltaConfig = evaluateMacros(id, deltaConfig);
     Stage stage = deltaConfig.getSource();

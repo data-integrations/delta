@@ -25,6 +25,7 @@ import io.cdap.cdap.internal.io.SchemaTypeAdapter;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.DMLEvent;
+import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.Sequenced;
 
@@ -48,10 +49,12 @@ public class FileEventConsumer implements EventConsumer {
     .create();
   private final File file;
   private final List<ChangeEvent> events;
+  private final DeltaTargetContext context;
 
-  public FileEventConsumer(File file) {
+  public FileEventConsumer(File file, DeltaTargetContext context) {
     this.file = file;
     this.events = new ArrayList<>();
+    this.context = context;
   }
 
   @Override
@@ -69,13 +72,15 @@ public class FileEventConsumer implements EventConsumer {
   }
 
   @Override
-  public void applyDDL(Sequenced<DDLEvent> event) {
+  public void applyDDL(Sequenced<DDLEvent> event) throws IOException {
     events.add(event.getEvent());
+    context.commitOffset(event.getEvent().getOffset());
   }
 
   @Override
-  public void applyDML(Sequenced<DMLEvent> event) {
+  public void applyDML(Sequenced<DMLEvent> event) throws IOException {
     events.add(event.getEvent());
+    context.commitOffset(event.getEvent().getOffset());
   }
 
   /**

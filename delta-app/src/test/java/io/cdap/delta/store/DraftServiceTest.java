@@ -51,7 +51,6 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,7 +111,7 @@ public class DraftServiceTest extends SystemAppTestBase {
   }
 
   @Test(expected = DraftNotFoundException.class)
-  public void testListTablesFromNonexistantDraft() throws IOException {
+  public void testListTablesFromNonexistantDraft() throws Exception {
     DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     service.listDraftTables(new DraftId(new Namespace("ns", 0L), "testListTablesFromNonexistantDraft"),
                             new MockConfigurer(null, null));
