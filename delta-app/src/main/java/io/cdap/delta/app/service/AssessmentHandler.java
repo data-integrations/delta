@@ -30,6 +30,8 @@ import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.DefaultConfigurer;
+import io.cdap.delta.app.DeltaPipelineId;
+import io.cdap.delta.app.PipelineStateService;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DraftRequest;
@@ -38,12 +40,16 @@ import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
 import io.cdap.delta.store.DraftService;
 import io.cdap.delta.store.Namespace;
+import io.cdap.delta.store.StateStore;
 import io.cdap.delta.store.SystemServicePropertyEvaluator;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLType;
+import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -60,6 +66,18 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     .registerTypeAdapter(SQLType.class, new SQLTypeSerializer())
     .setPrettyPrinting()
     .create();
+  private static final String OFFSET_PATH = "offset.base.path";
+  // NOTE: this is only available in the configure() method
+  private final String offsetBasePath;
+
+  public AssessmentHandler(String offsetBasePath) {
+    this.offsetBasePath = offsetBasePath;
+  }
+
+  @Override
+  protected void configure() {
+    setProperties(Collections.singletonMap(OFFSET_PATH, offsetBasePath));
+  }
 
   @GET
   @Path("v1/contexts/{context}/drafts")
@@ -197,6 +215,29 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   @Path("health")
   public void healthCheck(HttpServiceRequest request, HttpServiceResponder responder) {
     responder.sendStatus(HttpURLConnection.HTTP_OK);
+  }
+  
+  @Path("v1/contexts/{context}/pipelines/{pipeline}/state")
+  public void getState(HttpServiceRequest request, HttpServiceResponder responder,
+                       @PathParam("context") String namespaceName,
+                       @PathParam("pipeline") String pipelineName) {
+    respond(namespaceName, responder, ((draftService, namespace) -> {
+      String offsetBasePath = getContext().getSpecification().getProperty(OFFSET_PATH);
+      FileSystem fs = FileSystem.get(new Configuration());
+      org.apache.hadoop.fs.Path path = new org.apache.hadoop.fs.Path(offsetBasePath);
+      StateStore stateStore = new StateStore(fs, path);
+
+      Long latestGen = stateStore.getLatestGeneration(namespaceName, pipelineName);
+      if (latestGen == null) {
+        responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, "Unable to find state for the pipeline.");
+        return;
+      }
+
+      DeltaPipelineId pipelineId = new DeltaPipelineId(namespaceName, pipelineName, latestGen);
+      PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+      stateService.initialize();
+      responder.sendString(GSON.toJson(stateService.getState()));
+    }));
   }
 
   /**

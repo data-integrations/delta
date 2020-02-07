@@ -33,11 +33,19 @@ import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.PipelineReplicationState;
+import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.Stage;
+import io.cdap.delta.proto.TableReplicationState;
+import io.cdap.delta.proto.TableState;
+import io.cdap.delta.store.StateStore;
 import io.cdap.delta.test.DeltaPipelineTestBase;
 import io.cdap.delta.test.mock.FileEventConsumer;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -94,12 +102,13 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(EVENT2);
 
+    String offsetBasePath = TEMP_FOLDER.newFolder("testOneRun").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
     Stage target = new Stage("target", MockTarget.getPlugin(outputFile));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
-      .setOffsetBasePath(TEMP_FOLDER.newFolder("testOneRunOffsets").getAbsolutePath())
+      .setOffsetBasePath(offsetBasePath)
       .build();
 
     AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
@@ -116,6 +125,23 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFile);
     Assert.assertEquals(events, actual);
+
+    FileSystem fs = FileSystem.get(new Configuration());
+    Path path = new Path(offsetBasePath);
+    StateStore stateStore = new StateStore(fs, path);
+    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
+    PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+    stateService.initialize();
+
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
+    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+
+    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATE, null);
+    PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
+                                                                          Collections.singleton(tableState), null);
+    PipelineReplicationState actualState = stateService.getState();
+    Assert.assertEquals(expectedState, actualState);
   }
 
   @Test
@@ -126,12 +152,13 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(EVENT2);
 
+    String offsetBasePath = TEMP_FOLDER.newFolder("testRestartFromOffset").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, 1));
     Stage target = new Stage("target", MockTarget.getPlugin(outputFile));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
-      .setOffsetBasePath(TEMP_FOLDER.newFolder("testRestartFromOffset").getAbsolutePath())
+      .setOffsetBasePath(offsetBasePath)
       .build();
 
     AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
@@ -145,6 +172,17 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
+    FileSystem fs = FileSystem.get(new Configuration());
+    Path path = new Path(offsetBasePath);
+    StateStore stateStore = new StateStore(fs, path);
+    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
+    PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+    stateService.initialize();
+
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
+    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
+
     // should only have written out the first change
     List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFile);
     List<? extends ChangeEvent> expected = Collections.singletonList(events.get(0));
@@ -156,6 +194,9 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     waitForMetric(appId, "target.dml.insert", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
+
+    offsetAndSequence = stateStore.readOffset(pipelineId);
+    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
     // second change should have been written
     actual = FileEventConsumer.readEvents(outputFile);

@@ -21,4 +21,15 @@ package io.cdap.delta.api;
  */
 public interface DeltaSourceContext extends DeltaRuntimeContext {
 
+  /**
+   * Record that there are currently errors reading change events.
+   *
+   * @param error information about the error
+   */
+  void setError(ReplicationError error);
+
+  /**
+   * Record that there are no errors reading change events.
+   */
+  void setOK();
 }

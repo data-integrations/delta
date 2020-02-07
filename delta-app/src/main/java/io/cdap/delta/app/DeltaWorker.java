@@ -27,12 +27,13 @@ import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.Offset;
+import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.store.DefaultMacroEvaluator;
+import io.cdap.delta.store.StateStore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -59,6 +60,7 @@ public class DeltaWorker extends AbstractWorker {
   private DeltaSource source;
   private DeltaTarget target;
   private EventReaderDefinition readerDefinition;
+  private Offset offset;
 
   public DeltaWorker(String sourceName, String targetName, String offsetBasePath,
                      EventReaderDefinition readerDefinition) {
@@ -74,6 +76,9 @@ public class DeltaWorker extends AbstractWorker {
     Map<String, String> props = new HashMap<>();
     props.put(SOURCE, sourceName);
     props.put(TARGET, targetName);
+    // generation is used in cases where pipeline X is created, then deleted, then created again.
+    // in those situations, we don't want to start from the offset that it had before it was deleted,
+    // so we include the generation as part of the path when storing state.
     props.put(GENERATION, String.valueOf(System.currentTimeMillis()));
     props.put(OFFSET_BASE_PATH, offsetBasePath);
     props.put(READER_DEFINITION, GSON.toJson(readerDefinition));
@@ -88,13 +93,16 @@ public class DeltaWorker extends AbstractWorker {
     targetName = context.getSpecification().getProperty(TARGET);
     offsetBasePath = context.getSpecification().getProperty(OFFSET_BASE_PATH);
     DeltaPipelineId id = new DeltaPipelineId(context.getNamespace(), context.getApplicationSpecification().getName(),
-                                             context.getSpecification().getProperty(GENERATION));
+                                             Long.parseLong(context.getSpecification().getProperty(GENERATION)));
 
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
     StateStore stateStore = new StateStore(fs, path);
     EventMetrics eventMetrics = new EventMetrics(metrics, targetName);
-    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context, eventMetrics);
+    PipelineStateService stateService = new PipelineStateService(id, stateStore);
+    stateService.initialize();
+    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context, eventMetrics,
+                                    stateService);
     MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
                                                               context, context.getNamespace());
     source = context.newPluginInstance(sourceName, macroEvaluator);
@@ -102,20 +110,17 @@ public class DeltaWorker extends AbstractWorker {
     eventConsumer = target.createConsumer(deltaContext);
     readerDefinition = GSON.fromJson(context.getSpecification().getProperty(READER_DEFINITION),
                                      EventReaderDefinition.class);
-    // TODO: load sequence number from offset store
-    DirectEventEmitter emitter = new DirectEventEmitter(eventConsumer, deltaContext, System.currentTimeMillis(),
-                                                        readerDefinition);
+    OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
+    offset = offsetAndSequence.getOffset();
+    DirectEventEmitter emitter = new DirectEventEmitter(eventConsumer, deltaContext,
+                                                        offsetAndSequence.getSequenceNumber(), readerDefinition);
     eventReader = source.createReader(readerDefinition, deltaContext, emitter);
   }
 
   @Override
   public void run() {
-    Offset offset;
-    try {
-      offset = deltaContext.loadOffset();
-    } catch (IOException e) {
-      // TODO: retry
-      throw new RuntimeException("Error loading initial offset.", e);
+    if (offset.get().isEmpty()) {
+      deltaContext.setOK();
     }
     eventConsumer.start();
     eventReader.start(offset);

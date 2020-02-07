@@ -63,8 +63,8 @@ public class DirectEventEmitterTest {
     emitter.emit(DDL);
     emitter.emit(DML);
 
-    Assert.assertEquals(Collections.singletonList(new Sequenced<>(DDL, 0L)), trackingEventConsumer.getDdlEvents());
-    Assert.assertEquals(Collections.singletonList(new Sequenced<>(DML, 1L)), trackingEventConsumer.getDmlEvents());
+    Assert.assertEquals(Collections.singletonList(new Sequenced<>(DDL, 1L)), trackingEventConsumer.getDdlEvents());
+    Assert.assertEquals(Collections.singletonList(new Sequenced<>(DML, 2L)), trackingEventConsumer.getDmlEvents());
   }
 
   @Test

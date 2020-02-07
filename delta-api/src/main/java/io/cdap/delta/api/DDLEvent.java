@@ -36,8 +36,8 @@ public class DDLEvent extends ChangeEvent {
   private final List<String> primaryKey;
 
   private DDLEvent(Offset offset, DDLOperation operation, @Nullable Schema schema, String database,
-                   @Nullable String prevTable, @Nullable String table, List<String> primaryKey) {
-    super(offset);
+                   @Nullable String prevTable, @Nullable String table, List<String> primaryKey, boolean isSnapshot) {
+    super(offset, isSnapshot);
     this.operation = operation;
     this.schema = schema;
     this.database = database;
@@ -104,7 +104,7 @@ public class DDLEvent extends ChangeEvent {
   /**
    * Builder for a DDL event.
    */
-  public static class Builder {
+  public static class Builder extends ChangeEvent.Builder {
     private Offset offset;
     private DDLOperation operation;
     private Schema schema;
@@ -149,7 +149,7 @@ public class DDLEvent extends ChangeEvent {
     }
 
     public DDLEvent build() {
-      return new DDLEvent(offset, operation, schema, database, prevTable, table, primaryKey);
+      return new DDLEvent(offset, operation, schema, database, prevTable, table, primaryKey, isSnapshot);
     }
   }
 }

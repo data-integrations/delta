@@ -32,9 +32,9 @@ public class DMLEvent extends ChangeEvent {
   private final String transactionId;
   private final long ingestTimestampMillis;
 
-  public DMLEvent(Offset offset, DMLOperation operation, String database, String table, StructuredRecord row,
-                  @Nullable String transactionId, long ingestTimestampMillis) {
-    super(offset);
+  private DMLEvent(Offset offset, DMLOperation operation, String database, String table, StructuredRecord row,
+                   @Nullable String transactionId, long ingestTimestampMillis, boolean isSnapshot) {
+    super(offset, isSnapshot);
     this.operation = operation;
     this.database = database;
     this.table = table;
@@ -110,19 +110,13 @@ public class DMLEvent extends ChangeEvent {
   /**
    * Builder for a DML event.
    */
-  public static class Builder {
+  public static class Builder extends ChangeEvent.Builder<Builder> {
     private DMLOperation operation;
     private String database;
     private String table;
     private StructuredRecord row;
     private String transactionId;
     private long ingestTimestampMillis;
-    private Offset offset;
-
-    public Builder setOffset(Offset offset) {
-      this.offset = offset;
-      return this;
-    }
 
     public Builder setOperation(DMLOperation operation) {
       this.operation = operation;
@@ -155,7 +149,7 @@ public class DMLEvent extends ChangeEvent {
     }
 
     public DMLEvent build() {
-      return new DMLEvent(offset, operation, database, table, row, transactionId, ingestTimestampMillis);
+      return new DMLEvent(offset, operation, database, table, row, transactionId, ingestTimestampMillis, isSnapshot);
     }
   }
 }
