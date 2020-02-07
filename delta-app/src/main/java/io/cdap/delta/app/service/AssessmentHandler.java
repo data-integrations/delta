@@ -193,6 +193,12 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     }));
   }
 
+  @GET
+  @Path("health")
+  public void healthCheck(HttpServiceRequest request, HttpServiceResponder responder) {
+    responder.sendStatus(HttpURLConnection.HTTP_OK);
+  }
+
   /**
    * Utility method that checks that the namespace exists before responding.
    */
