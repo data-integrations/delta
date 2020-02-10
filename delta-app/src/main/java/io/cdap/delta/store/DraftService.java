@@ -56,6 +56,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 
 /**
  * Handles logic around storage, retrieval, and assessment of drafts.
@@ -257,7 +258,7 @@ public class DraftService {
       try {
         TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
                                                          targetTableAssessor);
-        tableAssessments.add(summarize(db, table, assessment));
+        tableAssessments.add(summarize(db, table, sourceTable.getSchema(), assessment));
       } catch (TableNotFoundException e) {
         connectivityIssues.add(
           new Problem("Table Not Found",
@@ -292,7 +293,8 @@ public class DraftService {
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
-    TableDetail filteredDetail = new TableDetail(db, table, null, detail.getPrimaryKey(), selectedColumns);
+    TableDetail filteredDetail = new TableDetail(db, table, detail.getSchema(), detail.getPrimaryKey(),
+                                                 selectedColumns);
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);
@@ -400,7 +402,8 @@ public class DraftService {
     }
   }
 
-  private TableSummaryAssessment summarize(String db, String table, TableAssessmentResponse assessment) {
+  private TableSummaryAssessment summarize(String db, String table, @Nullable String schema,
+                                           TableAssessmentResponse assessment) {
     int numUnsupported = 0;
     int numPartial = 0;
     int numColumns = 0;
@@ -412,7 +415,7 @@ public class DraftService {
       }
       numColumns++;
     }
-    return new TableSummaryAssessment(db, table, numColumns, numUnsupported, numPartial);
+    return new TableSummaryAssessment(db, table, numColumns, numUnsupported, numPartial, schema);
   }
 
   private DeltaConfig evaluateMacros(DraftId draftId, DeltaConfig config) {

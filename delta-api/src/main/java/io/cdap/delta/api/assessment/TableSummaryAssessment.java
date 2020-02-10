@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api.assessment;
 
+import javax.annotation.Nullable;
+
 /**
  * A summary of potential issues about a table.
  */
@@ -24,8 +26,8 @@ public class TableSummaryAssessment extends TableSummary {
   private final int numColumnsPartiallySupported;
 
   public TableSummaryAssessment(String database, String table, int numColumns, int numColumnsNotSupported,
-                                int numColumnsPartiallySupported) {
-    super(database, table, numColumns);
+                                int numColumnsPartiallySupported, @Nullable String schema) {
+    super(database, table, numColumns, schema);
     this.numColumnsNotSupported = numColumnsNotSupported;
     this.numColumnsPartiallySupported = numColumnsPartiallySupported;
   }

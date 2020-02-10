@@ -96,7 +96,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaConfig deltaConfig = DeltaConfig.builder().setSource(src).setTarget(target).build();
     service.saveDraft(draftId, new DraftRequest("label", deltaConfig));
 
-    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
@@ -127,7 +127,7 @@ public class DraftServiceTest extends SystemAppTestBase {
       .build();
     service.saveDraft(draftId, new DraftRequest("label", config));
 
-    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
@@ -178,7 +178,7 @@ public class DraftServiceTest extends SystemAppTestBase {
       .build();
     service.saveDraft(draftId, new DraftRequest("label", config));
 
-    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
@@ -204,7 +204,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaTarget mockTarget = new MockTarget(mockAssessor);
     Configurer mockConfigurer = new MockConfigurer(mockSource, mockTarget);
 
-    TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 2, 1, 0);
+    TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 2, 1, 0, null);
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
                                                          Collections.emptyList(), Collections.emptyList());
     PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
@@ -215,7 +215,7 @@ public class DraftServiceTest extends SystemAppTestBase {
   public void testMacroEvaluation() throws Exception {
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
 
-    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3)));
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
