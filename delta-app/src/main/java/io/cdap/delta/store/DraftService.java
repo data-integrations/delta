@@ -261,14 +261,14 @@ public class DraftService {
       } catch (TableNotFoundException e) {
         connectivityIssues.add(
           new Problem("Table Not Found",
-                      String.format("Table '%s' in database '%s' was not found.", db, table),
+                      String.format("Table '%s' in database '%s' was not found.", table, db),
                       "Check the table information and permissions",
                       null));
       } catch (IOException e) {
         connectivityIssues.add(
           new Problem("Table Describe Error",
                       String.format("Unable to fetch details about table '%s' in database '%s': %s",
-                                    db, table, e.getMessage()),
+                                    table, db, e.getMessage()),
                       "Check permissions and database connectivity",
                       null));
       }
