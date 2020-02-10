@@ -28,21 +28,12 @@ import javax.annotation.Nullable;
 public class TableDetail extends TableSummary {
   private final List<String> primaryKey;
   private final List<ColumnDetail> columns;
-  // this schema is required for some db to uniquely identify the table, if this is not provided, it will not
-  // be able to fetch the records
-  private final String schema;
 
   public TableDetail(String database, String table, @Nullable String schema,
                      List<String> primaryKey, List<ColumnDetail> columns) {
-    super(database, table, columns.size());
-    this.schema = schema;
+    super(database, table, columns.size(), schema);
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
     this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
-  }
-
-  @Nullable
-  public String getSchema() {
-    return schema;
   }
 
   public List<String> getPrimaryKey() {
@@ -66,12 +57,11 @@ public class TableDetail extends TableSummary {
     }
     TableDetail that = (TableDetail) o;
     return Objects.equals(primaryKey, that.primaryKey) &&
-      Objects.equals(columns, that.columns) &&
-      Objects.equals(schema, that.schema);
+      Objects.equals(columns, that.columns);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), primaryKey, columns, schema);
+    return Objects.hash(super.hashCode(), primaryKey, columns);
   }
 }
