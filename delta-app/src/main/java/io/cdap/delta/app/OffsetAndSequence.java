@@ -14,32 +14,27 @@
  * the License.
  */
 
-package io.cdap.delta.api;
+package io.cdap.delta.app;
 
-import io.cdap.cdap.api.metrics.Metrics;
-import io.cdap.cdap.api.plugin.PluginContext;
-
-import java.io.IOException;
-import javax.annotation.Nullable;
+import io.cdap.delta.api.Offset;
 
 /**
- * Runtime context for a CDC component.
+ * An offset and sequence number.
  */
-public interface DeltaRuntimeContext extends PluginContext {
+public class OffsetAndSequence {
+  private final Offset offset;
+  private final long sequenceNumber;
 
-  /**
-   * @return the application name
-   */
-  String getApplicationName();
+  public OffsetAndSequence(Offset offset, long sequenceNumber) {
+    this.offset = offset;
+    this.sequenceNumber = sequenceNumber;
+  }
 
-  /**
-   * @return the program run id
-   */
-  String getRunId();
+  public Offset getOffset() {
+    return offset;
+  }
 
-  /**
-   * @return metrics emitter
-   */
-  Metrics getMetrics();
-
+  public long getSequenceNumber() {
+    return sequenceNumber;
+  }
 }

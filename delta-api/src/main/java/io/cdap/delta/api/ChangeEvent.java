@@ -23,13 +23,19 @@ import java.util.Objects;
  */
 public abstract class ChangeEvent {
   private final Offset offset;
+  private final boolean isSnapshot;
 
-  protected ChangeEvent(Offset offset) {
+  protected ChangeEvent(Offset offset, boolean isSnapshot) {
     this.offset = offset;
+    this.isSnapshot = isSnapshot;
   }
 
   public Offset getOffset() {
     return offset;
+  }
+
+  public boolean isSnapshot() {
+    return isSnapshot;
   }
 
   @Override
@@ -41,11 +47,32 @@ public abstract class ChangeEvent {
       return false;
     }
     ChangeEvent that = (ChangeEvent) o;
-    return Objects.equals(offset, that.offset);
+    return isSnapshot == that.isSnapshot &&
+      Objects.equals(offset, that.offset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(offset);
+    return Objects.hash(offset, isSnapshot);
+  }
+
+  /**
+   * Builds a ChangeEvent
+   *
+   * @param <T> type of builder
+   */
+  public static class Builder<T extends Builder> {
+    protected Offset offset;
+    protected boolean isSnapshot;
+
+    public T setOffset(Offset offset) {
+      this.offset = offset;
+      return (T) this;
+    }
+
+    public T setSnapshot(boolean isSnapshot) {
+      this.isSnapshot = isSnapshot;
+      return (T) this;
+    }
   }
 }

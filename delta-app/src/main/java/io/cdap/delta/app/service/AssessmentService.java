@@ -24,11 +24,16 @@ import io.cdap.delta.store.DraftStore;
  */
 public class AssessmentService extends AbstractSystemService {
   static final String NAME = "assessor";
+  private final String offsetBasePath;
+
+  public AssessmentService(String offsetBasePath) {
+    this.offsetBasePath = offsetBasePath;
+  }
 
   @Override
   protected void configure() {
     setName(NAME);
-    addHandler(new AssessmentHandler());
+    addHandler(new AssessmentHandler(offsetBasePath));
     createTable(DraftStore.TABLE_SPEC);
   }
 }

@@ -14,12 +14,15 @@
  * the License.
  */
 
-package io.cdap.delta.app;
+package io.cdap.delta.store;
 
 import com.google.common.io.ByteStreams;
 import io.cdap.delta.api.Offset;
+import io.cdap.delta.app.DeltaPipelineId;
+import io.cdap.delta.app.OffsetAndSequence;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
@@ -43,13 +46,14 @@ public class StateStore {
   }
 
   @Nullable
-  public Offset readOffset(DeltaPipelineId id) throws IOException {
+  public OffsetAndSequence readOffset(DeltaPipelineId id) throws IOException {
     Path path = getPath(id, OFFSET_KEY);
     if (!fileSystem.exists(path)) {
       return null;
     }
-    Map<String, byte[]> offset = new HashMap<>();
     try (FSDataInputStream inputStream = fileSystem.open(path)) {
+      Map<String, byte[]> offset = new HashMap<>();
+      long sequenceNumber = inputStream.readLong();
       int numKeys = inputStream.readInt();
       for (int i = 0; i < numKeys; i++) {
         String key = inputStream.readUTF();
@@ -58,20 +62,38 @@ public class StateStore {
         inputStream.readFully(val);
         offset.put(key, val);
       }
+      return new OffsetAndSequence(new Offset(offset), sequenceNumber);
     }
-    return new Offset(offset);
   }
 
-  public void writeOffset(DeltaPipelineId id, Offset offset) throws IOException {
+  public void writeOffset(DeltaPipelineId id, OffsetAndSequence offset) throws IOException {
     Path path = getPath(id, OFFSET_KEY);
     try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
-      outputStream.writeInt(offset.get().size());
-      for (Map.Entry<String, byte[]> entry : offset.get().entrySet()) {
+      outputStream.writeLong(offset.getSequenceNumber());
+      outputStream.writeInt(offset.getOffset().get().size());
+      for (Map.Entry<String, byte[]> entry : offset.getOffset().get().entrySet()) {
         outputStream.writeUTF(entry.getKey());
         outputStream.writeInt(entry.getValue().length);
         outputStream.write(entry.getValue());
       }
     }
+  }
+
+  /**
+   * @return the most recent generation of the given pipeline
+   */
+  @Nullable
+  public Long getLatestGeneration(String namespace, String pipelineName) throws IOException {
+    Path path = new Path(basePath, String.format("%s/%s", namespace, pipelineName));
+    if (!fileSystem.exists(path)) {
+      return null;
+    }
+    long maxGeneration = -1L;
+    for (FileStatus file : fileSystem.listStatus(path)) {
+      long gen = Long.parseLong(file.getPath().getName());
+      maxGeneration = Math.max(gen, maxGeneration);
+    }
+    return maxGeneration > 0 ? maxGeneration : null;
   }
 
   @Nullable

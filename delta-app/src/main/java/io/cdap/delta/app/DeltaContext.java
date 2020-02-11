@@ -26,10 +26,12 @@ import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.Offset;
+import io.cdap.delta.api.ReplicationError;
+import io.cdap.delta.proto.DBTable;
+import io.cdap.delta.store.StateStore;
 
 import java.io.IOException;
 import java.util.Collections;
-import javax.annotation.Nullable;
 
 /**
  * Context for delta plugins
@@ -41,15 +43,17 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final StateStore stateStore;
   private final PluginContext pluginContext;
   private final EventMetrics eventMetrics;
+  private final PipelineStateService stateService;
 
   public DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
-                      PluginContext pluginContext, EventMetrics eventMetrics) {
+                      PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
     this.stateStore = stateStore;
     this.pluginContext = pluginContext;
     this.eventMetrics = eventMetrics;
+    this.stateService = stateService;
   }
 
   @Override
@@ -63,14 +67,34 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public void commitOffset(Offset offset) throws IOException {
-    stateStore.writeOffset(id, offset);
+  public void commitOffset(Offset offset, long sequenceNumber) throws IOException {
+    stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber));
     eventMetrics.emitMetrics();
   }
 
-  public Offset loadOffset() throws IOException {
-    Offset offset = stateStore.readOffset(id);
-    return offset == null ? new Offset(Collections.emptyMap()) : offset;
+  @Override
+  public void setTableError(String database, String table, ReplicationError error) {
+    stateService.setTableError(new DBTable(database, table), error);
+  }
+
+  @Override
+  public void setTableReplicating(String database, String table) {
+    stateService.setTableReplicating(new DBTable(database, table));
+  }
+
+  @Override
+  public void setTableSnapshotting(String database, String table) {
+    stateService.setTableSnapshotting(new DBTable(database, table));
+  }
+
+  @Override
+  public void dropTableState(String database, String table) {
+    stateService.dropTable(new DBTable(database, table));
+  }
+
+  public OffsetAndSequence loadOffset() throws IOException {
+    OffsetAndSequence offset = stateStore.readOffset(id);
+    return offset == null ? new OffsetAndSequence(new Offset(Collections.emptyMap()), 0L) : offset;
   }
 
   @Override
@@ -86,17 +110,6 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public Metrics getMetrics() {
     return metrics;
-  }
-
-  @Nullable
-  @Override
-  public byte[] getState(String key) throws IOException {
-    return stateStore.readState(id, key);
-  }
-
-  @Override
-  public void putState(String key, byte[] val) throws IOException {
-    stateStore.writeState(id, key, val);
   }
 
   @Override
@@ -124,4 +137,15 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     throws InstantiationException, InvalidMacroException {
     return pluginContext.newPluginInstance(pluginId, evaluator);
   }
+
+  @Override
+  public void setError(ReplicationError error) {
+    stateService.setSourceError(error);
+  }
+
+  @Override
+  public void setOK() {
+    stateService.setSourceOK();
+  }
+
 }

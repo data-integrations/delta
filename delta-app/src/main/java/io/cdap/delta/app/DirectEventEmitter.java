@@ -60,13 +60,13 @@ public class DirectEventEmitter implements EventEmitter {
       return;
     }
 
+    sequenceNumber++;
     try {
       consumer.applyDDL(new Sequenced<>(event, sequenceNumber));
     } catch (Exception e) {
       // TODO: (CDAP-16251) retry
       throw new RuntimeException(e);
     }
-    sequenceNumber++;
   }
 
   @Override
@@ -75,13 +75,13 @@ public class DirectEventEmitter implements EventEmitter {
       return;
     }
 
+    sequenceNumber++;
     try {
       consumer.applyDML(new Sequenced<>(event, sequenceNumber));
     } catch (Exception e) {
       // TODO: (CDAP-16251) retry
       throw new RuntimeException(e);
     }
-    sequenceNumber++;
   }
 
   private boolean shouldIgnore(DDLEvent event) {

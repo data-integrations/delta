@@ -43,7 +43,7 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     DeltaConfig conf = getConfig();
 
     if (conf.isService()) {
-      addService(new AssessmentService());
+      addService(new AssessmentService(conf.getOffsetBasePath()));
       setDescription("Delta Pipeline System Service");
       return;
     }

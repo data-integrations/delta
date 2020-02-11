@@ -16,10 +16,6 @@
 
 package io.cdap.delta.test.mock;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.internal.io.SchemaTypeAdapter;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.DMLEvent;
@@ -35,10 +31,6 @@ import java.util.List;
  * A mock event reader that emits a pre-specified list of events.
  */
 public class MockEventReader implements EventReader {
-  private static final Gson GSON = new GsonBuilder()
-    .registerTypeAdapter(Schema.class, new SchemaTypeAdapter())
-    .registerTypeAdapter(ChangeEvent.class, new ChangeEventDeserializer())
-    .create();
   private final List<? extends ChangeEvent> events;
   private final EventEmitter emitter;
   private final int maxEvents;

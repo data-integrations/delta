@@ -17,14 +17,15 @@
 package io.cdap.delta.app;
 
 /**
- * Uniquely identifies a delta pipeline
+ * Uniquely identifies a delta pipeline.
+ * The generation is used to distinguish between pipeline X that was created, then deleted, then created again.
  */
 public class DeltaPipelineId {
   private final String namespace;
   private final String app;
-  private final String generation;
+  private final long generation;
 
-  public DeltaPipelineId(String namespace, String app, String generation) {
+  public DeltaPipelineId(String namespace, String app, long generation) {
     this.namespace = namespace;
     this.app = app;
     this.generation = generation;
@@ -38,7 +39,7 @@ public class DeltaPipelineId {
     return app;
   }
 
-  public String getGeneration() {
+  public long getGeneration() {
     return generation;
   }
 }

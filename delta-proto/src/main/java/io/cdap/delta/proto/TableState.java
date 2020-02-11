@@ -14,32 +14,13 @@
  * the License.
  */
 
-package io.cdap.delta.api;
-
-import io.cdap.cdap.api.metrics.Metrics;
-import io.cdap.cdap.api.plugin.PluginContext;
-
-import java.io.IOException;
-import javax.annotation.Nullable;
+package io.cdap.delta.proto;
 
 /**
- * Runtime context for a CDC component.
+ * State of a table.
  */
-public interface DeltaRuntimeContext extends PluginContext {
-
-  /**
-   * @return the application name
-   */
-  String getApplicationName();
-
-  /**
-   * @return the program run id
-   */
-  String getRunId();
-
-  /**
-   * @return metrics emitter
-   */
-  Metrics getMetrics();
-
+public enum TableState {
+  SNAPSHOT,
+  REPLICATE,
+  ERROR
 }

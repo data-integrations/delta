@@ -51,7 +51,7 @@ public class FileEventConsumer implements EventConsumer {
   private final List<ChangeEvent> events;
   private final DeltaTargetContext context;
 
-  public FileEventConsumer(File file, DeltaTargetContext context) {
+  FileEventConsumer(File file, DeltaTargetContext context) {
     this.file = file;
     this.events = new ArrayList<>();
     this.context = context;
@@ -75,14 +75,15 @@ public class FileEventConsumer implements EventConsumer {
   public void applyDDL(Sequenced<DDLEvent> event) throws IOException {
     events.add(event.getEvent());
     context.incrementCount(event.getEvent().getOperation());
-    context.commitOffset(event.getEvent().getOffset());
+    context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
+    context.setTableReplicating(event.getEvent().getDatabase(), event.getEvent().getTable());
   }
 
   @Override
   public void applyDML(Sequenced<DMLEvent> event) throws IOException {
     events.add(event.getEvent());
     context.incrementCount(event.getEvent().getOperation());
-    context.commitOffset(event.getEvent().getOffset());
+    context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
   }
 
   /**
