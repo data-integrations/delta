@@ -19,19 +19,11 @@ package io.cdap.delta.app;
 import io.cdap.cdap.api.app.AbstractApplication;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
-import io.cdap.delta.api.DDLOperation;
-import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
-import io.cdap.delta.api.EventReaderDefinition;
-import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.app.service.AssessmentService;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.Stage;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * App for Delta pipelines.
@@ -58,21 +50,7 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
 
-    // union the top level blacklists with the table level blacklists, so that plugins don't have to do it.
-    Set<SourceTable> expandedTables = conf.getTables().stream()
-      .map(t -> {
-        Set<DMLOperation> expandedDmlBlacklist = new HashSet<>(t.getDmlBlacklist());
-        expandedDmlBlacklist.addAll(conf.getDmlBlacklist());
-        Set<DDLOperation> expandedDdlBlacklist = new HashSet<>(t.getDdlBlacklist());
-        expandedDdlBlacklist.addAll(conf.getDdlBlacklist());
-        return new SourceTable(t.getDatabase(), t.getTable(), t.getSchema(),
-                               t.getColumns(), expandedDmlBlacklist, expandedDdlBlacklist);
-      }).collect(Collectors.toSet());
-    EventReaderDefinition readerDefinition = new EventReaderDefinition(expandedTables,
-                                                                       conf.getDmlBlacklist(),
-                                                                       conf.getDdlBlacklist());
-    addWorker(new DeltaWorker(sourceConf.getName(), targetConf.getName(), conf.getOffsetBasePath(),
-                              readerDefinition));
+    addWorker(new DeltaWorker());
 
     String description = conf.getDescription();
     if (description == null) {

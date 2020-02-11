@@ -28,8 +28,10 @@ public interface EventConsumer {
 
   /**
    * Stop the event consumer.
+   *
+   * @throws InterruptedException if the consumer was interrupted while stopping
    */
-  void stop();
+  void stop() throws InterruptedException;
 
   /**
    * Apply a DDL event, such as creating a table. This method must be idempotent. For example, if the event is a table

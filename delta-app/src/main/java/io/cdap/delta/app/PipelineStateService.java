@@ -25,17 +25,22 @@ import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.proto.TableState;
 import io.cdap.delta.store.StateStore;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Stores information about pipeline and table state.
+ * Stores information about pipeline and table state. Stores state in memory, persisting it to the StateStore if
+ * anything changes. Separate instances of this class should not be used to write state, as it will result in
+ * inconsistent results due to the fact that it keeps state information in memory.
  */
 public class PipelineStateService {
   private static final Logger LOG = LoggerFactory.getLogger(PipelineStateService.class);
@@ -44,6 +49,7 @@ public class PipelineStateService {
   private final DeltaPipelineId pipelineId;
   private final StateStore stateStore;
   private final Map<DBTable, TableReplicationState> tables;
+  private final RetryPolicy<Object> saveRetryPolicy;
   private PipelineState sourceState;
   private ReplicationError sourceError;
 
@@ -51,16 +57,29 @@ public class PipelineStateService {
     this.pipelineId = pipelineId;
     this.stateStore = stateStore;
     this.tables = new HashMap<>();
+    this.saveRetryPolicy = new RetryPolicy<>()
+      .withMaxAttempts(Integer.MAX_VALUE)
+      .withBackoff(1, 60, ChronoUnit.SECONDS)
+      .onFailedAttempt(failure -> {
+        // log the first time and in 1 minute increments to avoid spamming the log.
+        if (failure.getAttemptCount() == 1 || !failure.getElapsedTime().minusMinutes(1).isNegative()) {
+          LOG.warn("Unable to save pipeline replication state. This operation will be retried until it succeeds.",
+                   failure.getLastFailure());
+        }
+      });
   }
 
-  public void initialize() throws IOException {
+  /**
+   * Load state from persistent storage into memory.
+   */
+  public void load() throws IOException {
     byte[] bytes = stateStore.readState(pipelineId, STATE_KEY);
     if (bytes == null) {
       sourceState = PipelineState.OK;
       sourceError = null;
+      tables.clear();
     } else {
-      PipelineReplicationState replState = GSON.fromJson(Bytes.toString(stateStore.readState(pipelineId, STATE_KEY)),
-                                                         PipelineReplicationState.class);
+      PipelineReplicationState replState = GSON.fromJson(Bytes.toString(bytes), PipelineReplicationState.class);
       sourceState = replState.getSourceState();
       sourceError = replState.getSourceError();
       tables.putAll(replState.getTables().stream()
@@ -118,12 +137,8 @@ public class PipelineStateService {
   }
 
   private void save() {
-    try {
-      stateStore.writeState(pipelineId, STATE_KEY, Bytes.toBytes(GSON.toJson(getState())));
-    } catch (IOException e) {
-      // TODO: (CDAP-16251) retry failures
-      LOG.warn("Unable to save pipeline replication state.", e);
-    }
+    byte[] stateBytes = Bytes.toBytes(GSON.toJson(getState()));
+    Failsafe.with(saveRetryPolicy).run(() -> stateStore.writeState(pipelineId, STATE_KEY, stateBytes));
   }
 
 }

@@ -47,12 +47,14 @@ public class DeltaConfig extends Config {
   private final Set<SourceTable> tables;
   private final Set<DMLOperation> dmlBlacklist;
   private final Set<DDLOperation> ddlBlacklist;
+  private final RetryConfig retries;
   // should only be set by CDAP admin when creating the system service
   private final boolean service;
 
   private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
                       Resources resources, String offsetBasePath, Set<SourceTable> tables,
-                      Set<DMLOperation> dmlBlacklist, Set<DDLOperation> ddlBlacklist) {
+                      Set<DMLOperation> dmlBlacklist, Set<DDLOperation> ddlBlacklist,
+                      RetryConfig retries) {
     this.description = description;
     this.stages = new ArrayList<>(stages);
     this.connections = new ArrayList<>(connections);
@@ -62,6 +64,7 @@ public class DeltaConfig extends Config {
     this.service = false;
     this.dmlBlacklist = new HashSet<>(dmlBlacklist);
     this.ddlBlacklist = new HashSet<>(ddlBlacklist);
+    this.retries = retries;
   }
 
   @Nullable
@@ -96,6 +99,14 @@ public class DeltaConfig extends Config {
 
   public Set<DDLOperation> getDdlBlacklist() {
     return ddlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(ddlBlacklist);
+  }
+
+  /**
+   * @return number of minutes to retry failures before failing the program run. A non-positive number means there
+   *   is no retry limit.
+   */
+  public RetryConfig getRetryConfig() {
+    return retries == null ? RetryConfig.DEFAULT : retries;
   }
 
   public boolean isService() {
@@ -208,6 +219,7 @@ public class DeltaConfig extends Config {
     private Set<SourceTable> tables;
     private Set<DMLOperation> dmlBlacklist;
     private Set<DDLOperation> ddlBlacklist;
+    private RetryConfig retries;
 
     private Builder() {
       description = "";
@@ -215,6 +227,7 @@ public class DeltaConfig extends Config {
       tables = new HashSet<>();
       dmlBlacklist = new HashSet<>();
       ddlBlacklist = new HashSet<>();
+      retries = RetryConfig.DEFAULT;
     }
 
     public Builder setSource(Stage source) {
@@ -260,6 +273,11 @@ public class DeltaConfig extends Config {
       return this;
     }
 
+    public Builder setRetryConfig(RetryConfig retryConfig) {
+      this.retries = retryConfig;
+      return this;
+    }
+
     public DeltaConfig build() {
       List<Stage> stages = new ArrayList<>();
       if (source != null) {
@@ -273,7 +291,7 @@ public class DeltaConfig extends Config {
         connections.add(new Connection(source.getName(), target.getName()));
       }
       DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables,
-                                           dmlBlacklist, ddlBlacklist);
+                                           dmlBlacklist, ddlBlacklist, retries);
       config.validate();
       return config;
     }

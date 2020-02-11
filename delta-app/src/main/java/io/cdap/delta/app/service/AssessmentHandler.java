@@ -35,6 +35,8 @@ import io.cdap.delta.app.PipelineStateService;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DraftRequest;
+import io.cdap.delta.proto.PipelineReplicationState;
+import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
@@ -228,14 +230,16 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       StateStore stateStore = new StateStore(fs, path);
 
       Long latestGen = stateStore.getLatestGeneration(namespaceName, pipelineName);
+      // this can happen if the pipeline was never started
       if (latestGen == null) {
-        responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, "Unable to find state for the pipeline.");
+        PipelineReplicationState state = new PipelineReplicationState(PipelineState.OK, Collections.emptySet(), null);
+        responder.sendString(GSON.toJson(state));
         return;
       }
 
       DeltaPipelineId pipelineId = new DeltaPipelineId(namespaceName, pipelineName, latestGen);
       PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
-      stateService.initialize();
+      stateService.load();
       responder.sendString(GSON.toJson(stateService.getState()));
     }));
   }

@@ -29,8 +29,13 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import javax.annotation.Nullable;
 
@@ -39,6 +44,7 @@ import javax.annotation.Nullable;
  */
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private static final String STATE_PREFIX = "state-";
+  private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
   private final DeltaPipelineId id;
   private final String runId;
   private final Metrics metrics;
@@ -46,9 +52,10 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final PluginContext pluginContext;
   private final EventMetrics eventMetrics;
   private final PipelineStateService stateService;
+  private final RetryPolicy<Object> commitOffsetRetryPolicy;
 
-  public DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
-                      PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
+  DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
+               PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
@@ -56,6 +63,15 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.pluginContext = pluginContext;
     this.eventMetrics = eventMetrics;
     this.stateService = stateService;
+    this.commitOffsetRetryPolicy = new RetryPolicy<>()
+      .withBackoff(1, 120, ChronoUnit.SECONDS)
+      .withMaxAttempts(Integer.MAX_VALUE)
+      .onFailedAttempt(event -> {
+        if (event.getAttemptCount() == 1 || !event.getElapsedTime().minusMinutes(1).isNegative()) {
+          LOG.error("Unable to store offset. This operation will be retried until it succeeds.",
+                    event.getLastFailure());
+        }
+      });
   }
 
   @Override
@@ -69,8 +85,9 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public void commitOffset(Offset offset, long sequenceNumber) throws IOException {
-    stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber));
+  public void commitOffset(Offset offset, long sequenceNumber) {
+    Failsafe.with(commitOffsetRetryPolicy)
+      .run(() -> stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber)));
     eventMetrics.emitMetrics();
   }
 
@@ -94,7 +111,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     stateService.dropTable(new DBTable(database, table));
   }
 
-  public OffsetAndSequence loadOffset() throws IOException {
+  OffsetAndSequence loadOffset() throws IOException {
     OffsetAndSequence offset = stateStore.readOffset(id);
     return offset == null ? new OffsetAndSequence(new Offset(Collections.emptyMap()), 0L) : offset;
   }
@@ -161,4 +178,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     stateService.setSourceOK();
   }
 
+  public void clearMetrics() {
+    eventMetrics.clear();
+  }
 }

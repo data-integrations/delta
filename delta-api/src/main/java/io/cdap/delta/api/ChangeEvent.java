@@ -24,10 +24,12 @@ import java.util.Objects;
 public abstract class ChangeEvent {
   private final Offset offset;
   private final boolean isSnapshot;
+  private final ChangeType changeType;
 
-  protected ChangeEvent(Offset offset, boolean isSnapshot) {
+  protected ChangeEvent(Offset offset, boolean isSnapshot, ChangeType changeType) {
     this.offset = offset;
     this.isSnapshot = isSnapshot;
+    this.changeType = changeType;
   }
 
   public Offset getOffset() {
@@ -36,6 +38,10 @@ public abstract class ChangeEvent {
 
   public boolean isSnapshot() {
     return isSnapshot;
+  }
+
+  public ChangeType getChangeType() {
+    return changeType;
   }
 
   @Override
@@ -48,12 +54,13 @@ public abstract class ChangeEvent {
     }
     ChangeEvent that = (ChangeEvent) o;
     return isSnapshot == that.isSnapshot &&
-      Objects.equals(offset, that.offset);
+      Objects.equals(offset, that.offset) &&
+      changeType == that.changeType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(offset, isSnapshot);
+    return Objects.hash(offset, isSnapshot, changeType);
   }
 
   /**

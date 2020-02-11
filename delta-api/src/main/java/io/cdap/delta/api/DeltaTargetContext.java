@@ -16,8 +16,6 @@
 
 package io.cdap.delta.api;
 
-import java.io.IOException;
-
 /**
  * Context for a CDC Target.
  */
@@ -52,7 +50,7 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
    * @param offset offset to commitOffset
    * @param sequenceNumber the sequence number for the offset
    */
-  void commitOffset(Offset offset, long sequenceNumber) throws IOException;
+  void commitOffset(Offset offset, long sequenceNumber);
 
   /**
    * Record that there are currently errors applying events to a specified table
