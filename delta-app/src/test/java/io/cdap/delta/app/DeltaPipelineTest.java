@@ -211,6 +211,35 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   }
 
   @Test
+  public void testFailImmediately() throws Exception {
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(EVENT1);
+    events.add(EVENT2);
+
+    String offsetBasePath = TEMP_FOLDER.newFolder("testFailImmediately").getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events));
+
+    // configure the target to throw exceptions after the first event is applied
+    // until the proceedFile is created
+    Stage target = new Stage("target", FailureTarget.failImmediately(1L));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      // configure it to retry indefinitely.
+      // The run will only finish because of a failure and not from retry exhaustion
+      .setRetryConfig(new RetryConfig(Integer.MAX_VALUE, 0))
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testFailImmediately");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.FAILED, 60, TimeUnit.SECONDS);
+  }
+
+  @Test
   public void testFailureRetries() throws Exception {
     String proceedFilePath = TMP_FOLDER.getRoot().getAbsolutePath();
     File proceedFile = new File(proceedFilePath, "proceed");
@@ -224,7 +253,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // configure the target to throw exceptions after the first event is applied
     // until the proceedFile is created
-    Stage target = new Stage("target", FailureTarget.getPlugin(1L, proceedFile));
+    Stage target = new Stage("target", FailureTarget.failAfter(1L, proceedFile));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -285,6 +314,10 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     // verify that metrics were not double counted during errors
     waitForMetric(appId, "target.ddl", 1);
     waitForMetric(appId, "target.dml.insert", 1);
+
+    Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
+    // check that state is killed and not failed
+    Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
   }
 
   private void waitForMetric(ApplicationId appId, String metric, int expected)

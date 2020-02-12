@@ -42,11 +42,14 @@ public interface EventConsumer {
    * During normal operation, an event will be applied exactly once.
    * In failure scenarios the event will be applied at least once.
    *
-   * If this method throws an Exception, the data transfer process will become stuck until the method completes
-   * successfully.
+   * If this method throws a DeltaFailureException, the pipeline will fail immediately.
+   * If any other type of Exception is thrown, pipeline offset and sequence number will be reset to the last
+   * commit, and events will be re-applied. If exceptions are consecutively thrown for longer than the
+   * configured pipeline timeout, retries will be abandoned and the pipeline will be fail.
    *
    * @param event ddl event to apply
-   * @throws Exception if there was an error applying the change
+   * @throws DeltaFailureException if there was an error and the pipeline should immediately be failed
+   * @throws Exception if there was an error applying the change, but it might succeed in the future
    */
   void applyDDL(Sequenced<DDLEvent> event) throws Exception;
 
@@ -59,8 +62,14 @@ public interface EventConsumer {
    * During normal operation, each batch will be applied exactly once.
    * In failure scenarios the batch will be applied at least once.
    *
+   * If this method throws a DeltaFailureException, the pipeline will fail immediately.
+   * If any other type of Exception is thrown, pipeline offset and sequence number will be reset to the last
+   * commit, and events will be re-applied. If exceptions are consecutively thrown for longer than the
+   * configured pipeline timeout, retries will be abandoned and the pipeline will be fail.
+   *
    * @param event DML event to apply
-   * @throws Exception if there was an error applying the change
+   * @throws DeltaFailureException if there was an error and the pipeline should immediately be failed
+   * @throws Exception if there was an error applying the change, but it might succeed in the future
    */
   void applyDML(Sequenced<DMLEvent> event) throws Exception;
 

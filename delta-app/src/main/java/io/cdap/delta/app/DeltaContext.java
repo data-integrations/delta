@@ -29,13 +29,10 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import javax.annotation.Nullable;
 
@@ -52,7 +49,6 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final PluginContext pluginContext;
   private final EventMetrics eventMetrics;
   private final PipelineStateService stateService;
-  private final RetryPolicy<Object> commitOffsetRetryPolicy;
 
   DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
@@ -63,15 +59,6 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.pluginContext = pluginContext;
     this.eventMetrics = eventMetrics;
     this.stateService = stateService;
-    this.commitOffsetRetryPolicy = new RetryPolicy<>()
-      .withBackoff(1, 120, ChronoUnit.SECONDS)
-      .withMaxAttempts(Integer.MAX_VALUE)
-      .onFailedAttempt(event -> {
-        if (event.getAttemptCount() == 1 || !event.getElapsedTime().minusMinutes(1).isNegative()) {
-          LOG.error("Unable to store offset. This operation will be retried until it succeeds.",
-                    event.getLastFailure());
-        }
-      });
   }
 
   @Override
@@ -85,29 +72,28 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public void commitOffset(Offset offset, long sequenceNumber) {
-    Failsafe.with(commitOffsetRetryPolicy)
-      .run(() -> stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber)));
+  public void commitOffset(Offset offset, long sequenceNumber) throws IOException {
+    stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber));
     eventMetrics.emitMetrics();
   }
 
   @Override
-  public void setTableError(String database, String table, ReplicationError error) {
+  public void setTableError(String database, String table, ReplicationError error) throws IOException {
     stateService.setTableError(new DBTable(database, table), error);
   }
 
   @Override
-  public void setTableReplicating(String database, String table) {
+  public void setTableReplicating(String database, String table) throws IOException {
     stateService.setTableReplicating(new DBTable(database, table));
   }
 
   @Override
-  public void setTableSnapshotting(String database, String table) {
+  public void setTableSnapshotting(String database, String table) throws IOException {
     stateService.setTableSnapshotting(new DBTable(database, table));
   }
 
   @Override
-  public void dropTableState(String database, String table) {
+  public void dropTableState(String database, String table) throws IOException {
     stateService.dropTable(new DBTable(database, table));
   }
 
@@ -169,12 +155,12 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public void setError(ReplicationError error) {
+  public void setError(ReplicationError error) throws IOException {
     stateService.setSourceError(error);
   }
 
   @Override
-  public void setOK() {
+  public void setOK() throws IOException {
     stateService.setSourceOK();
   }
 

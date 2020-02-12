@@ -91,36 +91,36 @@ public class PipelineStateService {
     return new PipelineReplicationState(sourceState, new HashSet<>(tables.values()), sourceError);
   }
 
-  public synchronized void setSourceError(ReplicationError error) {
+  public synchronized void setSourceError(ReplicationError error) throws IOException {
     setSourceState(PipelineState.ERROR, error);
   }
 
-  public synchronized void setSourceOK() {
+  public synchronized void setSourceOK() throws IOException {
     setSourceState(PipelineState.OK, null);
   }
 
-  public synchronized void setTableSnapshotting(DBTable dbTable) {
+  public synchronized void setTableSnapshotting(DBTable dbTable) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
                                                      TableState.SNAPSHOT, null));
   }
 
-  public synchronized void setTableReplicating(DBTable dbTable) {
+  public synchronized void setTableReplicating(DBTable dbTable) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
                                                      TableState.REPLICATE, null));
   }
 
-  public synchronized void setTableError(DBTable dbTable, ReplicationError error) {
+  public synchronized void setTableError(DBTable dbTable, ReplicationError error) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
                                                      TableState.ERROR, error));
   }
 
-  public synchronized void dropTable(DBTable dbTable) {
+  public synchronized void dropTable(DBTable dbTable) throws IOException {
     if (tables.remove(dbTable) != null) {
       save();
     }
   }
 
-  private void setSourceState(PipelineState state, ReplicationError error) {
+  private void setSourceState(PipelineState state, ReplicationError error) throws IOException {
     boolean shouldSave = sourceState != state;
     sourceState = state;
     sourceError = error;
@@ -129,16 +129,16 @@ public class PipelineStateService {
     }
   }
 
-  private void setTableState(DBTable dbTable, TableReplicationState newState) {
+  private void setTableState(DBTable dbTable, TableReplicationState newState) throws IOException {
     TableReplicationState oldState = tables.put(dbTable, newState);
     if (!newState.equals(oldState)) {
       save();
     }
   }
 
-  private void save() {
+  private void save() throws IOException {
     byte[] stateBytes = Bytes.toBytes(GSON.toJson(getState()));
-    Failsafe.with(saveRetryPolicy).run(() -> stateStore.writeState(pipelineId, STATE_KEY, stateBytes));
+    stateStore.writeState(pipelineId, STATE_KEY, stateBytes);
   }
 
 }

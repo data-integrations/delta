@@ -27,6 +27,7 @@ import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DMLOperation;
+import io.cdap.delta.api.DeltaFailureException;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.EventConsumer;
@@ -56,6 +57,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -66,6 +68,8 @@ public class DeltaWorker extends AbstractWorker {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaWorker.class);
   private static final Gson GSON = new Gson();
   private static final String GENERATION = "generation";
+
+  private final AtomicBoolean shouldStop = new AtomicBoolean(false);
 
   // this is injected by CDAP
   @SuppressWarnings("unused")
@@ -81,7 +85,6 @@ public class DeltaWorker extends AbstractWorker {
   private BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
   private int maxRetrySeconds;
   private int retryDelaySeconds;
-  private volatile boolean shouldStop = false;
 
   @Override
   protected void configure() {
@@ -137,16 +140,16 @@ public class DeltaWorker extends AbstractWorker {
                                                  config.getDmlBlacklist(),
                                                  config.getDdlBlacklist());
 
-    // TODO: make the queue size configurable?
+    // TODO: make the queue size configurable? record metrics about queue size?
     eventQueue = new ArrayBlockingQueue<>(100);
   }
 
   @Override
   public void run() {
-    if (offset.get().isEmpty()) {
-      deltaContext.setOK();
-    }
     try {
+      if (offset.get().isEmpty()) {
+        deltaContext.setOK();
+      }
       startFromLastCommit();
     } catch (Exception e) {
       // if this fails at the start of the run, fail the entire run as it probably means there is something
@@ -154,25 +157,35 @@ public class DeltaWorker extends AbstractWorker {
       throw new RuntimeException(e.getMessage(), e);
     }
 
-    AtomicBoolean interrupted = new AtomicBoolean(false);
+    AtomicReference<Throwable> error = new AtomicReference<>();
     // in most circumstances, the worker is stopped, which causes eventQueue.take() to be interrupted and break out
     // of the loop. However, it is also possible for the worker to be stopped before it gets here, in which case it
     // should just end immediately.
-    while (!shouldStop) {
+    while (!shouldStop.get()) {
 
       // create the retry policy for handling exceptions thrown from calls to applyEvent()
       // the worker will retry up to the configured maximum amount of time.
       // On each failed attempt, offset will be rolled back to the last commit, and any in-memory state
       // related to metrics and queued change events will be cleared away.
       RetryPolicy<Object> retryPolicy = new RetryPolicy<>()
+        // max attempts defaults to 3 if it is not set. Set this to max value so that retries
+        // are dictated by duration and not attempts
         .withMaxAttempts(Integer.MAX_VALUE)
         .withMaxDuration(Duration.of(maxRetrySeconds, ChronoUnit.SECONDS))
         .withDelay(retryDelaySeconds == 0 ? Duration.of(1, ChronoUnit.MILLIS) :
           Duration.of(retryDelaySeconds, ChronoUnit.SECONDS))
-        .abortIf(o -> interrupted.get())
-        .onFailedAttempt(failure -> {
+        .abortIf(o -> shouldStop.get())
+        .onFailedAttempt(failureContext -> {
+          Throwable failure = failureContext.getLastFailure();
+          error.set(failure);
+          if (failure instanceof DeltaFailureException) {
+            LOG.warn("Encountered an error that cannot be retried. Failing the pipeline...", failure);
+            shouldStop.set(true);
+            return;
+          }
+
           LOG.warn("Encountered an error while attempting to apply an event. "
-                     + "Events will be replayed from the last successful commit.");
+                     + "Events will be replayed from the last successful commit.", failure);
           // if there was an error applying the event, stop the current reader and consumer
           // and restart from the last commit. We cannot just retry applying the single event because that would force
           // targets to persist their changes before they can return from applyDML or applyDDL.
@@ -186,7 +199,7 @@ public class DeltaWorker extends AbstractWorker {
             // if stopping is interrupted, it means the worker is shutting down.
             // in this scenario, we want to break out of the retry loop instead
             // of trying to reset the state and keep reading
-            interrupted.set(true);
+            shouldStop.set(true);
             return;
           }
 
@@ -207,13 +220,13 @@ public class DeltaWorker extends AbstractWorker {
                           }))
             .run(this::startFromLastCommit);
         })
-        .onRetriesExceeded(failure -> {
-          long secondsElapsed = failure.getElapsedTime().get(ChronoUnit.SECONDS);
+        .onRetriesExceeded(failureContext -> {
+          long secondsElapsed = failureContext.getElapsedTime().get(ChronoUnit.SECONDS);
           if (secondsElapsed < 60) {
             LOG.error("Failures have been ongoing for {} seconds. Failing the program.", secondsElapsed);
           } else {
             LOG.error("Failures have been ongoing for {} minutes. Failing the program.",
-                      failure.getElapsedTime().get(ChronoUnit.MINUTES));
+                      failureContext.getElapsedTime().get(ChronoUnit.MINUTES));
           }
         });
 
@@ -226,12 +239,12 @@ public class DeltaWorker extends AbstractWorker {
           event = eventQueue.poll(1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
           // happens if the worker is killed. Break out of the run loop and let it end.
-          interrupted.set(true);
+          shouldStop.set(true);
           return;
         }
 
         // this is checked in case the worker was stopped in the middle of the eventQueue.poll() call
-        if (shouldStop) {
+        if (shouldStop.get()) {
           return;
         }
 
@@ -241,11 +254,14 @@ public class DeltaWorker extends AbstractWorker {
         }
 
         applyEvent(event);
+        error.set(null);
       });
+    }
 
-      if (interrupted.get()) {
-        break;
-      }
+    // if there was an error, throw it so that the program state goes to FAILED and not KILLED
+    // to distinguish between pipelines that failed and pipelines that were stopped.
+    if (error.get() != null) {
+      throw new RuntimeException(error.get());
     }
   }
 
@@ -261,8 +277,7 @@ public class DeltaWorker extends AbstractWorker {
       } catch (Exception e) {
         // ignore and proceed to exit
       } finally {
-        shouldStop = true;
-        Thread.currentThread().interrupt();
+        shouldStop.set(true);
       }
     }
   }

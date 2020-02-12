@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api;
 
+import java.io.IOException;
+
 /**
  * Context for a CDC Source.
  */
@@ -25,11 +27,16 @@ public interface DeltaSourceContext extends DeltaRuntimeContext {
    * Record that there are currently errors reading change events.
    *
    * @param error information about the error
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
    */
-  void setError(ReplicationError error);
+  void setError(ReplicationError error) throws IOException;
 
   /**
    * Record that there are no errors reading change events.
+   *
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
    */
-  void setOK();
+  void setOK() throws IOException;
 }

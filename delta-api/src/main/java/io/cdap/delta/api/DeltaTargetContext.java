@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api;
 
+import java.io.IOException;
+
 /**
  * Context for a CDC Target.
  */
@@ -49,39 +51,49 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
    *
    * @param offset offset to commitOffset
    * @param sequenceNumber the sequence number for the offset
+   * @throws IOException if there was an error persisting the new offset
    */
-  void commitOffset(Offset offset, long sequenceNumber);
+  void commitOffset(Offset offset, long sequenceNumber) throws IOException;
 
   /**
-   * Record that there are currently errors applying events to a specified table
+   * Record that there are currently errors applying events to a specified table.
    *
    * @param database database that the table is in
    * @param table table that is having errors
    * @param error information about the error
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
    */
-  void setTableError(String database, String table, ReplicationError error);
+  void setTableError(String database, String table, ReplicationError error) throws IOException;
 
   /**
-   * Record that a table is being replicated
+   * Record that a table is being replicated. This should be called after the initial table snapshot has been applied,
+   * and if there was a recovery from an error.
    *
    * @param database database that the table is in
    * @param table table name
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
    */
-  void setTableReplicating(String database, String table);
+  void setTableReplicating(String database, String table) throws IOException;
 
   /**
    * Record that the initial snapshot for the table is being applied
    *
    * @param database database that the table is in
    * @param table table name
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
    */
-  void setTableSnapshotting(String database, String table);
+  void setTableSnapshotting(String database, String table) throws IOException;
 
   /**
    * Record that the table was dropped and its state can be removed
    *
    * @param database database that the table is in
    * @param table table name
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
    */
-  void dropTableState(String database, String table);
+  void dropTableState(String database, String table) throws IOException;
 }
