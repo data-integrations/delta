@@ -35,7 +35,6 @@ import javax.annotation.Nullable;
  * Stores replicator state.
  */
 public class StateStore {
-  private static final String STATE_PREFIX = "state-";
   private static final String OFFSET_KEY = "offset";
   private final FileSystem fileSystem;
   private final Path basePath;
@@ -98,7 +97,7 @@ public class StateStore {
 
   @Nullable
   public byte[] readState(DeltaPipelineId id, String key) throws IOException {
-    Path path = getPath(id, STATE_PREFIX + key);
+    Path path = getPath(id, key);
     if (!fileSystem.exists(path)) {
       return null;
     }
@@ -108,7 +107,7 @@ public class StateStore {
   }
 
   public void writeState(DeltaPipelineId id, String key, byte[] val) throws IOException {
-    Path path = getPath(id, STATE_PREFIX + key);
+    Path path = getPath(id, key);
     try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
       outputStream.write(val);
     }

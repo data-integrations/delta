@@ -42,4 +42,20 @@ public interface DeltaRuntimeContext extends PluginContext {
    */
   Metrics getMetrics();
 
+  /**
+   * Get state associated with the given key.
+   *
+   * @param key key to fetch state with
+   * @return state associated with the given key
+   */
+  @Nullable
+  byte[] getState(String key) throws IOException;
+
+  /**
+   * Write state for a given key. Any existing state will be overwritten.
+   *
+   * @param key key to write to
+   * @param val state to write
+   */
+  void putState(String key, byte[] val) throws IOException;
 }
