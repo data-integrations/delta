@@ -104,19 +104,13 @@ public class DDLEvent extends ChangeEvent {
   /**
    * Builder for a DDL event.
    */
-  public static class Builder extends ChangeEvent.Builder {
-    private Offset offset;
+  public static class Builder extends ChangeEvent.Builder<Builder> {
     private DDLOperation operation;
     private Schema schema;
     private String database;
     private String prevTable;
     private String table;
     private List<String> primaryKey = new ArrayList<>();
-
-    public Builder setOffset(Offset offset) {
-      this.offset = offset;
-      return this;
-    }
 
     public Builder setOperation(DDLOperation operation) {
       this.operation = operation;
