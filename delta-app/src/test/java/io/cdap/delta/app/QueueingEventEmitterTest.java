@@ -18,6 +18,7 @@ package io.cdap.delta.app;
 
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
@@ -31,11 +32,13 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /**
- * Tests for {@link DirectEventEmitter}.
+ * Tests for {@link QueueingEventEmitter}.
  */
-public class DirectEventEmitterTest {
+public class QueueingEventEmitterTest {
   private static final Schema SCHEMA = Schema.recordOf("taybull", Schema.Field.of("id", Schema.of(Schema.Type.INT)));
   private static final DDLEvent DDL = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 0 })))
@@ -56,32 +59,31 @@ public class DirectEventEmitterTest {
 
   @Test
   public void testEmit() {
-    TrackingEventConsumer trackingEventConsumer = new TrackingEventConsumer();
+    BlockingQueue<Sequenced<? extends ChangeEvent>> queue = new ArrayBlockingQueue<>(2);
     EventReaderDefinition readerDefinition = new EventReaderDefinition(Collections.emptySet(), Collections.emptySet(),
                                                                        Collections.emptySet());
-    DirectEventEmitter emitter = new DirectEventEmitter(trackingEventConsumer, null, 0L, readerDefinition);
+    QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue);
     emitter.emit(DDL);
     emitter.emit(DML);
 
-    Assert.assertEquals(Collections.singletonList(new Sequenced<>(DDL, 1L)), trackingEventConsumer.getDdlEvents());
-    Assert.assertEquals(Collections.singletonList(new Sequenced<>(DML, 2L)), trackingEventConsumer.getDmlEvents());
+    Assert.assertEquals(new Sequenced<>(DDL, 1L), queue.poll());
+    Assert.assertEquals(new Sequenced<>(DML, 2L), queue.poll());
   }
 
   @Test
   public void testFiltering() {
-    TrackingEventConsumer trackingEventConsumer = new TrackingEventConsumer();
+    BlockingQueue<Sequenced<? extends ChangeEvent>> queue = new ArrayBlockingQueue<>(2);
     Set<SourceTable> tables = Collections.singleton(
       new SourceTable("deebee", "taybull", null, Collections.emptySet(),
                       Collections.singleton(DMLOperation.INSERT),
                       Collections.singleton(DDLOperation.CREATE_TABLE)));
     EventReaderDefinition readerDefinition = new EventReaderDefinition(tables, Collections.emptySet(),
                                                                        Collections.emptySet());
-    DirectEventEmitter emitter = new DirectEventEmitter(trackingEventConsumer, null, 0L, readerDefinition);
+    QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue);
     emitter.emit(DDL);
     emitter.emit(DML);
 
-    Assert.assertTrue(trackingEventConsumer.getDdlEvents().isEmpty());
-    Assert.assertTrue(trackingEventConsumer.getDmlEvents().isEmpty());
+    Assert.assertTrue(queue.isEmpty());
   }
 
 }

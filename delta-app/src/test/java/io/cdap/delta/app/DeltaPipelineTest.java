@@ -19,6 +19,7 @@ package io.cdap.delta.app;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.conf.Constants;
+import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.id.ApplicationId;
@@ -35,11 +36,13 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
+import io.cdap.delta.proto.RetryConfig;
 import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.proto.TableState;
 import io.cdap.delta.store.StateStore;
 import io.cdap.delta.test.DeltaPipelineTestBase;
+import io.cdap.delta.test.mock.FailureTarget;
 import io.cdap.delta.test.mock.FileEventConsumer;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
@@ -58,6 +61,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -132,7 +137,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
-    stateService.initialize();
+    stateService.load();
 
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
@@ -169,6 +174,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     waitForMetric(appId, "target.ddl", 1);
+    TimeUnit.SECONDS.sleep(20);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -178,7 +184,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
-    stateService.initialize();
+    stateService.load();
 
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
@@ -204,12 +210,126 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Assert.assertEquals(expected, actual);
   }
 
+  @Test
+  public void testFailImmediately() throws Exception {
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(EVENT1);
+    events.add(EVENT2);
+
+    String offsetBasePath = TEMP_FOLDER.newFolder("testFailImmediately").getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events));
+
+    // configure the target to throw exceptions after the first event is applied
+    // until the proceedFile is created
+    Stage target = new Stage("target", FailureTarget.failImmediately(1L));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      // configure it to retry indefinitely.
+      // The run will only finish because of a failure and not from retry exhaustion
+      .setRetryConfig(new RetryConfig(Integer.MAX_VALUE, 0))
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testFailImmediately");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.FAILED, 60, TimeUnit.SECONDS);
+  }
+
+  @Test
+  public void testFailureRetries() throws Exception {
+    String proceedFilePath = TMP_FOLDER.getRoot().getAbsolutePath();
+    File proceedFile = new File(proceedFilePath, "proceed");
+
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(EVENT1);
+    events.add(EVENT2);
+
+    String offsetBasePath = TEMP_FOLDER.newFolder("testFailureRetries").getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events));
+
+    // configure the target to throw exceptions after the first event is applied
+    // until the proceedFile is created
+    Stage target = new Stage("target", FailureTarget.failAfter(1L, proceedFile));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      .setRetryConfig(new RetryConfig(300, 0))
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testFailureRetries");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
+
+    // wait for the 1st event to be applied, after which the target should start throwing exceptions
+    waitForMetric(appId, "target.ddl", 1);
+
+    // wait for the replication state for the table to be set to ERROR.
+    FileSystem fs = FileSystem.get(new Configuration());
+    Path path = new Path(offsetBasePath);
+    StateStore stateStore = new StateStore(fs, path);
+    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
+    PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+    Tasks.waitFor(true, () -> {
+      stateService.load();
+      for (TableReplicationState state : stateService.getState().getTables()) {
+        if (EVENT2.getDatabase().equals(state.getDatabase()) &&
+          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.ERROR) {
+          return true;
+        }
+      }
+      return false;
+    }, 30, TimeUnit.SECONDS);
+
+    // create the proceed file, which will tell the target to stop throwing exceptions
+    proceedFile.createNewFile();
+
+    // wait for replication state for the table to update to REPLICATING
+    Tasks.waitFor(true, () -> {
+      stateService.load();
+      for (TableReplicationState state : stateService.getState().getTables()) {
+        if (EVENT2.getDatabase().equals(state.getDatabase()) &&
+          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.REPLICATE) {
+          return true;
+        }
+      }
+      return false;
+    }, 30, TimeUnit.SECONDS);
+
+    manager.stop();
+    manager.waitForStopped(60, TimeUnit.SECONDS);
+
+    // verify that the sequence number was correctly being rolled back during errors and not incremented
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
+    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+
+    // verify that metrics were not double counted during errors
+    waitForMetric(appId, "target.ddl", 1);
+    waitForMetric(appId, "target.dml.insert", 1);
+
+    Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
+    // check that state is killed and not failed
+    Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
+  }
+
   private void waitForMetric(ApplicationId appId, String metric, int expected)
-    throws TimeoutException, InterruptedException {
+    throws TimeoutException, InterruptedException, ExecutionException {
     Map<String, String> tags = new HashMap<>();
     tags.put(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace());
     tags.put(Constants.Metrics.Tag.APP, appId.getEntityName());
     tags.put(Constants.Metrics.Tag.WORKER, DeltaWorker.NAME);
-    getMetricsManager().waitForTotalMetricCount(tags, "user." + metric, expected, 20, TimeUnit.SECONDS);
+    // use this instead of getMetricsManager().waitForTotalMetricCount(), because that method will
+    // allow the metric to be higher than the passed in count
+    Tasks.waitFor((long) expected,
+                  (Callable<Long>) () -> getMetricsManager().getTotalMetric(tags, "user." + metric),
+                  30, TimeUnit.SECONDS);
   }
 }

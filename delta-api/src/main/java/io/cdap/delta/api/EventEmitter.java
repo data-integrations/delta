@@ -25,6 +25,7 @@ public interface EventEmitter {
 
   /**
    * Emits a DDL event. DDL events should not be emitted within a transaction.
+   * This call may block if the pipeline target is not keeping up with the source.
    *
    * @param event the DDL event
    */
@@ -32,6 +33,7 @@ public interface EventEmitter {
 
   /**
    * Emits a DML event within its own transaction.
+   * This call may block if the pipeline target is not keeping up with the source.
    *
    * @param event the DML event
    */

@@ -22,6 +22,7 @@ import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.TestBase;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.assessment.TableDetail;
+import io.cdap.delta.test.mock.FailureTarget;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
 
@@ -54,6 +55,8 @@ public class DeltaPipelineTestBase extends TestBase {
     Set<PluginClass> pluginClasses = new HashSet<>();
     pluginClasses.add(MockSource.PLUGIN_CLASS);
     pluginClasses.add(MockTarget.PLUGIN_CLASS);
-    addPluginArtifact(mocksArtifactId, ARTIFACT_ID, pluginClasses, MockSource.class, MockTarget.class);
+    pluginClasses.add(FailureTarget.PLUGIN_CLASS);
+    addPluginArtifact(mocksArtifactId, ARTIFACT_ID, pluginClasses,
+                      MockSource.class, MockTarget.class, FailureTarget.class);
   }
 }

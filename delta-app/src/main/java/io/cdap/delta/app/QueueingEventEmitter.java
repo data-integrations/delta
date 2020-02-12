@@ -16,11 +16,11 @@
 
 package io.cdap.delta.app;
 
+import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DMLOperation;
-import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.Sequenced;
@@ -29,29 +29,28 @@ import io.cdap.delta.proto.DBTable;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 
 /**
- * In memory event emitter that simply passes the event directly to the delta target.
+ * An event emitter that enqueues change events in an in-memory queue.
  * Also filters out events that should be ignored.
  */
-public class DirectEventEmitter implements EventEmitter {
-  private final EventConsumer consumer;
-  private final DeltaContext context;
+public class QueueingEventEmitter implements EventEmitter {
   private final Set<DMLOperation> dmlBlacklist;
   private final Set<DDLOperation> ddlBlacklist;
   private final Map<DBTable, SourceTable> tableDefinitions;
+  private final BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
   private long sequenceNumber;
 
-  public DirectEventEmitter(EventConsumer consumer, DeltaContext context, long sequenceNumber,
-                            EventReaderDefinition readerDefinition) {
-    this.consumer = consumer;
-    this.context = context;
+  QueueingEventEmitter(EventReaderDefinition readerDefinition, long sequenceNumber,
+                       BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue) {
     this.sequenceNumber = sequenceNumber;
     this.dmlBlacklist = readerDefinition.getDmlBlacklist();
     this.ddlBlacklist = readerDefinition.getDdlBlacklist();
     this.tableDefinitions = readerDefinition.getTables().stream()
       .collect(Collectors.toMap(t -> new DBTable(t.getDatabase(), t.getTable()), t -> t));
+    this.eventQueue = eventQueue;
   }
 
   @Override
@@ -60,12 +59,10 @@ public class DirectEventEmitter implements EventEmitter {
       return;
     }
 
-    sequenceNumber++;
     try {
-      consumer.applyDDL(new Sequenced<>(event, sequenceNumber));
-    } catch (Exception e) {
-      // TODO: (CDAP-16251) retry
-      throw new RuntimeException(e);
+      eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+    } catch (InterruptedException e) {
+      // this means the worker is being stopped, so drop the change and let things stop
     }
   }
 
@@ -75,12 +72,10 @@ public class DirectEventEmitter implements EventEmitter {
       return;
     }
 
-    sequenceNumber++;
     try {
-      consumer.applyDML(new Sequenced<>(event, sequenceNumber));
-    } catch (Exception e) {
-      // TODO: (CDAP-16251) retry
-      throw new RuntimeException(e);
+      eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+    } catch (InterruptedException e) {
+      // this means the worker is being stopped, so drop the change and let things stop
     }
   }
 

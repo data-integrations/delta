@@ -29,6 +29,8 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -39,6 +41,7 @@ import javax.annotation.Nullable;
  */
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private static final String STATE_PREFIX = "state-";
+  private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
   private final DeltaPipelineId id;
   private final String runId;
   private final Metrics metrics;
@@ -47,8 +50,8 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final EventMetrics eventMetrics;
   private final PipelineStateService stateService;
 
-  public DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
-                      PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
+  DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
+               PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
@@ -75,26 +78,26 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public void setTableError(String database, String table, ReplicationError error) {
+  public void setTableError(String database, String table, ReplicationError error) throws IOException {
     stateService.setTableError(new DBTable(database, table), error);
   }
 
   @Override
-  public void setTableReplicating(String database, String table) {
+  public void setTableReplicating(String database, String table) throws IOException {
     stateService.setTableReplicating(new DBTable(database, table));
   }
 
   @Override
-  public void setTableSnapshotting(String database, String table) {
+  public void setTableSnapshotting(String database, String table) throws IOException {
     stateService.setTableSnapshotting(new DBTable(database, table));
   }
 
   @Override
-  public void dropTableState(String database, String table) {
+  public void dropTableState(String database, String table) throws IOException {
     stateService.dropTable(new DBTable(database, table));
   }
 
-  public OffsetAndSequence loadOffset() throws IOException {
+  OffsetAndSequence loadOffset() throws IOException {
     OffsetAndSequence offset = stateStore.readOffset(id);
     return offset == null ? new OffsetAndSequence(new Offset(Collections.emptyMap()), 0L) : offset;
   }
@@ -152,13 +155,16 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public void setError(ReplicationError error) {
+  public void setError(ReplicationError error) throws IOException {
     stateService.setSourceError(error);
   }
 
   @Override
-  public void setOK() {
+  public void setOK() throws IOException {
     stateService.setSourceOK();
   }
 
+  public void clearMetrics() {
+    eventMetrics.clear();
+  }
 }

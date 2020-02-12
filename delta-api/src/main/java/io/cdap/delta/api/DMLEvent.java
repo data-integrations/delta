@@ -34,7 +34,7 @@ public class DMLEvent extends ChangeEvent {
 
   private DMLEvent(Offset offset, DMLOperation operation, String database, String table, StructuredRecord row,
                    @Nullable String transactionId, long ingestTimestampMillis, boolean isSnapshot) {
-    super(offset, isSnapshot);
+    super(offset, isSnapshot, ChangeType.DML);
     this.operation = operation;
     this.database = database;
     this.table = table;
