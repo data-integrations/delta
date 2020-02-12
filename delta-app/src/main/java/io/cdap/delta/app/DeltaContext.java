@@ -32,11 +32,13 @@ import io.cdap.delta.store.StateStore;
 
 import java.io.IOException;
 import java.util.Collections;
+import javax.annotation.Nullable;
 
 /**
  * Context for delta plugins
  */
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
+  private static final String STATE_PREFIX = "state-";
   private final DeltaPipelineId id;
   private final String runId;
   private final Metrics metrics;
@@ -110,6 +112,17 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public Metrics getMetrics() {
     return metrics;
+  }
+
+  @Nullable
+  @Override
+  public byte[] getState(String key) throws IOException {
+    return stateStore.readState(id, STATE_PREFIX + key);
+  }
+
+  @Override
+  public void putState(String key, byte[] val) throws IOException {
+    stateStore.writeState(id, STATE_PREFIX + key, val);
   }
 
   @Override
