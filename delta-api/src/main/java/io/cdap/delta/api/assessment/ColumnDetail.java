@@ -17,9 +17,9 @@
 package io.cdap.delta.api.assessment;
 
 import java.sql.SQLType;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import javax.annotation.Nullable;
 
 /**
  * Details about a table column.
@@ -30,7 +30,14 @@ public class ColumnDetail {
   private final boolean nullable;
   private final Map<String, String> properties;
 
-  public ColumnDetail(String name, SQLType type, boolean nullable, @Nullable Map<String, String> properties) {
+  public ColumnDetail(String name, SQLType type, boolean nullable) {
+    this.name = name;
+    this.type = type;
+    this.nullable = nullable;
+    this.properties = new HashMap<>();
+  }
+
+  public ColumnDetail(String name, SQLType type, boolean nullable, Map<String, String> properties) {
     this.name = name;
     this.type = type;
     this.nullable = nullable;
@@ -49,7 +56,6 @@ public class ColumnDetail {
     return nullable;
   }
 
-  @Nullable
   public Map<String, String> getProperties() {
     return properties;
   }
