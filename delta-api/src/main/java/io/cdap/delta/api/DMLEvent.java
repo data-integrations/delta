@@ -29,16 +29,19 @@ public class DMLEvent extends ChangeEvent {
   private final String database;
   private final String table;
   private final StructuredRecord row;
+  private final StructuredRecord previousRow;
   private final String transactionId;
   private final long ingestTimestampMillis;
 
   private DMLEvent(Offset offset, DMLOperation operation, String database, String table, StructuredRecord row,
-                   @Nullable String transactionId, long ingestTimestampMillis, boolean isSnapshot) {
+                   @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
+                   boolean isSnapshot) {
     super(offset, isSnapshot, ChangeType.DML);
     this.operation = operation;
     this.database = database;
     this.table = table;
     this.row = row;
+    this.previousRow = previousRow;
     this.transactionId = transactionId;
     this.ingestTimestampMillis = ingestTimestampMillis;
   }
@@ -57,6 +60,14 @@ public class DMLEvent extends ChangeEvent {
 
   public StructuredRecord getRow() {
     return row;
+  }
+
+  /**
+   * @return previous value of the row. This will be set for update events and null for inserts and deletes.
+   */
+  @Nullable
+  public StructuredRecord getPreviousRow() {
+    return previousRow;
   }
 
   public String getTransactionId() {
@@ -84,23 +95,14 @@ public class DMLEvent extends ChangeEvent {
       Objects.equals(database, dmlEvent.database) &&
       Objects.equals(table, dmlEvent.table) &&
       Objects.equals(row, dmlEvent.row) &&
+      Objects.equals(previousRow, dmlEvent.previousRow) &&
       Objects.equals(transactionId, dmlEvent.transactionId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), operation, database, table, row, transactionId, ingestTimestampMillis);
-  }
-
-  @Override
-  public String toString() {
-    return "DMLEvent{" +
-      "operation=" + operation +
-      ", table='" + table + '\'' +
-      ", row=" + row +
-      ", transactionId='" + transactionId + '\'' +
-      ", ingestTimestampMillis=" + ingestTimestampMillis +
-      '}';
+    return Objects.hash(super.hashCode(), operation, database, table, row, previousRow,
+                        transactionId, ingestTimestampMillis);
   }
 
   public static Builder builder() {
@@ -115,6 +117,7 @@ public class DMLEvent extends ChangeEvent {
     private String database;
     private String table;
     private StructuredRecord row;
+    private StructuredRecord previousRow;
     private String transactionId;
     private long ingestTimestampMillis;
 
@@ -138,6 +141,11 @@ public class DMLEvent extends ChangeEvent {
       return this;
     }
 
+    public Builder setPreviousRow(StructuredRecord previousRow) {
+      this.previousRow = previousRow;
+      return this;
+    }
+
     public Builder setTransactionId(String transactionId) {
       this.transactionId = transactionId;
       return this;
@@ -149,7 +157,8 @@ public class DMLEvent extends ChangeEvent {
     }
 
     public DMLEvent build() {
-      return new DMLEvent(offset, operation, database, table, row, transactionId, ingestTimestampMillis, isSnapshot);
+      return new DMLEvent(offset, operation, database, table, row, previousRow,
+                          transactionId, ingestTimestampMillis, isSnapshot);
     }
   }
 }
