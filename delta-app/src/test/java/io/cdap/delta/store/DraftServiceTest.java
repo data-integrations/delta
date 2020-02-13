@@ -55,6 +55,7 @@ import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -98,9 +99,9 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
-    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, 4, 0));
-    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, 12, 0));
-    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, 4, 0));
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, null));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, null));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, null));
     TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns);
 
     MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, null);
@@ -129,9 +130,9 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
-    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, 4, 0));
-    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, 12, 0));
-    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, 4, 0));
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, null));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, null));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, null));
     Schema schema = Schema.recordOf(
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
@@ -180,9 +181,9 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
-    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, 4, 0));
-    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, 12, 0));
-    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, 4, 0));
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, null));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, null));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, null));
     Schema schema = Schema.recordOf(
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
@@ -217,9 +218,9 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
-    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, 4, 0));
-    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, 12, 0));
-    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, 4, 0));
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false, null));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false, null));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true, null));
     Schema schema = Schema.recordOf(
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),

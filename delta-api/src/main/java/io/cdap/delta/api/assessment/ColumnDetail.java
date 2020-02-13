@@ -17,7 +17,9 @@
 package io.cdap.delta.api.assessment;
 
 import java.sql.SQLType;
+import java.util.Map;
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * Details about a table column.
@@ -26,15 +28,13 @@ public class ColumnDetail {
   private final String name;
   private final SQLType type;
   private final boolean nullable;
-  private final int length;
-  private final int scale;
+  private final Map<String, String> properties;
 
-  public ColumnDetail(String name, SQLType type, boolean nullable, int length, int scale) {
+  public ColumnDetail(String name, SQLType type, boolean nullable, @Nullable Map<String, String> properties) {
     this.name = name;
     this.type = type;
     this.nullable = nullable;
-    this.length = length;
-    this.scale = scale;
+    this.properties = properties;
   }
 
   public String getName() {
@@ -49,20 +49,9 @@ public class ColumnDetail {
     return nullable;
   }
 
-  /**
-   * Get the maximum length of this column's values. For numeric columns, this represents the precision.
-   * @return the length of the column
-   */
-  public int getLength() {
-    return length;
-  }
-
-  /**
-   * Get the scale of the column.
-   * @return the scale if it applies to this type; if not, return 0.
-   */
-  public int getScale() {
-    return scale;
+  @Nullable
+  public Map<String, String> getProperties() {
+    return properties;
   }
 
   @Override
@@ -75,14 +64,13 @@ public class ColumnDetail {
     }
     ColumnDetail that = (ColumnDetail) o;
     return nullable == that.nullable &&
-      length == that.length &&
-      scale == that.scale &&
       Objects.equals(name, that.name) &&
-      Objects.equals(type, that.type);
+      Objects.equals(type, that.type) &&
+      Objects.equals(properties, that.properties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, nullable, length, scale);
+    return Objects.hash(name, type, nullable, properties);
   }
 }
