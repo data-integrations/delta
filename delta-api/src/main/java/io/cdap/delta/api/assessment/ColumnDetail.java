@@ -59,7 +59,7 @@ public class ColumnDetail {
 
   /**
    * Get the scale of the column.
-   * @return the scale if it applies to this type
+   * @return the scale if it applies to this type; if not, return 0.
    */
   public int getScale() {
     return scale;
