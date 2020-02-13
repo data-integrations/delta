@@ -127,12 +127,16 @@ public class DeltaWorker extends AbstractWorker {
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
     offset = offsetAndSequence.getOffset();
 
+    Set<DDLOperation> ddlBlacklist = new HashSet<>(config.getDdlBlacklist());
+    // targets will not behave properly if they don't get create table events
+    ddlBlacklist.remove(DDLOperation.CREATE_TABLE);
     Set<SourceTable> expandedTables = config.getTables().stream()
       .map(t -> {
         Set<DMLOperation> expandedDmlBlacklist = new HashSet<>(t.getDmlBlacklist());
         expandedDmlBlacklist.addAll(config.getDmlBlacklist());
         Set<DDLOperation> expandedDdlBlacklist = new HashSet<>(t.getDdlBlacklist());
-        expandedDdlBlacklist.addAll(config.getDdlBlacklist());
+        expandedDdlBlacklist.addAll(ddlBlacklist);
+        expandedDdlBlacklist.remove(DDLOperation.CREATE_TABLE);
         return new SourceTable(t.getDatabase(), t.getTable(), t.getSchema(),
                                t.getColumns(), expandedDmlBlacklist, expandedDdlBlacklist);
       }).collect(Collectors.toSet());
