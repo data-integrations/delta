@@ -26,11 +26,15 @@ public class ColumnDetail {
   private final String name;
   private final SQLType type;
   private final boolean nullable;
+  private final int length;
+  private final int scale;
 
-  public ColumnDetail(String name, SQLType type, boolean nullable) {
+  public ColumnDetail(String name, SQLType type, boolean nullable, int length, int scale) {
     this.name = name;
     this.type = type;
     this.nullable = nullable;
+    this.length = length;
+    this.scale = scale;
   }
 
   public String getName() {
@@ -45,6 +49,22 @@ public class ColumnDetail {
     return nullable;
   }
 
+  /**
+   * Get the maximum length of this column's values. For numeric columns, this represents the precision.
+   * @return the length of the column
+   */
+  public int getLength() {
+    return length;
+  }
+
+  /**
+   * Get the scale of the column.
+   * @return the scale if it applies to this type
+   */
+  public int getScale() {
+    return scale;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -55,12 +75,14 @@ public class ColumnDetail {
     }
     ColumnDetail that = (ColumnDetail) o;
     return nullable == that.nullable &&
+      length == that.length &&
+      scale == that.scale &&
       Objects.equals(name, that.name) &&
       Objects.equals(type, that.type);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, nullable);
+    return Objects.hash(name, type, nullable, length, scale);
   }
 }
