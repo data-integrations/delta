@@ -17,6 +17,9 @@
 package io.cdap.delta.api.assessment;
 
 import java.sql.SQLType;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -26,11 +29,17 @@ public class ColumnDetail {
   private final String name;
   private final SQLType type;
   private final boolean nullable;
+  private final Map<String, String> properties;
 
   public ColumnDetail(String name, SQLType type, boolean nullable) {
+    this(name, type, nullable, new HashMap<>());
+  }
+
+  public ColumnDetail(String name, SQLType type, boolean nullable, Map<String, String> properties) {
     this.name = name;
     this.type = type;
     this.nullable = nullable;
+    this.properties = Collections.unmodifiableMap(new HashMap<>(properties));
   }
 
   public String getName() {
@@ -45,6 +54,10 @@ public class ColumnDetail {
     return nullable;
   }
 
+  public Map<String, String> getProperties() {
+    return properties;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -56,11 +69,12 @@ public class ColumnDetail {
     ColumnDetail that = (ColumnDetail) o;
     return nullable == that.nullable &&
       Objects.equals(name, that.name) &&
-      Objects.equals(type, that.type);
+      Objects.equals(type, that.type) &&
+      Objects.equals(properties, that.properties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, type, nullable);
+    return Objects.hash(name, type, nullable, properties);
   }
 }
