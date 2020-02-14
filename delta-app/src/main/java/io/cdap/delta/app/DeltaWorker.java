@@ -119,7 +119,7 @@ public class DeltaWorker extends AbstractWorker {
     PipelineStateService stateService = new PipelineStateService(id, stateStore);
     stateService.load();
     deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context, eventMetrics,
-                                    stateService);
+                                    stateService, config.getRetryConfig().getMaxDurationSeconds());
     MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
                                                               context, context.getNamespace());
     source = context.newPluginInstance(sourceName, macroEvaluator);

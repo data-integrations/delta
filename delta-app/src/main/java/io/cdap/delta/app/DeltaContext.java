@@ -49,9 +49,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final PluginContext pluginContext;
   private final EventMetrics eventMetrics;
   private final PipelineStateService stateService;
+  private final int maxRetrySeconds;
 
   DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
-               PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService) {
+               PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService,
+               int maxRetrySeconds) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
@@ -59,6 +61,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.pluginContext = pluginContext;
     this.eventMetrics = eventMetrics;
     this.stateService = stateService;
+    this.maxRetrySeconds = maxRetrySeconds;
   }
 
   @Override
@@ -115,6 +118,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public Metrics getMetrics() {
     return metrics;
+  }
+
+  @Override
+  public int getMaxRetrySeconds() {
+    return maxRetrySeconds;
   }
 
   @Nullable

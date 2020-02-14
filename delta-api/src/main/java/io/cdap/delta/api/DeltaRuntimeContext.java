@@ -43,6 +43,11 @@ public interface DeltaRuntimeContext extends PluginContext {
   Metrics getMetrics();
 
   /**
+   * @return maximum amount of seconds to retry failures before failing the pipeline
+   */
+  int getMaxRetrySeconds();
+
+  /**
    * Get state associated with the given key.
    *
    * @param key key to fetch state with
