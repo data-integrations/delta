@@ -26,8 +26,8 @@ public class ReplicationError {
   private final String message;
   private final StackTraceElement[] stackTrace;
 
-  public ReplicationError(Exception e) {
-    this(e.getMessage(), e.getStackTrace());
+  public ReplicationError(Throwable t) {
+    this(t.getMessage(), t.getStackTrace());
   }
 
   public ReplicationError(String message, StackTraceElement[] stackTrace) {
