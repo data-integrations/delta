@@ -56,7 +56,7 @@ public class MockTarget implements DeltaTarget {
 
   @Override
   public EventConsumer createConsumer(DeltaTargetContext context) {
-    File outputFile = new File(conf.path);
+    File outputFile = new File(new File(conf.path), String.format("%d.json", context.getInstanceId()));
     if (outputFile.exists()) {
       outputFile.delete();
     }
@@ -77,7 +77,8 @@ public class MockTarget implements DeltaTarget {
 
   /**
    * Get the plugin configuration for a mock target that should write events to a local file.
-   * After the pipeline is stopped, use {@link FileEventConsumer#readEvents(File)} to read events written by the target.
+   * After the pipeline is stopped, use {@link FileEventConsumer#readEvents(File, int)}
+   * to read events written by the target.
    *
    * @param filePath path to the file to write events to
    * @return plugin configuration for the mock source

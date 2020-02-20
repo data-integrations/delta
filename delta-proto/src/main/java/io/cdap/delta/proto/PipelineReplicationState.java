@@ -18,7 +18,7 @@ package io.cdap.delta.proto;
 
 import io.cdap.delta.api.ReplicationError;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -27,6 +27,8 @@ import javax.annotation.Nullable;
  * State of the overall replication pipeline.
  */
 public class PipelineReplicationState {
+  public static final PipelineReplicationState EMPTY =
+    new PipelineReplicationState(PipelineState.OK, Collections.emptySet(), null);
   private final Set<TableReplicationState> tables;
   private final PipelineState sourceState;
   private final ReplicationError sourceError;

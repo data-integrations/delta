@@ -46,34 +46,23 @@ public class PipelineStateService {
   private static final Logger LOG = LoggerFactory.getLogger(PipelineStateService.class);
   private static final Gson GSON = new Gson();
   private static final String STATE_KEY = "pipeline";
-  private final DeltaPipelineId pipelineId;
+  private final DeltaWorkerId id;
   private final StateStore stateStore;
   private final Map<DBTable, TableReplicationState> tables;
-  private final RetryPolicy<Object> saveRetryPolicy;
   private PipelineState sourceState;
   private ReplicationError sourceError;
 
-  public PipelineStateService(DeltaPipelineId pipelineId, StateStore stateStore) {
-    this.pipelineId = pipelineId;
+  public PipelineStateService(DeltaWorkerId id, StateStore stateStore) {
+    this.id = id;
     this.stateStore = stateStore;
     this.tables = new HashMap<>();
-    this.saveRetryPolicy = new RetryPolicy<>()
-      .withMaxAttempts(Integer.MAX_VALUE)
-      .withBackoff(1, 60, ChronoUnit.SECONDS)
-      .onFailedAttempt(failure -> {
-        // log the first time and in 1 minute increments to avoid spamming the log.
-        if (failure.getAttemptCount() == 1 || !failure.getElapsedTime().minusMinutes(1).isNegative()) {
-          LOG.warn("Unable to save pipeline replication state. This operation will be retried until it succeeds.",
-                   failure.getLastFailure());
-        }
-      });
   }
 
   /**
    * Load state from persistent storage into memory.
    */
   public void load() throws IOException {
-    byte[] bytes = stateStore.readState(pipelineId, STATE_KEY);
+    byte[] bytes = stateStore.readState(id, STATE_KEY);
     if (bytes == null) {
       sourceState = PipelineState.OK;
       sourceError = null;
@@ -138,7 +127,7 @@ public class PipelineStateService {
 
   private void save() throws IOException {
     byte[] stateBytes = Bytes.toBytes(GSON.toJson(getState()));
-    stateStore.writeState(pipelineId, STATE_KEY, stateBytes);
+    stateStore.writeState(id, STATE_KEY, stateBytes);
   }
 
 }

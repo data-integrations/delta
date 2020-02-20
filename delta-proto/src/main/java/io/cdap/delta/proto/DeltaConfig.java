@@ -44,27 +44,29 @@ public class DeltaConfig extends Config {
   private final List<Connection> connections;
   private final Resources resources;
   private final String offsetBasePath;
-  private final Set<SourceTable> tables;
+  private final List<SourceTable> tables;
   private final Set<DMLOperation> dmlBlacklist;
   private final Set<DDLOperation> ddlBlacklist;
   private final RetryConfig retries;
+  private final ParallelismConfig parallelism;
   // should only be set by CDAP admin when creating the system service
   private final boolean service;
 
   private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
-                      Resources resources, String offsetBasePath, Set<SourceTable> tables,
+                      Resources resources, String offsetBasePath, List<SourceTable> tables,
                       Set<DMLOperation> dmlBlacklist, Set<DDLOperation> ddlBlacklist,
-                      RetryConfig retries) {
+                      RetryConfig retries, ParallelismConfig parallelism) {
     this.description = description;
     this.stages = new ArrayList<>(stages);
     this.connections = new ArrayList<>(connections);
     this.resources = resources;
     this.offsetBasePath = offsetBasePath;
-    this.tables = new HashSet<>(tables);
+    this.tables = new ArrayList<>(tables);
     this.service = false;
     this.dmlBlacklist = new HashSet<>(dmlBlacklist);
     this.ddlBlacklist = new HashSet<>(ddlBlacklist);
     this.retries = retries;
+    this.parallelism = parallelism;
   }
 
   @Nullable
@@ -89,8 +91,8 @@ public class DeltaConfig extends Config {
     return resources == null ? new Resources(8192, 4) : resources;
   }
 
-  public Set<SourceTable> getTables() {
-    return tables == null ? Collections.emptySet() : Collections.unmodifiableSet(tables);
+  public List<SourceTable> getTables() {
+    return tables == null ? Collections.emptyList() : Collections.unmodifiableList(tables);
   }
 
   public Set<DMLOperation> getDmlBlacklist() {
@@ -107,6 +109,10 @@ public class DeltaConfig extends Config {
    */
   public RetryConfig getRetryConfig() {
     return retries == null ? RetryConfig.DEFAULT : retries;
+  }
+
+  public ParallelismConfig getParallelism() {
+    return parallelism == null ? ParallelismConfig.DEFAULT : parallelism;
   }
 
   public boolean isService() {
@@ -216,18 +222,20 @@ public class DeltaConfig extends Config {
     private String description;
     private String offsetBasePath;
     private Resources resources;
-    private Set<SourceTable> tables;
+    private List<SourceTable> tables;
     private Set<DMLOperation> dmlBlacklist;
     private Set<DDLOperation> ddlBlacklist;
     private RetryConfig retries;
+    private ParallelismConfig parallelism;
 
     private Builder() {
       description = "";
       resources = new Resources();
-      tables = new HashSet<>();
+      tables = new ArrayList<>();
       dmlBlacklist = new HashSet<>();
       ddlBlacklist = new HashSet<>();
       retries = RetryConfig.DEFAULT;
+      parallelism = ParallelismConfig.DEFAULT;
     }
 
     public Builder setSource(Stage source) {
@@ -278,6 +286,11 @@ public class DeltaConfig extends Config {
       return this;
     }
 
+    public Builder setParallelism(ParallelismConfig parallelism) {
+      this.parallelism = parallelism;
+      return this;
+    }
+
     public DeltaConfig build() {
       List<Stage> stages = new ArrayList<>();
       if (source != null) {
@@ -291,7 +304,7 @@ public class DeltaConfig extends Config {
         connections.add(new Connection(source.getName(), target.getName()));
       }
       DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables,
-                                           dmlBlacklist, ddlBlacklist, retries);
+                                           dmlBlacklist, ddlBlacklist, retries, parallelism);
       config.validate();
       return config;
     }

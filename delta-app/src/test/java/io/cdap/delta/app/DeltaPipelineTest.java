@@ -33,7 +33,9 @@ import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.Offset;
+import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.ParallelismConfig;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.RetryConfig;
@@ -53,10 +55,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -87,12 +90,17 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .setIngestTimestamp(1000L)
     .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
     .build();
+  private static final DDLEvent EVENT3 = DDLEvent.builder()
+    .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 2 })))
+    .setOperation(DDLOperation.CREATE_TABLE)
+    .setDatabase("deebee")
+    .setTable("taybull2")
+    .setPrimaryKey(Collections.singletonList("id"))
+    .setSchema(SCHEMA)
+    .build();
 
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
-
-  @ClassRule
-  public static final TemporaryFolder TEMP_FOLDER = new TemporaryFolder();
 
   @BeforeClass
   public static void setupTest() throws Exception {
@@ -101,15 +109,15 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
   @Test
   public void testOneRun() throws Exception {
-    File outputFile = TMP_FOLDER.newFile("testOneRun.json");
+    File outputFolder = TMP_FOLDER.newFolder("testOneRun");
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
     events.add(EVENT2);
 
-    String offsetBasePath = TEMP_FOLDER.newFolder("testOneRun").getAbsolutePath();
+    String offsetBasePath = outputFolder.getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
-    Stage target = new Stage("target", MockTarget.getPlugin(outputFile));
+    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -128,7 +136,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
-    List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFile);
+    List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
     Assert.assertEquals(events, actual);
 
     FileSystem fs = FileSystem.get(new Configuration());
@@ -136,10 +144,11 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     StateStore stateStore = new StateStore(fs, path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
-    PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+    DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
+    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
     stateService.load();
 
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
     TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATE, null);
@@ -151,15 +160,15 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
   @Test
   public void testRestartFromOffset() throws Exception {
-    File outputFile = TMP_FOLDER.newFile("testRestartFromOffset.json");
+    File outputFolder = TMP_FOLDER.newFolder("testRestartFromOffset");
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
     events.add(EVENT2);
 
-    String offsetBasePath = TEMP_FOLDER.newFolder("testRestartFromOffset").getAbsolutePath();
+    String offsetBasePath = outputFolder.getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, 1));
-    Stage target = new Stage("target", MockTarget.getPlugin(outputFile));
+    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -183,14 +192,15 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     StateStore stateStore = new StateStore(fs, path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
-    PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+    DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
+    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
     stateService.load();
 
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     // should only have written out the first change
-    List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFile);
+    List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
     List<? extends ChangeEvent> expected = Collections.singletonList(events.get(0));
     Assert.assertEquals(expected, actual);
 
@@ -201,11 +211,11 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
-    offsetAndSequence = stateStore.readOffset(pipelineId);
+    offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
     // second change should have been written
-    actual = FileEventConsumer.readEvents(outputFile);
+    actual = FileEventConsumer.readEvents(outputFolder, 0);
     expected = Collections.singletonList(events.get(1));
     Assert.assertEquals(expected, actual);
   }
@@ -216,7 +226,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(EVENT2);
 
-    String offsetBasePath = TEMP_FOLDER.newFolder("testFailImmediately").getAbsolutePath();
+    String offsetBasePath = TMP_FOLDER.newFolder("testFailImmediately").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
 
     // configure the target to throw exceptions after the first event is applied
@@ -248,7 +258,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(EVENT2);
 
-    String offsetBasePath = TEMP_FOLDER.newFolder("testFailureRetries").getAbsolutePath();
+    String offsetBasePath = TMP_FOLDER.newFolder("testFailureRetries").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
 
     // configure the target to throw exceptions after the first event is applied
@@ -277,7 +287,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     StateStore stateStore = new StateStore(fs, path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
-    PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
+    DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
+    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
     Tasks.waitFor(true, () -> {
       stateService.load();
       for (TableReplicationState state : stateService.getState().getTables()) {
@@ -308,7 +319,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
     // verify that the sequence number was correctly being rolled back during errors and not incremented
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(pipelineId);
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
     // verify that metrics were not double counted during errors
@@ -318,6 +329,87 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
     // check that state is killed and not failed
     Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
+  }
+
+  @Test
+  public void testMultipleInstances() throws Exception {
+    File outputFolder = TMP_FOLDER.newFolder("testMultipleInstances");
+
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(EVENT1);
+    events.add(EVENT2);
+    events.add(EVENT3);
+
+    String offsetBasePath = outputFolder.getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events));
+    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      // configure instance 0 to read taybull and instance1 to read taybull2
+      .setTables(Arrays.asList(new SourceTable("deebee", "taybull"), new SourceTable("deebee", "taybull2")))
+      .setParallelism(new ParallelismConfig(2))
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testMultipleInstances");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
+
+    waitForMetric(appId, "target.ddl", 2);
+    waitForMetric(appId, "target.dml.insert", 1);
+    manager.stop();
+    manager.waitForStopped(60, TimeUnit.SECONDS);
+
+    // check events written for instance 0
+    List<? extends ChangeEvent> expected = Arrays.asList(EVENT1, EVENT2);
+    List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
+    Assert.assertEquals(expected, actual);
+
+    // check events written for instance 1
+    expected = Collections.singletonList(EVENT3);
+    actual = FileEventConsumer.readEvents(outputFolder, 1);
+    Assert.assertEquals(expected, actual);
+
+    FileSystem fs = FileSystem.get(new Configuration());
+    Path path = new Path(offsetBasePath);
+    StateStore stateStore = new StateStore(fs, path);
+    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
+    Collection<Integer> instanceIds = stateStore.getWorkerInstances(pipelineId);
+    Assert.assertEquals(2, instanceIds.size());
+    Assert.assertTrue(instanceIds.contains(0));
+    Assert.assertTrue(instanceIds.contains(1));
+
+    // check pipeline state for instance 0
+    DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
+    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
+    stateService.load();
+
+    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
+    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+
+    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATE, null);
+    PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
+                                                                          Collections.singleton(tableState), null);
+    PipelineReplicationState actualState = stateService.getState();
+    Assert.assertEquals(expectedState, actualState);
+
+    // check pipeline state for instance 1
+    workerId = new DeltaWorkerId(pipelineId, 1);
+    stateService = new PipelineStateService(workerId, stateStore);
+    stateService.load();
+
+    offsetAndSequence = stateStore.readOffset(workerId);
+    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
+
+    tableState = new TableReplicationState("deebee", "taybull2", TableState.REPLICATE, null);
+    expectedState = new PipelineReplicationState(PipelineState.OK, Collections.singleton(tableState), null);
+    actualState = stateService.getState();
+    Assert.assertEquals(expectedState, actualState);
   }
 
   private void waitForMetric(ApplicationId appId, String metric, int expected)
