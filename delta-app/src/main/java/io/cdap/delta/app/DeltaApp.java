@@ -50,7 +50,7 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
 
-    addWorker(new DeltaWorker());
+    addWorker(new DeltaWorker(conf));
 
     String description = conf.getDescription();
     if (description == null) {

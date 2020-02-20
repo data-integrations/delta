@@ -29,8 +29,6 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -41,8 +39,7 @@ import javax.annotation.Nullable;
  */
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private static final String STATE_PREFIX = "state-";
-  private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
-  private final DeltaPipelineId id;
+  private final DeltaWorkerId id;
   private final String runId;
   private final Metrics metrics;
   private final StateStore stateStore;
@@ -51,7 +48,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final PipelineStateService stateService;
   private final int maxRetrySeconds;
 
-  DeltaContext(DeltaPipelineId id, String runId, Metrics metrics, StateStore stateStore,
+  DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService,
                int maxRetrySeconds) {
     this.id = id;
@@ -107,7 +104,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   @Override
   public String getApplicationName() {
-    return id.getApp();
+    return id.getPipelineId().getApp();
   }
 
   @Override
@@ -118,6 +115,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public Metrics getMetrics() {
     return metrics;
+  }
+
+  @Override
+  public int getInstanceId() {
+    return id.getInstanceId();
   }
 
   @Override

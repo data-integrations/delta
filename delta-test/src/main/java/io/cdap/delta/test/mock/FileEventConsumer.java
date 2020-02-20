@@ -67,7 +67,7 @@ public class FileEventConsumer implements EventConsumer {
     try (FileWriter writer = new FileWriter(file)) {
       writer.write(GSON.toJson(events));
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException(e.getMessage(), e);
     }
   }
 
@@ -90,14 +90,16 @@ public class FileEventConsumer implements EventConsumer {
    * Read events that were consumed by the target. This should only be called after the pipeline has been stopped.
    *
    * @param filePath path to read events from
+   * @param instanceId instance id that wrote the events
    * @return list of events contained in the file path
    * @throws IOException if there was an issue reading the file
    */
-  public static List<? extends ChangeEvent> readEvents(File filePath) throws IOException {
-    if (!filePath.exists()) {
+  public static List<? extends ChangeEvent> readEvents(File filePath, int instanceId) throws IOException {
+    File eventsFile = new File(filePath, String.format("%d.json", instanceId));
+    if (!eventsFile.exists()) {
       return Collections.emptyList();
     }
-    try (Reader reader = new FileReader(filePath)) {
+    try (Reader reader = new FileReader(eventsFile)) {
       return GSON.fromJson(reader, new TypeToken<List<? extends ChangeEvent>>() { }.getType());
     }
   }

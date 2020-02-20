@@ -43,6 +43,11 @@ public interface DeltaRuntimeContext extends PluginContext {
   Metrics getMetrics();
 
   /**
+   * @return id of the worker instance.
+   */
+  int getInstanceId();
+
+  /**
    * @return maximum amount of seconds to retry failures before failing the pipeline
    */
   int getMaxRetrySeconds();

@@ -16,7 +16,9 @@
 
 package io.cdap.delta.app;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import io.cdap.cdap.api.app.ApplicationSpecification;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
@@ -37,6 +39,9 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.Sequenced;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.InstanceConfig;
+import io.cdap.delta.proto.ParallelismConfig;
+import io.cdap.delta.proto.TableId;
 import io.cdap.delta.store.DefaultMacroEvaluator;
 import io.cdap.delta.store.StateStore;
 import net.jodah.failsafe.Failsafe;
@@ -47,10 +52,12 @@ import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -68,13 +75,16 @@ public class DeltaWorker extends AbstractWorker {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaWorker.class);
   private static final Gson GSON = new Gson();
   private static final String GENERATION = "generation";
+  private static final String TABLE_ASSIGNMENTS = "table.assignments";
+  private static final Type TABLE_ASSIGNMENTS_TYPE = new TypeToken<Map<Integer, Set<TableId>>>() { }.getType();
 
-  private final AtomicBoolean shouldStop = new AtomicBoolean(false);
+  private final AtomicBoolean shouldStop;
 
   // this is injected by CDAP
   @SuppressWarnings("unused")
   private Metrics metrics;
 
+  private DeltaConfig config;
   private DeltaContext deltaContext;
   private EventConsumer eventConsumer;
   private EventReader eventReader;
@@ -83,8 +93,20 @@ public class DeltaWorker extends AbstractWorker {
   private EventReaderDefinition readerDefinition;
   private Offset offset;
   private BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
+  private Map<Integer, Set<TableId>> tableAssignments;
   private int maxRetrySeconds;
   private int retryDelaySeconds;
+
+  // no-arg constructor required to initialize the shouldStop variable, since CDAP calls the no-arg constructor
+  // and sets fields through reflection.
+  DeltaWorker() {
+    this.shouldStop = new AtomicBoolean(false);
+  }
+
+  DeltaWorker(DeltaConfig config) {
+    this();
+    this.config = config;
+  }
 
   @Override
   protected void configure() {
@@ -94,6 +116,19 @@ public class DeltaWorker extends AbstractWorker {
     // in those situations, we don't want to start from the offset that it had before it was deleted,
     // so we include the generation as part of the path when storing state.
     props.put(GENERATION, String.valueOf(System.currentTimeMillis()));
+
+    tableAssignments = assignTables(config);
+    props.put(TABLE_ASSIGNMENTS, GSON.toJson(tableAssignments));
+
+    Integer numInstances = config.getParallelism().getNumInstances();
+    if (numInstances != null && numInstances > tableAssignments.size()) {
+      LOG.warn("Due to the number of source tables, "
+                 + "ignoring the configuration to use {} instances and using {} instead.",
+               numInstances, tableAssignments.size());
+    }
+    // tableAssignments can be empty if no source tables are given
+    // in that scenario, a single instance is used to read all tables
+    setInstances(Math.max(1, tableAssignments.size()));
     setProperties(props);
   }
 
@@ -103,14 +138,22 @@ public class DeltaWorker extends AbstractWorker {
     long generation = Long.parseLong(context.getSpecification().getProperty(GENERATION));
 
     ApplicationSpecification appSpec = context.getApplicationSpecification();
-    DeltaConfig config = GSON.fromJson(appSpec.getConfiguration(), DeltaConfig.class);
+    config = GSON.fromJson(appSpec.getConfiguration(), DeltaConfig.class);
+
+    int instanceId = context.getInstanceId();
+    tableAssignments = GSON.fromJson(context.getSpecification().getProperty(TABLE_ASSIGNMENTS), TABLE_ASSIGNMENTS_TYPE);
+    Set<TableId> assignedTables = tableAssignments.getOrDefault(instanceId, new HashSet<>());
+    if (assignedTables == null) {
+      return;
+    }
 
     String sourceName = config.getSource().getName();
     String targetName = config.getTarget().getName();
     String offsetBasePath = config.getOffsetBasePath();
     maxRetrySeconds = config.getRetryConfig().getMaxDurationSeconds();
     retryDelaySeconds = config.getRetryConfig().getDelaySeconds();
-    DeltaPipelineId id = new DeltaPipelineId(context.getNamespace(), appSpec.getName(), generation);
+    DeltaWorkerId id = new DeltaWorkerId(new DeltaPipelineId(context.getNamespace(), appSpec.getName(), generation),
+                                         context.getInstanceId());
 
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
@@ -131,6 +174,7 @@ public class DeltaWorker extends AbstractWorker {
     // targets will not behave properly if they don't get create table events
     ddlBlacklist.remove(DDLOperation.CREATE_TABLE);
     Set<SourceTable> expandedTables = config.getTables().stream()
+      .filter(t -> assignedTables.contains(new TableId(t.getDatabase(), t.getTable(), t.getSchema())))
       .map(t -> {
         Set<DMLOperation> expandedDmlBlacklist = new HashSet<>(t.getDmlBlacklist());
         expandedDmlBlacklist.addAll(config.getDmlBlacklist());
@@ -139,17 +183,26 @@ public class DeltaWorker extends AbstractWorker {
         expandedDdlBlacklist.remove(DDLOperation.CREATE_TABLE);
         return new SourceTable(t.getDatabase(), t.getTable(), t.getSchema(),
                                t.getColumns(), expandedDmlBlacklist, expandedDdlBlacklist);
-      }).collect(Collectors.toSet());
+      })
+      .collect(Collectors.toSet());
     readerDefinition = new EventReaderDefinition(expandedTables,
                                                  config.getDmlBlacklist(),
                                                  config.getDdlBlacklist());
 
-    // TODO: make the queue size configurable? record metrics about queue size?
     eventQueue = new ArrayBlockingQueue<>(100);
   }
 
   @Override
   public void run() {
+    // handle the situation where the user manually increased the number of worker instances after
+    // the pipeline was deployed.
+    int instanceId = getContext().getInstanceId();
+    if (!config.getTables().isEmpty() && !tableAssignments.containsKey(instanceId)) {
+      LOG.warn("Instance {} was not assigned any tables when the pipeline was created and will be shut down.",
+               instanceId);
+      return;
+    }
+
     try {
       if (offset.get().isEmpty()) {
         deltaContext.setOK();
@@ -279,7 +332,8 @@ public class DeltaWorker extends AbstractWorker {
       try {
         eventConsumer.stop();
       } catch (Exception e) {
-        // ignore and proceed to exit
+        // log and proceed to exit
+        LOG.warn("Event consumer failed to stop.", e);
       } finally {
         shouldStop.set(true);
       }
@@ -315,5 +369,33 @@ public class DeltaWorker extends AbstractWorker {
 
     eventReader.start(offset);
     eventConsumer.start();
+  }
+
+  @VisibleForTesting
+  static Map<Integer, Set<TableId>> assignTables(DeltaConfig config) {
+    ParallelismConfig parallelism = config.getParallelism();
+    List<InstanceConfig> instances = parallelism.getInstances();
+    Map<Integer, Set<TableId>> assignments = new HashMap<>();
+    if (!instances.isEmpty()) {
+      int instanceNum = 0;
+      for (InstanceConfig instanceConfig : instances) {
+        assignments.put(instanceNum, instanceConfig.getTables());
+        instanceNum++;
+      }
+      return assignments;
+    }
+
+    Integer numInstances = config.getParallelism().getNumInstances();
+    numInstances = numInstances == null ? 1 : numInstances;
+    numInstances = Math.max(numInstances, 1);
+
+    int instanceNum = 0;
+    for (SourceTable table : config.getTables()) {
+      Set<TableId> instanceTables = assignments.computeIfAbsent(instanceNum, key -> new HashSet<>());
+      instanceTables.add(new TableId(table.getDatabase(), table.getTable(), table.getSchema()));
+      instanceNum = (instanceNum + 1) % numInstances;
+    }
+
+    return assignments;
   }
 }

@@ -19,6 +19,7 @@ package io.cdap.delta.store;
 import com.google.common.io.ByteStreams;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.app.DeltaPipelineId;
+import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.OffsetAndSequence;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -27,7 +28,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 
@@ -45,7 +50,7 @@ public class StateStore {
   }
 
   @Nullable
-  public OffsetAndSequence readOffset(DeltaPipelineId id) throws IOException {
+  public OffsetAndSequence readOffset(DeltaWorkerId id) throws IOException {
     Path path = getPath(id, OFFSET_KEY);
     if (!fileSystem.exists(path)) {
       return null;
@@ -65,7 +70,7 @@ public class StateStore {
     }
   }
 
-  public void writeOffset(DeltaPipelineId id, OffsetAndSequence offset) throws IOException {
+  public void writeOffset(DeltaWorkerId id, OffsetAndSequence offset) throws IOException {
     Path path = getPath(id, OFFSET_KEY);
     try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
       outputStream.writeLong(offset.getSequenceNumber());
@@ -95,8 +100,31 @@ public class StateStore {
     return maxGeneration > 0 ? maxGeneration : null;
   }
 
+  public Collection<Integer> getWorkerInstances(DeltaPipelineId pipelineId) throws IOException {
+    Path path = new Path(basePath, String.format("%s/%s/%d", pipelineId.getNamespace(), pipelineId.getApp(),
+                                                 pipelineId.getGeneration()));
+    if (!fileSystem.exists(path)) {
+      return Collections.emptyList();
+    }
+    FileStatus[] files = fileSystem.listStatus(path);
+    List<Integer> workerInstances = new ArrayList<>(files.length);
+    for (FileStatus file : files) {
+      // everything in here should be directories corresponding to an instance id unless somebody manually
+      // modified it
+      if (file.isDirectory()) {
+        String fileName = file.getPath().getName();
+        try {
+          workerInstances.add(Integer.parseInt(fileName));
+        } catch (NumberFormatException e) {
+          // should not happen unless somebody manually modified the directories
+        }
+      }
+    }
+    return workerInstances;
+  }
+
   @Nullable
-  public byte[] readState(DeltaPipelineId id, String key) throws IOException {
+  public byte[] readState(DeltaWorkerId id, String key) throws IOException {
     Path path = getPath(id, key);
     if (!fileSystem.exists(path)) {
       return null;
@@ -106,15 +134,16 @@ public class StateStore {
     }
   }
 
-  public void writeState(DeltaPipelineId id, String key, byte[] val) throws IOException {
+  public void writeState(DeltaWorkerId id, String key, byte[] val) throws IOException {
     Path path = getPath(id, key);
     try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
       outputStream.write(val);
     }
   }
 
-  private Path getPath(DeltaPipelineId id, String key) {
-    return new Path(basePath, String.format("%s/%s/%s/%s",
-                                            id.getNamespace(), id.getApp(), id.getGeneration(), key));
+  private Path getPath(DeltaWorkerId id, String key) {
+    return new Path(basePath, String.format("%s/%s/%d/%d/%s",
+                                            id.getPipelineId().getNamespace(), id.getPipelineId().getApp(),
+                                            id.getPipelineId().getGeneration(), id.getInstanceId(), key));
   }
 }

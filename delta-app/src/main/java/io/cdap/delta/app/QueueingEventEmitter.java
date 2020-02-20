@@ -85,7 +85,10 @@ public class QueueingEventEmitter implements EventEmitter {
     }
 
     SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(), event.getTable()));
-    return sourceTable != null && sourceTable.getDdlBlacklist().contains(event.getOperation());
+    if (sourceTable != null && sourceTable.getDdlBlacklist().contains(event.getOperation())) {
+      return true;
+    }
+    return !tableDefinitions.isEmpty() && sourceTable == null;
   }
 
   private boolean shouldIgnore(DMLEvent event) {
@@ -94,6 +97,9 @@ public class QueueingEventEmitter implements EventEmitter {
     }
 
     SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(), event.getTable()));
-    return sourceTable != null && sourceTable.getDmlBlacklist().contains(event.getOperation());
+    if (sourceTable != null && sourceTable.getDmlBlacklist().contains(event.getOperation())) {
+      return true;
+    }
+    return !tableDefinitions.isEmpty() && sourceTable == null;
   }
 }

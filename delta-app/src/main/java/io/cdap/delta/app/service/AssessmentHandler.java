@@ -25,12 +25,14 @@ import io.cdap.cdap.api.service.http.AbstractSystemHttpServiceHandler;
 import io.cdap.cdap.api.service.http.HttpServiceRequest;
 import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
+import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.api.assessment.PipelineAssessment;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.app.DeltaPipelineId;
+import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.PipelineStateService;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.proto.DBTable;
@@ -38,6 +40,7 @@ import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.TableAssessmentResponse;
+import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
 import io.cdap.delta.store.DraftService;
@@ -51,8 +54,11 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLType;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -72,7 +78,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   // NOTE: this is only available in the configure() method
   private final String offsetBasePath;
 
-  public AssessmentHandler(String offsetBasePath) {
+  AssessmentHandler(String offsetBasePath) {
     this.offsetBasePath = offsetBasePath;
   }
 
@@ -232,15 +238,33 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       Long latestGen = stateStore.getLatestGeneration(namespaceName, pipelineName);
       // this can happen if the pipeline was never started
       if (latestGen == null) {
-        PipelineReplicationState state = new PipelineReplicationState(PipelineState.OK, Collections.emptySet(), null);
-        responder.sendString(GSON.toJson(state));
+        responder.sendString(GSON.toJson(PipelineReplicationState.EMPTY));
         return;
       }
 
       DeltaPipelineId pipelineId = new DeltaPipelineId(namespaceName, pipelineName, latestGen);
-      PipelineStateService stateService = new PipelineStateService(pipelineId, stateStore);
-      stateService.load();
-      responder.sendString(GSON.toJson(stateService.getState()));
+      Collection<Integer> workerInstances = stateStore.getWorkerInstances(pipelineId);
+      // this can happen if the pipeline was started but never got to a good state
+      if (workerInstances.isEmpty()) {
+        responder.sendString(GSON.toJson(PipelineReplicationState.EMPTY));
+        return;
+      }
+
+      Set<TableReplicationState> tableStates = new HashSet<>();
+      PipelineState sourceState = PipelineState.OK;
+      ReplicationError sourceError = null;
+      for (int instanceId : workerInstances) {
+        PipelineStateService stateService = new PipelineStateService(new DeltaWorkerId(pipelineId, instanceId),
+                                                                     stateStore);
+        stateService.load();
+        PipelineReplicationState instanceState = stateService.getState();
+        tableStates.addAll(instanceState.getTables());
+        // if one instance is in error state, the entire replicator is in error state
+        sourceState = sourceState == PipelineState.ERROR ? sourceState : instanceState.getSourceState();
+        // if one instance has a replication error, keep that as the error for the entire replicator
+        sourceError = sourceError == null ? instanceState.getSourceError() : sourceError;
+      }
+      responder.sendString(GSON.toJson(new PipelineReplicationState(sourceState, tableStates, sourceError)));
     }));
   }
 
