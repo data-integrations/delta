@@ -39,6 +39,7 @@ import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
+import io.cdap.delta.proto.StateRequest;
 import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.store.Draft;
@@ -47,8 +48,6 @@ import io.cdap.delta.store.DraftService;
 import io.cdap.delta.store.Namespace;
 import io.cdap.delta.store.StateStore;
 import io.cdap.delta.store.SystemServicePropertyEvaluator;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -224,24 +223,44 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   public void healthCheck(HttpServiceRequest request, HttpServiceResponder responder) {
     responder.sendStatus(HttpURLConnection.HTTP_OK);
   }
-  
-  @Path("v1/contexts/{context}/pipelines/{pipeline}/state")
+
+  @POST
+  @Path("v1/contexts/{context}/getState")
   public void getState(HttpServiceRequest request, HttpServiceResponder responder,
-                       @PathParam("context") String namespaceName,
-                       @PathParam("pipeline") String pipelineName) {
+                       @PathParam("context") String namespaceName) {
     respond(namespaceName, responder, ((draftService, namespace) -> {
-      String offsetBasePath = getContext().getSpecification().getProperty(OFFSET_PATH);
+
+      StateRequest stateRequest;
+      try {
+        stateRequest = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(),
+                                     StateRequest.class);
+        stateRequest.validate();
+      } catch (JsonSyntaxException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Unable to decode request body: " + e.getMessage());
+        return;
+      } catch (IllegalArgumentException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid request: " + e.getMessage());
+        return;
+      }
+
+      // since offset base path can be set per replicator, allow the caller to pass in the base path
+      // to override the default
+      String offsetBasePath = stateRequest.getOffsetBasePath();
+      if (offsetBasePath == null) {
+        offsetBasePath = getContext().getSpecification().getProperty(OFFSET_PATH);
+      }
+
       org.apache.hadoop.fs.Path path = new org.apache.hadoop.fs.Path(offsetBasePath);
       StateStore stateStore = StateStore.from(path);
 
-      Long latestGen = stateStore.getLatestGeneration(namespaceName, pipelineName);
+      Long latestGen = stateStore.getLatestGeneration(namespaceName, stateRequest.getName());
       // this can happen if the pipeline was never started
       if (latestGen == null) {
         responder.sendString(GSON.toJson(PipelineReplicationState.EMPTY));
         return;
       }
 
-      DeltaPipelineId pipelineId = new DeltaPipelineId(namespaceName, pipelineName, latestGen);
+      DeltaPipelineId pipelineId = new DeltaPipelineId(namespaceName, stateRequest.getName(), latestGen);
       Collection<Integer> workerInstances = stateStore.getWorkerInstances(pipelineId);
       // this can happen if the pipeline was started but never got to a good state
       if (workerInstances.isEmpty()) {
