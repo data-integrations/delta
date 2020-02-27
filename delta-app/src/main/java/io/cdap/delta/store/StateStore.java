@@ -21,6 +21,7 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.app.DeltaPipelineId;
 import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.OffsetAndSequence;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -44,9 +45,13 @@ public class StateStore {
   private final FileSystem fileSystem;
   private final Path basePath;
 
-  public StateStore(FileSystem fileSystem, Path basePath) {
+  private StateStore(FileSystem fileSystem, Path basePath) {
     this.fileSystem = fileSystem;
     this.basePath = basePath;
+  }
+
+  public static StateStore from(Path basePath) throws IOException {
+    return new StateStore(basePath.getFileSystem(new Configuration()), basePath);
   }
 
   @Nullable
