@@ -155,9 +155,8 @@ public class DeltaWorker extends AbstractWorker {
     DeltaWorkerId id = new DeltaWorkerId(new DeltaPipelineId(context.getNamespace(), appSpec.getName(), generation),
                                          context.getInstanceId());
 
-    FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
-    StateStore stateStore = new StateStore(fs, path);
+    StateStore stateStore = StateStore.from(path);
     EventMetrics eventMetrics = new EventMetrics(metrics, targetName);
     PipelineStateService stateService = new PipelineStateService(id, stateStore);
     stateService.load();

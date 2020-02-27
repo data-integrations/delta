@@ -231,9 +231,8 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
                        @PathParam("pipeline") String pipelineName) {
     respond(namespaceName, responder, ((draftService, namespace) -> {
       String offsetBasePath = getContext().getSpecification().getProperty(OFFSET_PATH);
-      FileSystem fs = FileSystem.get(new Configuration());
       org.apache.hadoop.fs.Path path = new org.apache.hadoop.fs.Path(offsetBasePath);
-      StateStore stateStore = new StateStore(fs, path);
+      StateStore stateStore = StateStore.from(path);
 
       Long latestGen = stateStore.getLatestGeneration(namespaceName, pipelineName);
       // this can happen if the pipeline was never started

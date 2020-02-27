@@ -141,7 +141,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
-    StateStore stateStore = new StateStore(fs, path);
+    StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
@@ -189,7 +189,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
-    StateStore stateStore = new StateStore(fs, path);
+    StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
@@ -284,7 +284,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     // wait for the replication state for the table to be set to ERROR.
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
-    StateStore stateStore = new StateStore(fs, path);
+    StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
@@ -376,7 +376,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
-    StateStore stateStore = new StateStore(fs, path);
+    StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     Collection<Integer> instanceIds = stateStore.getWorkerInstances(pipelineId);
