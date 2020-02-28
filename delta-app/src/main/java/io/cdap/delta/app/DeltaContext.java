@@ -29,15 +29,19 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 
 /**
  * Context for delta plugins
  */
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
+  private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
   private static final String STATE_PREFIX = "state-";
   private final DeltaWorkerId id;
   private final String runId;
@@ -47,6 +51,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final EventMetrics eventMetrics;
   private final PipelineStateService stateService;
   private final int maxRetrySeconds;
+  private final AtomicReference<Throwable> failure;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService,
@@ -59,6 +64,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.eventMetrics = eventMetrics;
     this.stateService = stateService;
     this.maxRetrySeconds = maxRetrySeconds;
+    this.failure = new AtomicReference<>(null);
   }
 
   @Override
@@ -174,7 +180,19 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     stateService.setSourceOK();
   }
 
-  public void clearMetrics() {
+  @Override
+  public void notifyFailed(Throwable cause) {
+    failure.set(cause);
+  }
+
+  void clearMetrics() {
     eventMetrics.clear();
+  }
+
+  void throwFailureIfExists() throws Throwable {
+    Throwable t = failure.getAndSet(null);
+    if (t != null) {
+      throw t;
+    }
   }
 }

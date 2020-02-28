@@ -33,8 +33,7 @@ import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.EventReaderDefinition;
-import io.cdap.delta.api.SourceTable;
-import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableDetail;
@@ -43,9 +42,12 @@ import io.cdap.delta.api.assessment.TableRegistry;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.Plugin;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 
 /**
  * Mock DeltaSource used in unit tests. Emits a pre-configured set of events.
@@ -73,6 +75,17 @@ public class MockSource implements DeltaSource {
 
   @Override
   public EventReader createReader(EventReaderDefinition definition, DeltaSourceContext context, EventEmitter emitter) {
+    if (conf.proceedFile != null) {
+      File proceedFile = new File(conf.proceedFile);
+      if (!proceedFile.exists()) {
+        return new FailureEventReader(context);
+      }
+    }
+    try {
+      context.setOK();
+    } catch (IOException e) {
+      // shouldn't happen in unit tests
+    }
     return new MockEventReader(GSON.fromJson(conf.events, new TypeToken<List<? extends ChangeEvent>>() { }.getType()),
                                emitter, conf.maxEvents);
   }
@@ -116,6 +129,9 @@ public class MockSource implements DeltaSource {
     private String events;
 
     private int maxEvents;
+
+    @Nullable
+    private String proceedFile;
   }
 
   /**
@@ -145,10 +161,27 @@ public class MockSource implements DeltaSource {
     return new Plugin(NAME, DeltaSource.PLUGIN_TYPE, properties, Artifact.EMPTY);
   }
 
+  /**
+   * Get the plugin configuration for a mock source that should throw exceptions until the specified proceed file
+   * exists. After that point, it should emit the specified events.
+   *
+   * @param events events to emit in order
+   * @param proceedFile file that must exist before events are emitted
+   * @return plugin configuration for the mock source
+   */
+  public static Plugin getPlugin(List<? extends ChangeEvent> events, File proceedFile) {
+    Map<String, String> properties = new HashMap<>();
+    properties.put("events", GSON.toJson(events));
+    properties.put("maxEvents", String.valueOf(Integer.MAX_VALUE));
+    properties.put("proceedFile", proceedFile.getAbsolutePath());
+    return new Plugin(NAME, DeltaSource.PLUGIN_TYPE, properties, Artifact.EMPTY);
+  }
+
   private static PluginClass getPluginClass() {
     Map<String, PluginPropertyField> properties = new HashMap<>();
     properties.put("events", new PluginPropertyField("events", "", "string", true, false));
     properties.put("maxEvents", new PluginPropertyField("maxEvents", "", "int", true, false));
+    properties.put("proceedFile", new PluginPropertyField("proceedFile", "", "string", false, false));
     return new PluginClass(DeltaSource.PLUGIN_TYPE, NAME, "", MockSource.class.getName(), "conf", properties);
   }
 }
