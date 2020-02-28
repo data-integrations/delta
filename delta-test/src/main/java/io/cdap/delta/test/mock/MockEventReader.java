@@ -64,11 +64,6 @@ public class MockEventReader implements EventReader {
     }
   }
 
-  @Override
-  public void stop() {
-    // no-op
-  }
-
   private boolean offsetsEqual(Offset o1, Offset o2) {
     if (!o1.get().keySet().equals(o2.get().keySet())) {
       return false;

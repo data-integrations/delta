@@ -46,8 +46,6 @@ import io.cdap.delta.store.DefaultMacroEvaluator;
 import io.cdap.delta.store.StateStore;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -207,6 +205,8 @@ public class DeltaWorker extends AbstractWorker {
         deltaContext.setOK();
       }
       startFromLastCommit();
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       // if this fails at the start of the run, fail the entire run as it probably means there is something
       // wrong with the configuration or environment
@@ -240,8 +240,7 @@ public class DeltaWorker extends AbstractWorker {
             return;
           }
 
-          LOG.warn("Encountered an error while attempting to apply an event. "
-                     + "Events will be replayed from the last successful commit.", failure);
+          LOG.warn("Encountered an error. Events will be replayed from the last successful commit.", failure);
           // if there was an error applying the event, stop the current reader and consumer
           // and restart from the last commit. We cannot just retry applying the single event because that would force
           // targets to persist their changes before they can return from applyDML or applyDDL.
@@ -299,6 +298,16 @@ public class DeltaWorker extends AbstractWorker {
           return;
         }
 
+        try {
+          deltaContext.throwFailureIfExists();
+        } catch (Exception e) {
+          throw e;
+        } catch (Throwable throwable) {
+          // if the failure wasn't an exception, fail right away since it should be some sort of
+          // code issue and not something that can succeed on retry
+          throw new DeltaFailureException(throwable.getMessage(), throwable);
+        }
+
         // this is checked in case the worker was stopped in the middle of the eventQueue.poll() call
         if (shouldStop.get()) {
           return;
@@ -319,6 +328,7 @@ public class DeltaWorker extends AbstractWorker {
     if (error.get() != null) {
       throw new RuntimeException(error.get());
     }
+
   }
 
   @Override

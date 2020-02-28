@@ -17,21 +17,20 @@
 package io.cdap.delta.api;
 
 /**
- * Reads change events.
+ * Notifies the application framework that there is a failure.
  */
-public interface EventReader {
+public interface FailureNotifier {
 
   /**
-   * Start reading events from the given offset.
-   */
-  void start(Offset offset);
-
-  /**
-   * Stop reading events.
+   * Call this method if a failure was encountered.
+   * In the event of a failure, the application framework will stop the EventReader and EventConsumer,
+   * create new ones, then restart from the last committed offset.
+   * This will be retried up to the retry timeout configured for the program.
    *
-   * @throws InterruptedException if the reader was interrupted while stopping
+   * If the cause is a {@link DeltaFailureException}, the program will be failed immediately instead of retried.
+   *
+   * @param cause cause of the failure
    */
-  default void stop() throws InterruptedException {
-    // no-op
-  }
+  void notifyFailed(Throwable cause);
+
 }

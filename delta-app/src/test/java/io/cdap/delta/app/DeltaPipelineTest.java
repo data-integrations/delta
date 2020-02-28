@@ -251,19 +251,20 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
   @Test
   public void testFailureRetries() throws Exception {
-    String proceedFilePath = TMP_FOLDER.getRoot().getAbsolutePath();
-    File proceedFile = new File(proceedFilePath, "proceed");
+    String tempFolderPath = TMP_FOLDER.getRoot().getAbsolutePath();
+    File sourceProceedFile = new File(tempFolderPath, "sourceProceed");
+    File targetProceedFile = new File(tempFolderPath, "targetProceed");
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
     events.add(EVENT2);
 
     String offsetBasePath = TMP_FOLDER.newFolder("testFailureRetries").getAbsolutePath();
-    Stage source = new Stage("src", MockSource.getPlugin(events));
+    Stage source = new Stage("src", MockSource.getPlugin(events, sourceProceedFile));
 
     // configure the target to throw exceptions after the first event is applied
     // until the proceedFile is created
-    Stage target = new Stage("target", FailureTarget.failAfter(1L, proceedFile));
+    Stage target = new Stage("target", FailureTarget.failAfter(1L, targetProceedFile));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -278,20 +279,34 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    // wait for the 1st event to be applied, after which the target should start throwing exceptions
-    waitForMetric(appId, "target.ddl", 1);
-
-    // wait for the replication state for the table to be set to ERROR.
-    FileSystem fs = FileSystem.get(new Configuration());
+    // wait for the replication state for the source to be set to ERROR
     Path path = new Path(offsetBasePath);
     StateStore stateStore = StateStore.from(path);
+    Tasks.waitFor(true, () -> stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication()) != null,
+                  1, TimeUnit.MINUTES);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
     PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
+    Tasks.waitFor(PipelineState.ERROR, () -> {
+      stateService.load();
+      return stateService.getState().getSourceState();
+    }, 30, TimeUnit.SECONDS);
+
+    // create the proceed file for the source, which will tell the source to stop throwing exceptions
+    sourceProceedFile.createNewFile();
+
+    // wait for the 1st event to be applied, after which the target should start throwing exceptions
+    waitForMetric(appId, "target.ddl", 1);
+
+    // wait for the replication state for the table to be set to ERROR.
     Tasks.waitFor(true, () -> {
       stateService.load();
-      for (TableReplicationState state : stateService.getState().getTables()) {
+      PipelineReplicationState pipelineState = stateService.getState();
+      if (pipelineState.getSourceState() != PipelineState.OK) {
+        return false;
+      }
+      for (TableReplicationState state : pipelineState.getTables()) {
         if (EVENT2.getDatabase().equals(state.getDatabase()) &&
           EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.ERROR) {
           return true;
@@ -301,7 +316,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     }, 30, TimeUnit.SECONDS);
 
     // create the proceed file, which will tell the target to stop throwing exceptions
-    proceedFile.createNewFile();
+    targetProceedFile.createNewFile();
 
     // wait for replication state for the table to update to REPLICATING
     Tasks.waitFor(true, () -> {

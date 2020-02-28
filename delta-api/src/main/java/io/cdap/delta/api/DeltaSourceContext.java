@@ -21,7 +21,7 @@ import java.io.IOException;
 /**
  * Context for a CDC Source.
  */
-public interface DeltaSourceContext extends DeltaRuntimeContext {
+public interface DeltaSourceContext extends DeltaRuntimeContext, FailureNotifier {
 
   /**
    * Record that there are currently errors reading change events.
