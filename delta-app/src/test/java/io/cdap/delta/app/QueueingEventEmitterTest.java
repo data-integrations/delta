@@ -41,7 +41,7 @@ import java.util.concurrent.BlockingQueue;
 public class QueueingEventEmitterTest {
   private static final Schema SCHEMA = Schema.recordOf("taybull", Schema.Field.of("id", Schema.of(Schema.Type.INT)));
   private static final DDLEvent DDL = DDLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 0 })))
+    .setOffset(new Offset(Collections.singletonMap("order", "0")))
     .setOperation(DDLOperation.CREATE_TABLE)
     .setDatabase("deebee")
     .setTable("taybull")
@@ -49,7 +49,7 @@ public class QueueingEventEmitterTest {
     .setSchema(SCHEMA)
     .build();
   private static final DMLEvent DML = DMLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 1 })))
+    .setOffset(new Offset(Collections.singletonMap("order", "1")))
     .setOperation(DMLOperation.INSERT)
     .setDatabase("deebee")
     .setTable("taybull")

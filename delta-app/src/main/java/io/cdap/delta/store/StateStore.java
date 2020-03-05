@@ -61,14 +61,12 @@ public class StateStore {
       return null;
     }
     try (FSDataInputStream inputStream = fileSystem.open(path)) {
-      Map<String, byte[]> offset = new HashMap<>();
+      Map<String, String> offset = new HashMap<>();
       long sequenceNumber = inputStream.readLong();
       int numKeys = inputStream.readInt();
       for (int i = 0; i < numKeys; i++) {
         String key = inputStream.readUTF();
-        int len = inputStream.readInt();
-        byte[] val = new byte[len];
-        inputStream.readFully(val);
+        String val = inputStream.readUTF();
         offset.put(key, val);
       }
       return new OffsetAndSequence(new Offset(offset), sequenceNumber);
@@ -80,10 +78,9 @@ public class StateStore {
     try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
       outputStream.writeLong(offset.getSequenceNumber());
       outputStream.writeInt(offset.getOffset().get().size());
-      for (Map.Entry<String, byte[]> entry : offset.getOffset().get().entrySet()) {
+      for (Map.Entry<String, String> entry : offset.getOffset().get().entrySet()) {
         outputStream.writeUTF(entry.getKey());
-        outputStream.writeInt(entry.getValue().length);
-        outputStream.write(entry.getValue());
+        outputStream.writeUTF(entry.getValue());
       }
     }
   }
