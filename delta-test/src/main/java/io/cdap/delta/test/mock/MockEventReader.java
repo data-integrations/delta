@@ -23,7 +23,6 @@ import io.cdap.delta.api.EventEmitter;
 import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.Offset;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -48,7 +47,7 @@ public class MockEventReader implements EventReader {
     Iterator<? extends ChangeEvent> eventIter = events.iterator();
     if (!offset.get().isEmpty()) {
       while (eventIter.hasNext()) {
-        if (offsetsEqual(offset, eventIter.next().getOffset())) {
+        if (offset.equals(eventIter.next().getOffset())) {
           break;
         }
       }
@@ -62,17 +61,5 @@ public class MockEventReader implements EventReader {
         emitter.emit((DMLEvent) event);
       }
     }
-  }
-
-  private boolean offsetsEqual(Offset o1, Offset o2) {
-    if (!o1.get().keySet().equals(o2.get().keySet())) {
-      return false;
-    }
-    for (String key : o1.get().keySet()) {
-      if (!Arrays.equals(o1.get().get(key), o2.get().get(key))) {
-        return false;
-      }
-    }
-    return true;
   }
 }

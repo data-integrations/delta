@@ -75,7 +75,7 @@ import java.util.concurrent.TimeoutException;
 public class DeltaPipelineTest extends DeltaPipelineTestBase {
   private static final Schema SCHEMA = Schema.recordOf("taybull", Schema.Field.of("id", Schema.of(Schema.Type.INT)));
   private static final DDLEvent EVENT1 = DDLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 0 })))
+    .setOffset(new Offset(Collections.singletonMap("order", "0")))
     .setOperation(DDLOperation.CREATE_TABLE)
     .setDatabase("deebee")
     .setTable("taybull")
@@ -83,7 +83,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .setSchema(SCHEMA)
     .build();
   private static final DMLEvent EVENT2 = DMLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 1 })))
+    .setOffset(new Offset(Collections.singletonMap("order", "1")))
     .setOperation(DMLOperation.INSERT)
     .setDatabase("deebee")
     .setTable("taybull")
@@ -91,7 +91,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
     .build();
   private static final DDLEvent EVENT3 = DDLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", new byte[] { 2 })))
+    .setOffset(new Offset(Collections.singletonMap("order", "2")))
     .setOperation(DDLOperation.CREATE_TABLE)
     .setDatabase("deebee")
     .setTable("taybull2")

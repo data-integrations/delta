@@ -16,7 +16,6 @@
 
 package io.cdap.delta.api;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,20 +25,20 @@ import java.util.Objects;
  * State for the origin.
  */
 public class Offset {
-  private final Map<String, byte[]> state;
+  private final Map<String, String> state;
 
   public Offset() {
     this.state = new HashMap<>();
   }
 
-  public Offset(Map<String, byte[]> state) {
+  public Offset(Map<String, String> state) {
     this.state = new HashMap<>(state);
   }
 
-  public Map<String, byte[]> get() {
+  public Map<String, String> get() {
     return Collections.unmodifiableMap(state);
   }
-
+  
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -49,15 +48,7 @@ public class Offset {
       return false;
     }
     Offset offset = (Offset) o;
-    if (!state.keySet().equals(offset.state.keySet())) {
-      return false;
-    }
-    for (String key : state.keySet()) {
-      if (!Arrays.equals(state.get(key), offset.state.get(key))) {
-        return false;
-      }
-    }
-    return true;
+    return Objects.equals(state, offset.state);
   }
 
   @Override
