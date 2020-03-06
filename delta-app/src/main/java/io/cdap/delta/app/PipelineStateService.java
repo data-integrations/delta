@@ -25,13 +25,10 @@ import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.proto.TableState;
 import io.cdap.delta.store.StateStore;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -81,7 +78,7 @@ public class PipelineStateService {
   }
 
   public synchronized void setSourceError(ReplicationError error) throws IOException {
-    setSourceState(PipelineState.ERROR, error);
+    setSourceState(PipelineState.FAILING, error);
   }
 
   public synchronized void setSourceOK() throws IOException {
@@ -90,17 +87,17 @@ public class PipelineStateService {
 
   public synchronized void setTableSnapshotting(DBTable dbTable) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
-                                                     TableState.SNAPSHOT, null));
+                                                     TableState.SNAPSHOTTING, null));
   }
 
   public synchronized void setTableReplicating(DBTable dbTable) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
-                                                     TableState.REPLICATE, null));
+                                                     TableState.REPLICATING, null));
   }
 
   public synchronized void setTableError(DBTable dbTable, ReplicationError error) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
-                                                     TableState.ERROR, error));
+                                                     TableState.FAILING, error));
   }
 
   public synchronized void dropTable(DBTable dbTable) throws IOException {

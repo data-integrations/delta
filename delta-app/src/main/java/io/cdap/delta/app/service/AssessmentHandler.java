@@ -278,7 +278,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
         PipelineReplicationState instanceState = stateService.getState();
         tableStates.addAll(instanceState.getTables());
         // if one instance is in error state, the entire replicator is in error state
-        sourceState = sourceState == PipelineState.ERROR ? sourceState : instanceState.getSourceState();
+        sourceState = sourceState == PipelineState.FAILING ? sourceState : instanceState.getSourceState();
         // if one instance has a replication error, keep that as the error for the entire replicator
         sourceError = sourceError == null ? instanceState.getSourceError() : sourceError;
       }
