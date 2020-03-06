@@ -20,7 +20,7 @@ package io.cdap.delta.proto;
  * State of a table.
  */
 public enum TableState {
-  SNAPSHOT,
-  REPLICATE,
-  ERROR
+  SNAPSHOTTING,
+  REPLICATING,
+  FAILING
 }

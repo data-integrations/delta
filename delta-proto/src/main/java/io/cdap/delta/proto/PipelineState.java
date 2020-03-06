@@ -21,5 +21,5 @@ package io.cdap.delta.proto;
  */
 public enum PipelineState {
   OK,
-  ERROR
+  FAILING
 }

@@ -151,7 +151,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
-    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATE, null);
+    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
                                                                           Collections.singleton(tableState), null);
     PipelineReplicationState actualState = stateService.getState();
@@ -288,7 +288,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
     PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
-    Tasks.waitFor(PipelineState.ERROR, () -> {
+    Tasks.waitFor(PipelineState.FAILING, () -> {
       stateService.load();
       return stateService.getState().getSourceState();
     }, 30, TimeUnit.SECONDS);
@@ -308,7 +308,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       }
       for (TableReplicationState state : pipelineState.getTables()) {
         if (EVENT2.getDatabase().equals(state.getDatabase()) &&
-          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.ERROR) {
+          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.FAILING) {
           return true;
         }
       }
@@ -323,7 +323,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       stateService.load();
       for (TableReplicationState state : stateService.getState().getTables()) {
         if (EVENT2.getDatabase().equals(state.getDatabase()) &&
-          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.REPLICATE) {
+          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.REPLICATING) {
           return true;
         }
       }
@@ -407,7 +407,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
-    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATE, null);
+    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
                                                                           Collections.singleton(tableState), null);
     PipelineReplicationState actualState = stateService.getState();
@@ -421,7 +421,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
-    tableState = new TableReplicationState("deebee", "taybull2", TableState.REPLICATE, null);
+    tableState = new TableReplicationState("deebee", "taybull2", TableState.REPLICATING, null);
     expectedState = new PipelineReplicationState(PipelineState.OK, Collections.singleton(tableState), null);
     actualState = stateService.getState();
     Assert.assertEquals(expectedState, actualState);
