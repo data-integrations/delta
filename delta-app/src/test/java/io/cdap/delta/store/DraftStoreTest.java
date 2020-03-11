@@ -40,6 +40,10 @@ import java.util.Optional;
 
 /**
  * Tests for DraftStore
+ *
+ * Due to a bug in CDAP, dropping the table doesn't actually delete the table data.
+ * Creating it again will create it with the old data, so tests need to use their own namespaces
+ * to provide isolation between other tests.
  */
 public class DraftStoreTest extends SystemAppTestBase {
 
@@ -61,7 +65,7 @@ public class DraftStoreTest extends SystemAppTestBase {
     getTransactionRunner().run(context -> {
       DraftStore store = DraftStore.get(context);
 
-      Namespace namespace = new Namespace("ns", 0L);
+      Namespace namespace = new Namespace("testGetNothing", 0L);
       Assert.assertFalse(store.getDraft(new DraftId(namespace, "abc")).isPresent());
       Assert.assertTrue(store.listDrafts(namespace).isEmpty());
     });
@@ -69,7 +73,7 @@ public class DraftStoreTest extends SystemAppTestBase {
 
   @Test
   public void testCRUD() throws TransactionException {
-    Namespace ns1 = new Namespace("n0", 10L);
+    Namespace ns1 = new Namespace("testCRUD0", 10L);
     DraftId id1 = new DraftId(ns1, "abc");
     Artifact artifact = new Artifact("plugins", "1.0.0", "SYSTEM");
     DeltaConfig config1 = DeltaConfig.builder()
@@ -85,7 +89,7 @@ public class DraftStoreTest extends SystemAppTestBase {
       .setTarget(new Stage("target", new Plugin("bq", DeltaTarget.PLUGIN_TYPE,
                                                 Collections.singletonMap("k2", "v2"), artifact)))
       .build();
-    Namespace ns2 = new Namespace("n1", 10L);
+    Namespace ns2 = new Namespace("testCRUD1", 10L);
     DraftId id3 = new DraftId(ns2, "xyz");
     DeltaConfig config3 = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("sqlserver", DeltaSource.PLUGIN_TYPE,
@@ -147,7 +151,7 @@ public class DraftStoreTest extends SystemAppTestBase {
 
   @Test
   public void testNamespaceGenerations() throws TransactionException {
-    Namespace ns1 = new Namespace("ns", 1L);
+    Namespace ns1 = new Namespace("testNamespaceGenerations", 1L);
     Namespace ns2 = new Namespace(ns1.getName(), ns1.getGeneration() + 1L);
 
     DraftId id1 = new DraftId(ns1, "abc");
