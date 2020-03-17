@@ -273,8 +273,7 @@ public class DraftService {
           new Problem("Table CDC Feature Not Enabled",
                       String.format("The CDC feature for table '%s' in database '%s' was not enabled.", table, db),
                       "Check the table CDC settings and permissions",
-                      null)
-        );
+                      null));
       } catch (IOException e) {
         connectivityIssues.add(
           new Problem("Table Describe Error",
