@@ -34,6 +34,7 @@ import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableAssessorSupplier;
+import io.cdap.delta.api.assessment.TableCDCNotEnabledException;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
@@ -168,6 +169,7 @@ public class DraftService {
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws TableNotFoundException if the table does not exist
+   * @throws TableCDCNotEnabledException if cdc feature is not enabled for the table
    * @throws IOException if the was an IO error fetching the table detail
    * @throws Exception if there was an error creating the table registry
    */
@@ -194,6 +196,7 @@ public class DraftService {
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws TableNotFoundException if the table does not exist
+   * @throws TableCDCNotEnabledException if cdc feature is not enabled for the table
    * @throws IOException if the table detail could not be read
    * @throws Exception if there was an error creating the table registry
    */
@@ -265,6 +268,13 @@ public class DraftService {
                       String.format("Table '%s' in database '%s' was not found.", table, db),
                       "Check the table information and permissions",
                       null));
+      } catch (TableCDCNotEnabledException e) {
+        connectivityIssues.add(
+          new Problem("Table CDC Feature Not Enabled",
+                      String.format("The CDC feature for table '%s' in database '%s' was not enabled.", table, db),
+                      "Check the table CDC settings and permissions",
+                      null)
+        );
       } catch (IOException e) {
         connectivityIssues.add(
           new Problem("Table Describe Error",
@@ -280,7 +290,7 @@ public class DraftService {
   private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
                                               TableAssessor<TableDetail> sourceTableAssessor,
                                               TableAssessor<StandardizedTableDetail> targetTableAssesor)
-    throws IOException, TableNotFoundException {
+    throws IOException, TableNotFoundException, TableCDCNotEnabledException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
     Set<String> columnWhitelist = sourceTable.getColumns().stream()
