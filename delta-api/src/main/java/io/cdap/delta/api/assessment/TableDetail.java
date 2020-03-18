@@ -31,7 +31,7 @@ public class TableDetail extends TableSummary {
   private final List<Problem> features;
 
   private TableDetail(String database, String table, @Nullable String schema,
-                     List<String> primaryKey, List<ColumnDetail> columns, List<Problem> features) {
+                      List<String> primaryKey, List<ColumnDetail> columns, List<Problem> features) {
     super(database, table, columns.size(), schema);
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
     this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
