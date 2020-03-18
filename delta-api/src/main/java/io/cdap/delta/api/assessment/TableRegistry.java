@@ -37,11 +37,10 @@ public interface TableRegistry extends Closeable {
    * @param table the table name
    * @return detail about the table
    * @throws TableNotFoundException if the specified table does not exist
-   * @throws TableCDCNotEnabledException if the CDC feature for the specified table is not enabled
    * @throws IOException if the table information could not be read
    */
   TableDetail describeTable(String database, String table)
-    throws TableNotFoundException, TableCDCNotEnabledException, IOException;
+    throws TableNotFoundException, IOException;
 
   /**
    * Standardize raw column information into a standard schema that will be sent to the target.

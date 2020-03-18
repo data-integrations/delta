@@ -28,12 +28,14 @@ import javax.annotation.Nullable;
 public class TableDetail extends TableSummary {
   private final List<String> primaryKey;
   private final List<ColumnDetail> columns;
+  private final List<Problem> features;
 
   public TableDetail(String database, String table, @Nullable String schema,
-                     List<String> primaryKey, List<ColumnDetail> columns) {
+                     List<String> primaryKey, List<ColumnDetail> columns, List<Problem> features) {
     super(database, table, columns.size(), schema);
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
     this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
+    this.features = Collections.unmodifiableList(new ArrayList<>(features));
   }
 
   public List<String> getPrimaryKey() {
@@ -42,6 +44,10 @@ public class TableDetail extends TableSummary {
 
   public List<ColumnDetail> getColumns() {
     return columns;
+  }
+
+  public List<Problem> getFeatures() {
+    return features;
   }
 
   @Override
@@ -57,11 +63,12 @@ public class TableDetail extends TableSummary {
     }
     TableDetail that = (TableDetail) o;
     return Objects.equals(primaryKey, that.primaryKey) &&
-      Objects.equals(columns, that.columns);
+      Objects.equals(columns, that.columns) &&
+      Objects.equals(features, that.features);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), primaryKey, columns);
+    return Objects.hash(super.hashCode(), primaryKey, columns, features);
   }
 }

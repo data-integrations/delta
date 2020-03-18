@@ -101,7 +101,8 @@ public class DraftServiceTest extends SystemAppTestBase {
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
     columns.add(new ColumnDetail("age", JDBCType.INTEGER, true));
-    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns,
+                                                 Collections.emptyList());
 
     MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, null);
     DeltaSource mockSource = new MockSource(mockTableRegistry, null);
@@ -137,7 +138,8 @@ public class DraftServiceTest extends SystemAppTestBase {
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("age", Schema.nullableOf(Schema.of(Schema.Type.INT))));
-    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns,
+                                                 Collections.emptyList());
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
@@ -187,7 +189,8 @@ public class DraftServiceTest extends SystemAppTestBase {
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
-    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns,
+                                                 Collections.emptyList());
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
@@ -224,7 +227,8 @@ public class DraftServiceTest extends SystemAppTestBase {
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
-    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns);
+    TableDetail expectedDetail = new TableDetail("deebee", "taybull", null, Collections.singletonList("id"), columns,
+                                                 Collections.emptyList());
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());

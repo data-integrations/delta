@@ -34,7 +34,6 @@ import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;
 import io.cdap.delta.api.assessment.TableAssessorSupplier;
-import io.cdap.delta.api.assessment.TableCDCNotEnabledException;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
@@ -169,7 +168,6 @@ public class DraftService {
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws TableNotFoundException if the table does not exist
-   * @throws TableCDCNotEnabledException if cdc feature is not enabled for the table
    * @throws IOException if the was an IO error fetching the table detail
    * @throws Exception if there was an error creating the table registry
    */
@@ -196,7 +194,6 @@ public class DraftService {
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
    * @throws TableNotFoundException if the table does not exist
-   * @throws TableCDCNotEnabledException if cdc feature is not enabled for the table
    * @throws IOException if the table detail could not be read
    * @throws Exception if there was an error creating the table registry
    */
@@ -243,6 +240,7 @@ public class DraftService {
     TableAssessor<StandardizedTableDetail> targetTableAssessor =
       createTableAssessor(configurer, deltaConfig.getTarget());
 
+    List<Problem> missingFeatures = new ArrayList<>();
     List<Problem> connectivityIssues = new ArrayList<>();
     List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
 
@@ -261,18 +259,13 @@ public class DraftService {
       try {
         TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
                                                          targetTableAssessor);
+        missingFeatures.addAll(assessment.getFeatures());
         tableAssessments.add(summarize(db, table, sourceTable.getSchema(), assessment));
       } catch (TableNotFoundException e) {
         connectivityIssues.add(
           new Problem("Table Not Found",
                       String.format("Table '%s' in database '%s' was not found.", table, db),
                       "Check the table information and permissions",
-                      null));
-      } catch (TableCDCNotEnabledException e) {
-        connectivityIssues.add(
-          new Problem("Table CDC Feature Not Enabled",
-                      String.format("The CDC feature for table '%s' in database '%s' was not enabled.", table, db),
-                      "Check the table CDC settings and permissions",
                       null));
       } catch (IOException e) {
         connectivityIssues.add(
@@ -283,13 +276,13 @@ public class DraftService {
                       null));
       }
     }
-    return new PipelineAssessment(tableAssessments, Collections.emptyList(), connectivityIssues);
+    return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues);
   }
 
   private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
                                               TableAssessor<TableDetail> sourceTableAssessor,
                                               TableAssessor<StandardizedTableDetail> targetTableAssesor)
-    throws IOException, TableNotFoundException, TableCDCNotEnabledException {
+    throws IOException, TableNotFoundException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
     Set<String> columnWhitelist = sourceTable.getColumns().stream()
@@ -303,7 +296,7 @@ public class DraftService {
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
     TableDetail filteredDetail = new TableDetail(db, table, detail.getSchema(), detail.getPrimaryKey(),
-                                                 selectedColumns);
+                                                 selectedColumns, detail.getFeatures());
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);
