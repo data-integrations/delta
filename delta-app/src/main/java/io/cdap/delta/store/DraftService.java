@@ -240,6 +240,7 @@ public class DraftService {
     TableAssessor<StandardizedTableDetail> targetTableAssessor =
       createTableAssessor(configurer, deltaConfig.getTarget());
 
+    List<Problem> missingFeatures = new ArrayList<>();
     List<Problem> connectivityIssues = new ArrayList<>();
     List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
 
@@ -258,6 +259,7 @@ public class DraftService {
       try {
         TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
                                                          targetTableAssessor);
+        missingFeatures.addAll(assessment.getFeatures());
         tableAssessments.add(summarize(db, table, sourceTable.getSchema(), assessment));
       } catch (TableNotFoundException e) {
         connectivityIssues.add(
@@ -274,7 +276,7 @@ public class DraftService {
                       null));
       }
     }
-    return new PipelineAssessment(tableAssessments, Collections.emptyList(), connectivityIssues);
+    return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues);
   }
 
   private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
@@ -294,7 +296,7 @@ public class DraftService {
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
     TableDetail filteredDetail = new TableDetail(db, table, detail.getSchema(), detail.getPrimaryKey(),
-                                                 selectedColumns);
+                                                 selectedColumns, detail.getFeatures());
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);
