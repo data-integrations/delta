@@ -72,8 +72,8 @@ public class TableDetail extends TableSummary {
     return Objects.hash(super.hashCode(), primaryKey, columns, features);
   }
 
-  public static Builder builder(String database, String schema, String table) {
-    return new Builder(database, schema, table);
+  public static Builder builder(String database, String table, String schema) {
+    return new Builder(database, table, schema);
   }
 
   /**
