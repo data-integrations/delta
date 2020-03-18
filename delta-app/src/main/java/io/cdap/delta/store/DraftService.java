@@ -48,7 +48,6 @@ import io.cdap.delta.proto.TableAssessmentResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -295,8 +294,11 @@ public class DraftService {
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
-    TableDetail filteredDetail = new TableDetail(db, table, detail.getSchema(), detail.getPrimaryKey(),
-                                                 selectedColumns, detail.getFeatures());
+    TableDetail filteredDetail = TableDetail.builder(db, table, detail.getSchema())
+      .setPrimaryKey(detail.getPrimaryKey())
+      .setColumns(selectedColumns)
+      .setFeatures(detail.getFeatures())
+      .build();
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);

@@ -30,8 +30,8 @@ public class TableDetail extends TableSummary {
   private final List<ColumnDetail> columns;
   private final List<Problem> features;
 
-  public TableDetail(String database, String table, @Nullable String schema,
-                     List<String> primaryKey, List<ColumnDetail> columns, List<Problem> features) {
+  private TableDetail(String database, String table, @Nullable String schema,
+                      List<String> primaryKey, List<ColumnDetail> columns, List<Problem> features) {
     super(database, table, columns.size(), schema);
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
     this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
@@ -70,5 +70,46 @@ public class TableDetail extends TableSummary {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), primaryKey, columns, features);
+  }
+
+  public static Builder builder(String database, String table, String schema) {
+    return new Builder(database, table, schema);
+  }
+
+  /**
+   * Builder for table detail.
+   */
+  public static class Builder {
+    private String database;
+    private String table;
+    private String schema;
+    private List<String> primaryKey = new ArrayList<>();
+    private List<ColumnDetail> columns = new ArrayList<>();
+    private List<Problem> features = new ArrayList<>();
+
+    public Builder(String database, String table, String schema) {
+      this.database = database;
+      this.table = table;
+      this.schema = schema;
+    }
+
+    public Builder setPrimaryKey(List<String> primaryKey) {
+      this.primaryKey = primaryKey;
+      return this;
+    }
+
+    public Builder setColumns(List<ColumnDetail> columns) {
+      this.columns = columns;
+      return this;
+    }
+
+    public Builder setFeatures(List<Problem> features) {
+      this.features = features;
+      return this;
+    }
+
+    public TableDetail build() {
+      return new TableDetail(database, table, schema, primaryKey, columns, features);
+    }
   }
 }
