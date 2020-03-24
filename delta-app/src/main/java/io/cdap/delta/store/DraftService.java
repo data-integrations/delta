@@ -290,12 +290,16 @@ public class DraftService {
 
     // fetch detail about the table, then filter out columns that will not be read by the source
     TableDetail detail = tableRegistry.describeTable(db, table);
+    List<String> selectedPrimaryKeys = detail.getPrimaryKey().stream()
+      // if there are no columns specified, it means all columns (including primary keys) should be read
+      .filter(columnWhitelist.isEmpty() ? col -> true : columnWhitelist::contains)
+      .collect(Collectors.toList());
     List<ColumnDetail> selectedColumns = detail.getColumns().stream()
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
     TableDetail filteredDetail = TableDetail.builder(db, table, detail.getSchema())
-      .setPrimaryKey(detail.getPrimaryKey())
+      .setPrimaryKey(selectedPrimaryKeys)
       .setColumns(selectedColumns)
       .setFeatures(detail.getFeatures())
       .build();
