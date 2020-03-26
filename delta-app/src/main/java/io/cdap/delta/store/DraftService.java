@@ -328,7 +328,6 @@ public class DraftService {
         fullColumns.add(new FullColumnAssessment(srcColumn.getSupport(), srcColumn.getName(), srcColumn.getType(),
                                                  null, null, srcColumn.getSuggestion()));
       }
-      fullColumns.add(merge(srcColumn, targetColumn));
       addedColumns.add(name);
     }
     // add columns present only in the target and not the source
