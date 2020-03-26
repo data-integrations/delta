@@ -291,17 +291,20 @@ public class DraftService {
     // fetch detail about the table, then filter out columns that will not be read by the source
     TableDetail detail = tableRegistry.describeTable(db, table);
     List<Problem> missingFeatures = new ArrayList<>(detail.getFeatures());
-    detail.getPrimaryKey().stream()
+    List<String> unselectedPrimaryKeys = detail.getPrimaryKey().stream()
       // if there are no columns specified, it means this primary key will be read/selected
       .filter(columnWhitelist.isEmpty() ? col -> false : col -> !columnWhitelist.contains(col))
-      // add feature problem for any unselected primary key for table
-      .forEach(col -> missingFeatures.add(
+      .collect(Collectors.toList());
+    if (!unselectedPrimaryKeys.isEmpty()) {
+      missingFeatures.add(
         new Problem("Missing Primary Key",
-                    String.format("Column '%s' is part of the primary key for table '%s' in database '%s', but is " +
-                                    "not one of the selected columns to be replicated", col, detail.getTable(),
-                                  detail.getDatabase()),
-                    "Please make sure this column has been selected",
-                    "This can result in different data at the target than at the source")));
+                    String.format("Column(s) '%s' is(are) part of the primary key for table '%s' in database '%s', " +
+                                    "but is(are) not selected to be replicated",
+                                  String.join(",", unselectedPrimaryKeys),
+                                  detail.getTable(), detail.getDatabase()),
+                    "Please make sure column(s) been selected",
+                    "This can result in different data at the target than at the source"));
+    }
     List<ColumnDetail> selectedColumns = detail.getColumns().stream()
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
