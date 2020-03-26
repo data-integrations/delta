@@ -322,6 +322,12 @@ public class DraftService {
     for (ColumnAssessment srcColumn : srcAssessment.getColumns()) {
       String name = srcColumn.getName();
       ColumnAssessment targetColumn = targetColumns.get(name);
+      if (targetColumn != null) {
+        fullColumns.add(merge(srcColumn, targetColumn));
+      } else {
+        fullColumns.add(new FullColumnAssessment(srcColumn.getSupport(), srcColumn.getName(), srcColumn.getType(),
+                                                 null, null, srcColumn.getSuggestion()));
+      }
       fullColumns.add(merge(srcColumn, targetColumn));
       addedColumns.add(name);
     }
