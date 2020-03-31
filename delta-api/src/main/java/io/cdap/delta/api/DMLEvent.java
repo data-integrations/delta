@@ -105,6 +105,10 @@ public class DMLEvent extends ChangeEvent {
                         transactionId, ingestTimestampMillis);
   }
 
+  public static Builder builder(DMLEvent event) {
+    return new Builder(event);
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -120,6 +124,20 @@ public class DMLEvent extends ChangeEvent {
     private StructuredRecord previousRow;
     private String transactionId;
     private long ingestTimestampMillis;
+
+    private Builder() { }
+
+    private Builder(DMLEvent event) {
+      this.offset = event.getOffset();
+      this.operation = event.getOperation();
+      this.database = event.getDatabase();
+      this.table = event.getTable();
+      this.row = event.getRow();
+      this.previousRow = event.getPreviousRow();
+      this.transactionId = event.getTransactionId();
+      this.ingestTimestampMillis = event.getIngestTimestampMillis();
+      this.isSnapshot = event.isSnapshot();
+    }
 
     public Builder setOperation(DMLOperation operation) {
       this.operation = operation;
