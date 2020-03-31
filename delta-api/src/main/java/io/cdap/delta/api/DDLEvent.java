@@ -97,6 +97,10 @@ public class DDLEvent extends ChangeEvent {
     return Objects.hash(super.hashCode(), operation, schema, database, prevTable, table, primaryKey);
   }
 
+  public static Builder builder(DDLEvent event) {
+    return new Builder(event);
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -111,6 +115,19 @@ public class DDLEvent extends ChangeEvent {
     private String prevTable;
     private String table;
     private List<String> primaryKey = new ArrayList<>();
+
+    private Builder() { }
+
+    private Builder(DDLEvent event) {
+      this.offset = event.getOffset();
+      this.isSnapshot = event.isSnapshot();
+      this.operation = event.getOperation();
+      this.schema = event.getSchema();
+      this.database = event.getDatabase();
+      this.prevTable = event.getPrevTable();
+      this.table = event.getTable();
+      this.primaryKey = event.getPrimaryKey();
+    }
 
     public Builder setOperation(DDLOperation operation) {
       this.operation = operation;
