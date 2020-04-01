@@ -88,6 +88,11 @@ public class QueueingEventEmitter implements EventEmitter {
     if (sourceTable != null && sourceTable.getDdlBlacklist().contains(event.getOperation())) {
       return true;
     }
+
+    if (sourceTable == null && event.getOperation() == DDLOperation.CREATE_DATABASE) {
+      return false;
+    }
+
     return !tableDefinitions.isEmpty() && sourceTable == null;
   }
 
