@@ -170,8 +170,6 @@ public class DeltaWorker extends AbstractWorker {
     Set<DDLOperation> ddlBlacklist = new HashSet<>(config.getDdlBlacklist());
     // targets will not behave properly if they don't get create table events
     ddlBlacklist.remove(DDLOperation.CREATE_TABLE);
-    // blacklist drop database event by default in case that user unintentionally drop database from source
-    ddlBlacklist.add(DDLOperation.DROP_DATABASE);
     Set<SourceTable> expandedTables = config.getTables().stream()
       .filter(t -> assignedTables.contains(new TableId(t.getDatabase(), t.getTable(), t.getSchema())))
       .map(t -> {
