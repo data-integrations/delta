@@ -20,6 +20,7 @@ import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.cdap.api.plugin.PluginContext;
 
 import java.io.IOException;
+import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
@@ -41,6 +42,11 @@ public interface DeltaRuntimeContext extends PluginContext {
    * @return metrics emitter
    */
   Metrics getMetrics();
+
+  /**
+   * @return A map of runtime argument key and value
+   */
+  Map<String, String> getRuntimeArguments();
 
   /**
    * @return id of the worker instance.

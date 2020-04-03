@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 
@@ -51,11 +52,12 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final EventMetrics eventMetrics;
   private final PipelineStateService stateService;
   private final int maxRetrySeconds;
+  private final Map<String, String> runtimeArguments;
   private final AtomicReference<Throwable> failure;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService,
-               int maxRetrySeconds) {
+               int maxRetrySeconds, Map<String, String> runtimeArguments) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
@@ -64,6 +66,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.eventMetrics = eventMetrics;
     this.stateService = stateService;
     this.maxRetrySeconds = maxRetrySeconds;
+    this.runtimeArguments = runtimeArguments;
     this.failure = new AtomicReference<>(null);
   }
 
@@ -121,6 +124,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public Metrics getMetrics() {
     return metrics;
+  }
+
+  @Override
+  public Map<String, String> getRuntimeArguments() {
+    return runtimeArguments;
   }
 
   @Override
