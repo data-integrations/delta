@@ -100,7 +100,9 @@ public class DeltaConfig extends Config {
   }
 
   public Set<DDLOperation> getDdlBlacklist() {
-    return ddlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(ddlBlacklist);
+    // blacklist drop database event by default if ddlBlacklist is null
+    return ddlBlacklist == null ? Collections.singleton(DDLOperation.DROP_DATABASE) :
+      Collections.unmodifiableSet(ddlBlacklist);
   }
 
   /**

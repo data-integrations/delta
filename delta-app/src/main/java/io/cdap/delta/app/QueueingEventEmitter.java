@@ -80,14 +80,18 @@ public class QueueingEventEmitter implements EventEmitter {
   }
 
   private boolean shouldIgnore(DDLEvent event) {
-    if (ddlBlacklist.contains(event.getOperation())) {
+    DDLOperation ddlOperation = event.getOperation();
+    if (ddlBlacklist.contains(ddlOperation)) {
       return true;
+    } else if (ddlOperation == DDLOperation.CREATE_DATABASE || ddlOperation == DDLOperation.DROP_DATABASE) {
+      return false;
     }
 
     SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(), event.getTable()));
-    if (sourceTable != null && sourceTable.getDdlBlacklist().contains(event.getOperation())) {
+    if (sourceTable != null && sourceTable.getDdlBlacklist().contains(ddlOperation)) {
       return true;
     }
+
     return !tableDefinitions.isEmpty() && sourceTable == null;
   }
 
