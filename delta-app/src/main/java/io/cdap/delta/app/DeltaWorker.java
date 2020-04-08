@@ -231,13 +231,23 @@ public class DeltaWorker extends AbstractWorker {
         .withMaxDuration(Duration.of(maxRetrySeconds, ChronoUnit.SECONDS))
         .withDelay(retryDelaySeconds == 0 ? Duration.of(1, ChronoUnit.MILLIS) :
           Duration.of(retryDelaySeconds, ChronoUnit.SECONDS))
-        .abortIf(o -> shouldStop.get())
+        // For some reason, Failsafe treats
+        // .abortIf((result, throwable)
+        // differently than
+        // .abortIf(o -> shouldStop.get())
+        // the latter Predicate gets turned into a BiPredicate that returns false whenever result is null,
+        // which is always null in this code. In other words, it will never abort
+        .abortIf((result, throwable) -> shouldStop.get())
         .onFailedAttempt(failureContext -> {
           Throwable failure = failureContext.getLastFailure();
           error.set(failure);
           if (failure instanceof DeltaFailureException) {
             LOG.warn("Encountered an error that cannot be retried. Failing the pipeline...", failure);
             shouldStop.set(true);
+          }
+
+          // can be set if the failure is a DeltaFailure, or if the worker was stopped
+          if (shouldStop.get()) {
             return;
           }
 
@@ -249,13 +259,32 @@ public class DeltaWorker extends AbstractWorker {
           // load batches of 100 events into the target storage system. If there is an error writing to the file system
           // for event 50, there is no way for the consumer to rewind and write events 1-49 again.
           try {
-            eventConsumer.stop();
             eventReader.stop();
           } catch (InterruptedException ex) {
             // if stopping is interrupted, it means the worker is shutting down.
             // in this scenario, we want to break out of the retry loop instead
             // of trying to reset the state and keep reading
             shouldStop.set(true);
+          } catch (Exception ex) {
+            // if we couldn't stop the reader, bail out.
+            LOG.error("Unable to stop event reader. The replicator will be stopped.", ex);
+            shouldStop.set(true);
+          }
+
+          try {
+            eventConsumer.stop();
+          } catch (InterruptedException ex) {
+            // if stopping is interrupted, it means the worker is shutting down.
+            // in this scenario, we want to break out of the retry loop instead
+            // of trying to reset the state and keep reading
+            shouldStop.set(true);
+          } catch (Exception ex) {
+            // if we couldn't stop the consumer, bail out.
+            LOG.error("Unable to stop event consumer. The replicator will be stopped.", ex);
+            shouldStop.set(true);
+          }
+
+          if (shouldStop.get()) {
             return;
           }
 
@@ -334,6 +363,7 @@ public class DeltaWorker extends AbstractWorker {
 
   @Override
   public void stop() {
+    shouldStop.set(true);
     try {
       eventReader.stop();
     } catch (Exception e) {
@@ -344,8 +374,6 @@ public class DeltaWorker extends AbstractWorker {
       } catch (Exception e) {
         // log and proceed to exit
         LOG.warn("Event consumer failed to stop.", e);
-      } finally {
-        shouldStop.set(true);
       }
     }
   }
