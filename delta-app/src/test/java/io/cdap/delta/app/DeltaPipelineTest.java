@@ -64,6 +64,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -187,7 +188,6 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
-    FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
     StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
@@ -247,6 +247,55 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.FAILED, 60, TimeUnit.SECONDS);
+  }
+
+  @Test
+  public void testStopWhenFailing() throws Exception {
+    String tempFolderPath = TMP_FOLDER.getRoot().getAbsolutePath();
+    File sourceProceedFile = new File(tempFolderPath, "sourceProceed");
+    File outputFolder = TMP_FOLDER.newFolder();
+
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(EVENT1);
+    events.add(EVENT2);
+
+    String offsetBasePath = TMP_FOLDER.newFolder("testStopWhenFailing").getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events, sourceProceedFile));
+
+    // configure the target to throw exceptions after the first event is applied
+    // until the proceedFile is created
+    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      .setRetryConfig(new RetryConfig(300, 0))
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testStopWhenFailing");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
+
+    // wait for the replication state for the source to be set to ERROR
+    Path path = new Path(offsetBasePath);
+    StateStore stateStore = StateStore.from(path);
+    Tasks.waitFor(true, () -> stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication()) != null,
+                  1, TimeUnit.MINUTES);
+    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
+    DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
+    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
+    Tasks.waitFor(PipelineState.FAILING, () -> {
+      stateService.load();
+      return stateService.getState().getSourceState();
+    }, 30, TimeUnit.SECONDS);
+
+    // stop the worker to make sure it aborts the retry loop
+    manager.stop();
+    manager.waitForStopped(60, TimeUnit.SECONDS);
   }
 
   @Test
@@ -389,7 +438,6 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     actual = FileEventConsumer.readEvents(outputFolder, 1);
     Assert.assertEquals(expected, actual);
 
-    FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
     StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
