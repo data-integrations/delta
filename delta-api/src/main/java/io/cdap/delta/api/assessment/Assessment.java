@@ -22,23 +22,29 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * An assessment about a potential pipeline, indicating possible errors and fixes for those errors.
+ * A general assessment, containing potential problems.
  */
-public class PipelineAssessment extends Assessment {
-  private final List<TableSummaryAssessment> tables;
+public class Assessment {
+  private final List<Problem> features;
+  private final List<Problem> connectivity;
 
-  public PipelineAssessment(List<TableSummaryAssessment> tables,
-                            List<Problem> featureProblems,
-                            List<Problem> connectivityProblems) {
-    super(featureProblems, connectivityProblems);
-    this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
+  public Assessment(List<Problem> features, List<Problem> connectivity) {
+    this.features = Collections.unmodifiableList(new ArrayList<>(features));
+    this.connectivity = Collections.unmodifiableList(new ArrayList<>(connectivity));
   }
 
   /**
-   * @return summary of issues related to tables
+   * @return potential problems related to features
    */
-  public List<TableSummaryAssessment> getTables() {
-    return tables;
+  public List<Problem> getFeatures() {
+    return features;
+  }
+
+  /**
+   * @return potential problems related to connectivity
+   */
+  public List<Problem> getConnectivity() {
+    return connectivity;
   }
 
   @Override
@@ -49,15 +55,14 @@ public class PipelineAssessment extends Assessment {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
-    PipelineAssessment that = (PipelineAssessment) o;
-    return Objects.equals(tables, that.tables);
+
+    Assessment that = (Assessment) o;
+    return Objects.equals(features, that.features) &&
+      Objects.equals(connectivity, that.connectivity);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), tables);
+    return Objects.hash(features, connectivity);
   }
 }
