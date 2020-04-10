@@ -24,6 +24,7 @@ import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.SourceColumn;
 import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.api.assessment.Assessment;
 import io.cdap.delta.api.assessment.ColumnAssessment;
 import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.ColumnSuggestion;
@@ -242,6 +243,13 @@ public class DraftService {
     List<Problem> missingFeatures = new ArrayList<>();
     List<Problem> connectivityIssues = new ArrayList<>();
     List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
+
+    Assessment sourceAssessment = sourceTableAssessor.assess();
+    Assessment targetAssessment = targetTableAssessor.assess();
+    missingFeatures.addAll(sourceAssessment.getFeatures());
+    missingFeatures.addAll(targetAssessment.getFeatures());
+    connectivityIssues.addAll(sourceAssessment.getConnectivity());
+    connectivityIssues.addAll(targetAssessment.getConnectivity());
 
     // if no source tables are given, this means all tables should be read
     List<SourceTable> tablesToAssess = deltaConfig.getTables();

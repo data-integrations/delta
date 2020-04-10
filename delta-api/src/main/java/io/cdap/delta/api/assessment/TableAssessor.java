@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api.assessment;
 
+import java.util.Collections;
+
 /**
  * Creates assessments, highlighting potential problems. This is used when a pipeline is being created to give
  * users early feedback on configuration or environmental issues.
@@ -31,4 +33,14 @@ public interface TableAssessor<T> {
    * @return assessment of potential problems
    */
   TableAssessment assess(T tableDescriptor);
+
+  /**
+   * Assess whether there will be any general potential problems replicating data based unrelated to a specific table.
+   * For example, if there are problems connecting to the source/target system.
+   *
+   * @return an assessment of potential problems
+   */
+  default Assessment assess() {
+    return new Assessment(Collections.emptyList(), Collections.emptyList());
+  }
 }
