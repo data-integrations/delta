@@ -206,10 +206,11 @@ public class DraftService {
     if (target == null) {
       throw new InvalidDraftException("Cannot assess a table without a configured target.");
     }
-    TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
-    TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
-    TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target);
-    return assessTable(new SourceTable(db, table), tableRegistry, sourceTableAssessor, targetTableAssessor);
+    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
+         TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+         TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target)) {
+      return assessTable(new SourceTable(db, table), tableRegistry, sourceTableAssessor, targetTableAssessor);
+    }
   }
 
   /**
@@ -234,56 +235,56 @@ public class DraftService {
     deltaConfig.validatePipeline();
     deltaConfig = evaluateMacros(draftId, deltaConfig);
 
-    TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
-    TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
-    //noinspection ConstantConditions
-    TableAssessor<StandardizedTableDetail> targetTableAssessor =
-      createTableAssessor(configurer, deltaConfig.getTarget());
+    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
+         TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+         TableAssessor<StandardizedTableDetail> targetTableAssessor =
+           createTableAssessor(configurer, deltaConfig.getTarget())) {
 
-    List<Problem> missingFeatures = new ArrayList<>();
-    List<Problem> connectivityIssues = new ArrayList<>();
-    List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
+      List<Problem> missingFeatures = new ArrayList<>();
+      List<Problem> connectivityIssues = new ArrayList<>();
+      List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
 
-    Assessment sourceAssessment = sourceTableAssessor.assess();
-    Assessment targetAssessment = targetTableAssessor.assess();
-    missingFeatures.addAll(sourceAssessment.getFeatures());
-    missingFeatures.addAll(targetAssessment.getFeatures());
-    connectivityIssues.addAll(sourceAssessment.getConnectivity());
-    connectivityIssues.addAll(targetAssessment.getConnectivity());
+      Assessment sourceAssessment = sourceTableAssessor.assess();
+      Assessment targetAssessment = targetTableAssessor.assess();
+      missingFeatures.addAll(sourceAssessment.getFeatures());
+      missingFeatures.addAll(targetAssessment.getFeatures());
+      connectivityIssues.addAll(sourceAssessment.getConnectivity());
+      connectivityIssues.addAll(targetAssessment.getConnectivity());
 
-    // if no source tables are given, this means all tables should be read
-    List<SourceTable> tablesToAssess = deltaConfig.getTables();
-    if (tablesToAssess.isEmpty()) {
-      tablesToAssess = tableRegistry.listTables().getTables().stream()
-        .map(t -> new SourceTable(t.getDatabase(), t.getTable()))
-        .collect(Collectors.toList());
-    }
-
-    // go through all tables that the pipeline should read, fetching detail about each of the tables
-    for (SourceTable sourceTable : tablesToAssess) {
-      String db = sourceTable.getDatabase();
-      String table = sourceTable.getTable();
-      try {
-        TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
-                                                         targetTableAssessor);
-        missingFeatures.addAll(assessment.getFeatures());
-        tableAssessments.add(summarize(db, table, sourceTable.getSchema(), assessment));
-      } catch (TableNotFoundException e) {
-        connectivityIssues.add(
-          new Problem("Table Not Found",
-                      String.format("Table '%s' in database '%s' was not found.", table, db),
-                      "Check the table information and permissions",
-                      null));
-      } catch (IOException e) {
-        connectivityIssues.add(
-          new Problem("Table Describe Error",
-                      String.format("Unable to fetch details about table '%s' in database '%s': %s",
-                                    table, db, e.getMessage()),
-                      "Check permissions and database connectivity",
-                      null));
+      // if no source tables are given, this means all tables should be read
+      List<SourceTable> tablesToAssess = deltaConfig.getTables();
+      if (tablesToAssess.isEmpty()) {
+        tablesToAssess = tableRegistry.listTables().getTables().stream()
+          .map(t -> new SourceTable(t.getDatabase(), t.getTable()))
+          .collect(Collectors.toList());
       }
+
+      // go through all tables that the pipeline should read, fetching detail about each of the tables
+      for (SourceTable sourceTable : tablesToAssess) {
+        String db = sourceTable.getDatabase();
+        String table = sourceTable.getTable();
+        try {
+          TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
+                                                           targetTableAssessor);
+          missingFeatures.addAll(assessment.getFeatures());
+          tableAssessments.add(summarize(db, table, sourceTable.getSchema(), assessment));
+        } catch (TableNotFoundException e) {
+          connectivityIssues.add(
+            new Problem("Table Not Found",
+                        String.format("Table '%s' in database '%s' was not found.", table, db),
+                        "Check the table information and permissions",
+                        null));
+        } catch (IOException e) {
+          connectivityIssues.add(
+            new Problem("Table Describe Error",
+                        String.format("Unable to fetch details about table '%s' in database '%s': %s",
+                                      table, db, e.getMessage()),
+                        "Check permissions and database connectivity",
+                        null));
+        }
+      }
+      return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues);
     }
-    return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues);
   }
 
   private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,

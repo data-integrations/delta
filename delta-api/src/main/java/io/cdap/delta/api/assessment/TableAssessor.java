@@ -16,6 +16,7 @@
 
 package io.cdap.delta.api.assessment;
 
+import java.io.Closeable;
 import java.util.Collections;
 
 /**
@@ -24,7 +25,7 @@ import java.util.Collections;
  *
  * @param <T> type of table descriptor to assess
  */
-public interface TableAssessor<T> {
+public interface TableAssessor<T> extends Closeable {
 
   /**
    * Assess whether there will be potential problems replicating data from the specified table.
