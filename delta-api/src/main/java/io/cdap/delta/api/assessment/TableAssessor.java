@@ -44,4 +44,8 @@ public interface TableAssessor<T> extends Closeable {
   default Assessment assess() {
     return new Assessment(Collections.emptyList(), Collections.emptyList());
   }
+
+  default void close() {
+    // no-op
+  }
 }
