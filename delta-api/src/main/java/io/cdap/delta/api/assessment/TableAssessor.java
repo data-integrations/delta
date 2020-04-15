@@ -17,6 +17,7 @@
 package io.cdap.delta.api.assessment;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.Collections;
 
 /**
@@ -45,7 +46,7 @@ public interface TableAssessor<T> extends Closeable {
     return new Assessment(Collections.emptyList(), Collections.emptyList());
   }
 
-  default void close() {
+  default void close() throws IOException {
     // no-op
   }
 }
