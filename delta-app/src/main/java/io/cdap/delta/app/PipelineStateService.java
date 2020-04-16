@@ -25,8 +25,6 @@ import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.proto.TableState;
 import io.cdap.delta.store.StateStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -40,7 +38,6 @@ import java.util.stream.Collectors;
  * inconsistent results due to the fact that it keeps state information in memory.
  */
 public class PipelineStateService {
-  private static final Logger LOG = LoggerFactory.getLogger(PipelineStateService.class);
   private static final Gson GSON = new Gson();
   private static final String STATE_KEY = "pipeline";
   private final DeltaWorkerId id;
@@ -66,6 +63,7 @@ public class PipelineStateService {
       tables.clear();
     } else {
       PipelineReplicationState replState = GSON.fromJson(Bytes.toString(bytes), PipelineReplicationState.class);
+      replState = replState == null ? PipelineReplicationState.EMPTY : replState;
       sourceState = replState.getSourceState();
       sourceError = replState.getSourceError();
       tables.putAll(replState.getTables().stream()
@@ -77,30 +75,30 @@ public class PipelineStateService {
     return new PipelineReplicationState(sourceState, new HashSet<>(tables.values()), sourceError);
   }
 
-  public synchronized void setSourceError(ReplicationError error) throws IOException {
+  synchronized void setSourceError(ReplicationError error) throws IOException {
     setSourceState(PipelineState.FAILING, error);
   }
 
-  public synchronized void setSourceOK() throws IOException {
+  synchronized void setSourceOK() throws IOException {
     setSourceState(PipelineState.OK, null);
   }
 
-  public synchronized void setTableSnapshotting(DBTable dbTable) throws IOException {
+  synchronized void setTableSnapshotting(DBTable dbTable) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
                                                      TableState.SNAPSHOTTING, null));
   }
 
-  public synchronized void setTableReplicating(DBTable dbTable) throws IOException {
+  synchronized void setTableReplicating(DBTable dbTable) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
                                                      TableState.REPLICATING, null));
   }
 
-  public synchronized void setTableError(DBTable dbTable, ReplicationError error) throws IOException {
+  synchronized void setTableError(DBTable dbTable, ReplicationError error) throws IOException {
     setTableState(dbTable, new TableReplicationState(dbTable.getDatabase(), dbTable.getTable(),
                                                      TableState.FAILING, error));
   }
 
-  public synchronized void dropTable(DBTable dbTable) throws IOException {
+  synchronized void dropTable(DBTable dbTable) throws IOException {
     if (tables.remove(dbTable) != null) {
       save();
     }

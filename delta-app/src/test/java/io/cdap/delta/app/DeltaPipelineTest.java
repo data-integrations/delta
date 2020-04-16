@@ -48,8 +48,6 @@ import io.cdap.delta.test.mock.FailureTarget;
 import io.cdap.delta.test.mock.FileEventConsumer;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -64,7 +62,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -140,7 +137,6 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
     Assert.assertEquals(events, actual);
 
-    FileSystem fs = FileSystem.get(new Configuration());
     Path path = new Path(offsetBasePath);
     StateStore stateStore = StateStore.from(path);
     Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
