@@ -58,7 +58,7 @@ public class QueueingEventEmitterTest {
     .build();
 
   @Test
-  public void testEmit() {
+  public void testEmit() throws Exception {
     BlockingQueue<Sequenced<? extends ChangeEvent>> queue = new ArrayBlockingQueue<>(2);
     EventReaderDefinition readerDefinition = new EventReaderDefinition(Collections.emptySet(), Collections.emptySet(),
                                                                        Collections.emptySet());
@@ -71,7 +71,7 @@ public class QueueingEventEmitterTest {
   }
 
   @Test
-  public void testFiltering() {
+  public void testFiltering() throws Exception {
     BlockingQueue<Sequenced<? extends ChangeEvent>> queue = new ArrayBlockingQueue<>(2);
     Set<SourceTable> tables = Collections.singleton(
       new SourceTable("deebee", "taybull", null, Collections.emptySet(),

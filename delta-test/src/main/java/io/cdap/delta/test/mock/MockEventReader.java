@@ -25,6 +25,9 @@ import io.cdap.delta.api.Offset;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A mock event reader that emits a pre-specified list of events.
@@ -33,6 +36,8 @@ public class MockEventReader implements EventReader {
   private final List<? extends ChangeEvent> events;
   private final EventEmitter emitter;
   private final int maxEvents;
+  private final ExecutorService executorService;
+  private final AtomicBoolean shouldStop;
   private int numEvents;
 
   public MockEventReader(List<? extends ChangeEvent> events, EventEmitter emitter, int maxEvents) {
@@ -40,6 +45,8 @@ public class MockEventReader implements EventReader {
     this.emitter = emitter;
     this.maxEvents = maxEvents;
     this.numEvents = 0;
+    this.executorService = Executors.newSingleThreadExecutor();
+    this.shouldStop = new AtomicBoolean(false);
   }
 
   @Override
@@ -52,14 +59,25 @@ public class MockEventReader implements EventReader {
         }
       }
     }
-    while (eventIter.hasNext() && numEvents < maxEvents) {
-      numEvents++;
-      ChangeEvent event = eventIter.next();
-      if (event instanceof DDLEvent) {
-        emitter.emit((DDLEvent) event);
-      } else if (event instanceof DMLEvent) {
-        emitter.emit((DMLEvent) event);
+    executorService.submit(() -> {
+      while (!shouldStop.get() && eventIter.hasNext() && numEvents < maxEvents) {
+        numEvents++;
+        ChangeEvent event = eventIter.next();
+        try {
+          if (event instanceof DDLEvent) {
+            emitter.emit((DDLEvent) event);
+          } else if (event instanceof DMLEvent) {
+            emitter.emit((DMLEvent) event);
+          }
+        } catch (InterruptedException e) {
+          shouldStop.set(true);
+        }
       }
-    }
+    });
+  }
+
+  @Override
+  public void stop() {
+    shouldStop.set(true);
   }
 }

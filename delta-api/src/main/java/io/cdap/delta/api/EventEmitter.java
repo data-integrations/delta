@@ -28,14 +28,18 @@ public interface EventEmitter {
    * This call may block if the pipeline target is not keeping up with the source.
    *
    * @param event the DDL event
+   * @throws InterruptedException if it was interrupted while blocked on emitting the event.
+   *   The event is dropped in this scenario.
    */
-  void emit(DDLEvent event);
+  void emit(DDLEvent event) throws InterruptedException;
 
   /**
    * Emits a DML event within its own transaction.
    * This call may block if the pipeline target is not keeping up with the source.
    *
    * @param event the DML event
+   * @throws InterruptedException if it was interrupted while blocked on emitting the event.
+   *   The event is dropped in this scenario.
    */
-  void emit(DMLEvent event);
+  void emit(DMLEvent event) throws InterruptedException;
 }

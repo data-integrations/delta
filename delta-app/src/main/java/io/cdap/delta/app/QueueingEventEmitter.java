@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
 /**
  * An event emitter that enqueues change events in an in-memory queue.
  * Also filters out events that should be ignored.
+ *
+ * If emitting an event is interrupted, all subsequent emit calls will be no-ops.
  */
 public class QueueingEventEmitter implements EventEmitter {
   private final Set<DMLOperation> dmlBlacklist;
@@ -42,6 +44,7 @@ public class QueueingEventEmitter implements EventEmitter {
   private final Map<DBTable, SourceTable> tableDefinitions;
   private final BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
   private long sequenceNumber;
+  private volatile boolean interrupted;
 
   QueueingEventEmitter(EventReaderDefinition readerDefinition, long sequenceNumber,
                        BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue) {
@@ -51,31 +54,36 @@ public class QueueingEventEmitter implements EventEmitter {
     this.tableDefinitions = readerDefinition.getTables().stream()
       .collect(Collectors.toMap(t -> new DBTable(t.getDatabase(), t.getTable()), t -> t));
     this.eventQueue = eventQueue;
+    this.interrupted = false;
   }
 
   @Override
   public void emit(DDLEvent event) {
-    if (shouldIgnore(event)) {
+    if (interrupted || shouldIgnore(event)) {
       return;
     }
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
     } catch (InterruptedException e) {
-      // this means the worker is being stopped, so drop the change and let things stop
+      // this should only happen when the event consumer is stopped
+      // in that case, don't emit any more events
+      interrupted = true;
     }
   }
 
   @Override
   public void emit(DMLEvent event) {
-    if (shouldIgnore(event)) {
+    if (interrupted || shouldIgnore(event)) {
       return;
     }
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
     } catch (InterruptedException e) {
-      // this means the worker is being stopped, so drop the change and let things stop
+      // this should only happen when the event consumer is stopped
+      // in that case, don't emit any more events
+      interrupted = true;
     }
   }
 
