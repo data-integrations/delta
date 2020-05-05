@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
@@ -66,7 +67,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.eventMetrics = eventMetrics;
     this.stateService = stateService;
     this.maxRetrySeconds = maxRetrySeconds;
-    this.runtimeArguments = runtimeArguments;
+    this.runtimeArguments = Collections.unmodifiableMap(new HashMap<>(runtimeArguments));
     this.failure = new AtomicReference<>(null);
   }
 
