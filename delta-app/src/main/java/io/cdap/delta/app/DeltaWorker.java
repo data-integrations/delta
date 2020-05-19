@@ -19,6 +19,7 @@ package io.cdap.delta.app;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import io.cdap.cdap.api.Resources;
 import io.cdap.cdap.api.app.ApplicationSpecification;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
@@ -74,6 +75,7 @@ public class DeltaWorker extends AbstractWorker {
   private static final Gson GSON = new Gson();
   private static final String GENERATION = "generation";
   private static final String TABLE_ASSIGNMENTS = "table.assignments";
+  private static final String EVENT_QUEUE_SIZE = "event.queue.size";
   private static final Type TABLE_ASSIGNMENTS_TYPE = new TypeToken<Map<Integer, Set<TableId>>>() { }.getType();
 
   private final AtomicBoolean shouldStop;
@@ -94,6 +96,7 @@ public class DeltaWorker extends AbstractWorker {
   private Map<Integer, Set<TableId>> tableAssignments;
   private int maxRetrySeconds;
   private int retryDelaySeconds;
+  private int eventQueueSize;
 
   // no-arg constructor required to initialize the shouldStop variable, since CDAP calls the no-arg constructor
   // and sets fields through reflection.
@@ -127,6 +130,7 @@ public class DeltaWorker extends AbstractWorker {
     // tableAssignments can be empty if no source tables are given
     // in that scenario, a single instance is used to read all tables
     setInstances(Math.max(1, tableAssignments.size()));
+    setResources(new Resources(2048, 2));
     setProperties(props);
   }
 
@@ -186,8 +190,10 @@ public class DeltaWorker extends AbstractWorker {
     readerDefinition = new EventReaderDefinition(expandedTables,
                                                  config.getDmlBlacklist(),
                                                  config.getDdlBlacklist());
-
-    eventQueue = new ArrayBlockingQueue<>(100);
+    // Use a small queue size by default since we want to prioritize reliability (avoid OOM)
+    // TODO: (CDAP-16755) block on event size instead of number of events.
+    eventQueueSize = Integer.parseInt(context.getRuntimeArguments().getOrDefault(EVENT_QUEUE_SIZE, "10"));
+    eventQueue = new ArrayBlockingQueue<>(eventQueueSize);
   }
 
   @Override
@@ -259,7 +265,9 @@ public class DeltaWorker extends AbstractWorker {
           // load batches of 100 events into the target storage system. If there is an error writing to the file system
           // for event 50, there is no way for the consumer to rewind and write events 1-49 again.
           try {
+            LOG.info("Stopping Event Reader...");
             eventReader.stop();
+            LOG.info("Stopped Event Reader.");
           } catch (InterruptedException ex) {
             // if stopping is interrupted, it means the worker is shutting down.
             // in this scenario, we want to break out of the retry loop instead
@@ -272,7 +280,9 @@ public class DeltaWorker extends AbstractWorker {
           }
 
           try {
+            LOG.info("Stopping Event Consumer...");
             eventConsumer.stop();
+            LOG.info("Stopped Event Consumer.");
           } catch (InterruptedException ex) {
             // if stopping is interrupted, it means the worker is shutting down.
             // in this scenario, we want to break out of the retry loop instead
@@ -394,7 +404,13 @@ public class DeltaWorker extends AbstractWorker {
   }
 
   private void startFromLastCommit() throws Exception {
-    eventQueue.clear();
+    // create a new queue to protect against badly behaving event readers.
+    // For example, suppose an event reader doesn't implement the 'stop' method and keeps emitting events forever.
+    // If the queue is re-used for the next event reader, the queue will have events from the older, badly behaving
+    // reader as well as those from the new reader.
+    // To protect against this, a new queue is created and the worker switches over completely to only read from
+    // this new queue. The old misbehaving reader will just block forever when its queue is full.
+    eventQueue = new ArrayBlockingQueue<>(eventQueueSize);
     deltaContext.clearMetrics();
 
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
@@ -402,11 +418,17 @@ public class DeltaWorker extends AbstractWorker {
     QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, offsetAndSequence.getSequenceNumber(),
                                                             eventQueue);
 
+    LOG.info("Starting from last committed offset {}", offset.get());
+
     eventReader = source.createReader(readerDefinition, deltaContext, emitter);
     eventConsumer = target.createConsumer(deltaContext);
 
+    LOG.info("Starting Event Reader...");
     eventReader.start(offset);
+    LOG.info("Started Event Reader.");
+    LOG.info("Starting Event Consumer...");
     eventConsumer.start();
+    LOG.info("Started Event Consumer.");
   }
 
   @VisibleForTesting
