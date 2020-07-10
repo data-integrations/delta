@@ -19,10 +19,11 @@
 
   <groupId>io.cdap.delta</groupId>
   <artifactId>delta</artifactId>
-  <version>0.1.1-SNAPSHOT</version>
+  <version>0.1.1</version>
   <name>Delta Pipelines</name>
   <packaging>pom</packaging>
   <description>CDAP Delta pipelines</description>
+  <url>https://github.com/data-integrations/delta</url>
 
   <licenses>
     <license>
@@ -41,6 +42,13 @@
       <organizationUrl>http://cdap.io</organizationUrl>
     </developer>
   </developers>
+  
+  <scm>
+    <connection>scm:git:https://github.com/data-integrations/delta.git</connection>
+    <developerConnection>scm:git:git@github.com:data-integrations/delta.git</developerConnection>
+    <url>https://github.com/data-integrations/delta.git</url>
+    <tag>HEAD</tag>
+  </scm>
 
   <issueManagement>
     <url>https://issues.cask.co/browse/CDAP</url>
