@@ -23,7 +23,7 @@
   <parent>
     <groupId>io.cdap.delta</groupId>
     <artifactId>delta</artifactId>
-    <version>0.1.3</version>
+    <version>0.1.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>delta-api</artifactId>
