@@ -127,6 +127,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTables(Collections.singletonList(new SourceTable("deebee", "taybull")))
       .build();
     service.saveDraft(draftId, new DraftRequest("label", config));
 
@@ -139,7 +140,8 @@ public class DraftServiceTest extends SystemAppTestBase {
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("age", Schema.nullableOf(Schema.of(Schema.Type.INT))));
+      Schema.Field.of("age", Schema.nullableOf(Schema.of(Schema.Type.INT))),
+      Schema.Field.of("skip", Schema.of(Schema.Type.BOOLEAN)));
     TableDetail expectedDetail = TableDetail.builder("deebee", "taybull", null)
       .setPrimaryKey(Collections.singletonList("id"))
       .setColumns(columns)
@@ -254,6 +256,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTarget(new Stage("tgt", new Plugin("mock", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTables(Collections.singletonList(new SourceTable("deebee", "taybull")))
       .build();
 
     DraftService service = new DraftService(getTransactionRunner(), propertyEvaluator);
