@@ -42,7 +42,7 @@ public class QueueingEventEmitterTest {
   private static final Schema SCHEMA = Schema.recordOf("taybull", Schema.Field.of("id", Schema.of(Schema.Type.INT)));
   private static final DDLEvent DDL = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "0")))
-    .setOperation(DDLOperation.CREATE_TABLE)
+    .setOperation(DDLOperation.Type.CREATE_TABLE)
     .setDatabase("deebee")
     .setTable("taybull")
     .setPrimaryKey(Collections.singletonList("id"))
@@ -50,7 +50,7 @@ public class QueueingEventEmitterTest {
     .build();
   private static final DMLEvent DML = DMLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "1")))
-    .setOperation(DMLOperation.INSERT)
+    .setOperation(DMLOperation.Type.INSERT)
     .setDatabase("deebee")
     .setTable("taybull")
     .setIngestTimestamp(1000L)
@@ -75,8 +75,8 @@ public class QueueingEventEmitterTest {
     BlockingQueue<Sequenced<? extends ChangeEvent>> queue = new ArrayBlockingQueue<>(2);
     Set<SourceTable> tables = Collections.singleton(
       new SourceTable("deebee", "taybull", null, Collections.emptySet(),
-                      Collections.singleton(DMLOperation.INSERT),
-                      Collections.singleton(DDLOperation.CREATE_TABLE)));
+                      Collections.singleton(DMLOperation.Type.INSERT),
+                      Collections.singleton(DDLOperation.Type.CREATE_TABLE)));
     EventReaderDefinition readerDefinition = new EventReaderDefinition(tables, Collections.emptySet(),
                                                                        Collections.emptySet());
     QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue);

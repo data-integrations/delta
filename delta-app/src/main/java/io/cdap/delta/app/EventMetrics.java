@@ -27,18 +27,16 @@ import java.util.Map;
  */
 public class EventMetrics {
   private final Metrics metrics;
-  private final String prefix;
-  private final Map<DMLOperation, Integer> dmlEventCounts;
+  private final Map<DMLOperation.Type, Integer> dmlEventCounts;
   private int ddlEventCount;
 
-  public EventMetrics(Metrics metrics, String prefix) {
+  public EventMetrics(Metrics metrics) {
     this.metrics = metrics;
-    this.prefix = prefix;
     this.dmlEventCounts = new HashMap<>();
     clear();
   }
 
-  public synchronized void incrementDMLCount(DMLOperation op) {
+  public synchronized void incrementDMLCount(DMLOperation.Type op) {
     dmlEventCounts.put(op, dmlEventCounts.get(op) + 1);
   }
 
@@ -47,16 +45,16 @@ public class EventMetrics {
   }
 
   public synchronized void emitMetrics() {
-    for (DMLOperation op : dmlEventCounts.keySet()) {
-      metrics.count(String.format("%s.dml.%s", prefix, op.name().toLowerCase()), dmlEventCounts.get(op));
+    for (DMLOperation.Type op : dmlEventCounts.keySet()) {
+      metrics.count(String.format("dml.%s", op.name().toLowerCase()), dmlEventCounts.get(op));
     }
-    metrics.count(String.format("%s.ddl", prefix), ddlEventCount);
+    metrics.count("ddl", ddlEventCount);
     clear();
   }
 
   public synchronized void clear() {
     ddlEventCount = 0;
-    for (DMLOperation op : DMLOperation.values()) {
+    for (DMLOperation.Type op : DMLOperation.Type.values()) {
       dmlEventCounts.put(op, 0);
     }
   }

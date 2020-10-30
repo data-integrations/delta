@@ -74,7 +74,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   private static final Schema SCHEMA = Schema.recordOf("taybull", Schema.Field.of("id", Schema.of(Schema.Type.INT)));
   private static final DDLEvent EVENT1 = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "0")))
-    .setOperation(DDLOperation.CREATE_TABLE)
+    .setOperation(DDLOperation.Type.CREATE_TABLE)
     .setDatabase("deebee")
     .setTable("taybull")
     .setPrimaryKey(Collections.singletonList("id"))
@@ -82,7 +82,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .build();
   private static final DMLEvent EVENT2 = DMLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "1")))
-    .setOperation(DMLOperation.INSERT)
+    .setOperation(DMLOperation.Type.INSERT)
     .setDatabase("deebee")
     .setTable("taybull")
     .setIngestTimestamp(1000L)
@@ -90,7 +90,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .build();
   private static final DDLEvent EVENT3 = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "2")))
-    .setOperation(DDLOperation.CREATE_TABLE)
+    .setOperation(DDLOperation.Type.CREATE_TABLE)
     .setDatabase("deebee")
     .setTable("taybull2")
     .setPrimaryKey(Collections.singletonList("id"))

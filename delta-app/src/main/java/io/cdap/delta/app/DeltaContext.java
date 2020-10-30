@@ -16,6 +16,7 @@
 
 package io.cdap.delta.app;
 
+import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.macro.InvalidMacroException;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
@@ -45,26 +46,27 @@ import javax.annotation.Nullable;
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
   private static final String STATE_PREFIX = "state-";
+  private static final String PROGRAM_METRIC_ENTITY = "ent";
   private final DeltaWorkerId id;
   private final String runId;
   private final Metrics metrics;
   private final StateStore stateStore;
   private final PluginContext pluginContext;
-  private final EventMetrics eventMetrics;
+  private final Map<String, EventMetrics> tableEventMetrics;
   private final PipelineStateService stateService;
   private final int maxRetrySeconds;
   private final Map<String, String> runtimeArguments;
   private final AtomicReference<Throwable> failure;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
-               PluginContext pluginContext, EventMetrics eventMetrics, PipelineStateService stateService,
+               PluginContext pluginContext, PipelineStateService stateService,
                int maxRetrySeconds, Map<String, String> runtimeArguments) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
     this.stateStore = stateStore;
     this.pluginContext = pluginContext;
-    this.eventMetrics = eventMetrics;
+    this.tableEventMetrics = new HashMap<>();
     this.stateService = stateService;
     this.maxRetrySeconds = maxRetrySeconds;
     this.runtimeArguments = Collections.unmodifiableMap(new HashMap<>(runtimeArguments));
@@ -73,18 +75,31 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   @Override
   public void incrementCount(DMLOperation op) {
-    eventMetrics.incrementDMLCount(op);
+    String tableName = op.getTableName();
+    EventMetrics eventMetrics = tableEventMetrics.computeIfAbsent(
+      tableName, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, tableName))));
+    eventMetrics.incrementDMLCount(op.getType());
   }
 
   @Override
   public void incrementCount(DDLOperation op) {
+    String tableName = op.getTableName();
+    if (tableName == null) {
+      // This can happen for DDL operations such as CREATE_DATABASE
+      return;
+    }
+    EventMetrics eventMetrics = tableEventMetrics.computeIfAbsent(
+      tableName, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, tableName))));
     eventMetrics.incrementDDLCount();
   }
 
   @Override
   public void commitOffset(Offset offset, long sequenceNumber) throws IOException {
     stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber));
-    eventMetrics.emitMetrics();
+    for (EventMetrics eventMetrics : tableEventMetrics.values()) {
+      eventMetrics.emitMetrics();
+    }
+    clearMetrics();
   }
 
   @Override
@@ -195,7 +210,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   void clearMetrics() {
-    eventMetrics.clear();
+    tableEventMetrics.clear();
   }
 
   void throwFailureIfExists() throws Throwable {

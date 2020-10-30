@@ -24,7 +24,9 @@ import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.internal.io.SchemaTypeAdapter;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.DDLEvent;
+import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
+import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.Sequenced;
@@ -74,7 +76,7 @@ public class FileEventConsumer implements EventConsumer {
   @Override
   public void applyDDL(Sequenced<DDLEvent> event) throws IOException {
     events.add(event.getEvent());
-    context.incrementCount(event.getEvent().getOperation());
+    context.incrementCount(new DDLOperation(event.getEvent().getTable(), event.getEvent().getOperation()));
     context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
     context.setTableReplicating(event.getEvent().getDatabase(), event.getEvent().getTable());
   }
@@ -82,7 +84,7 @@ public class FileEventConsumer implements EventConsumer {
   @Override
   public void applyDML(Sequenced<DMLEvent> event) throws IOException {
     events.add(event.getEvent());
-    context.incrementCount(event.getEvent().getOperation());
+    context.incrementCount(new DMLOperation(event.getEvent().getTable(), event.getEvent().getOperation()));
     context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
   }
 

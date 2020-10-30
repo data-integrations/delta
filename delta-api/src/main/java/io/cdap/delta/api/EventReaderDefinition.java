@@ -18,7 +18,6 @@ package io.cdap.delta.api;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -26,11 +25,11 @@ import java.util.Set;
  */
 public class EventReaderDefinition {
   private final Set<SourceTable> tables;
-  private final Set<DMLOperation> dmlBlacklist;
-  private final Set<DDLOperation> ddlBlacklist;
+  private final Set<DMLOperation.Type> dmlBlacklist;
+  private final Set<DDLOperation.Type> ddlBlacklist;
 
-  public EventReaderDefinition(Set<SourceTable> tables, Set<DMLOperation> dmlBlacklist,
-                               Set<DDLOperation> ddlBlacklist) {
+  public EventReaderDefinition(Set<SourceTable> tables, Set<DMLOperation.Type> dmlBlacklist,
+                               Set<DDLOperation.Type> ddlBlacklist) {
     this.tables = tables;
     this.dmlBlacklist = Collections.unmodifiableSet(new HashSet<>(dmlBlacklist));
     this.ddlBlacklist = Collections.unmodifiableSet(new HashSet<>(ddlBlacklist));
@@ -46,14 +45,14 @@ public class EventReaderDefinition {
   /**
    * @return set of DDL operations that should always be ignored, regardless of which table they are related to.
    */
-  public Set<DDLOperation> getDdlBlacklist() {
+  public Set<DDLOperation.Type> getDdlBlacklist() {
     return ddlBlacklist;
   }
 
   /**
    * @return set of DML operations that should always be ignored, regardless of which table they are related to.
    */
-  public Set<DMLOperation> getDmlBlacklist() {
+  public Set<DMLOperation.Type> getDmlBlacklist() {
     return dmlBlacklist;
   }
 }

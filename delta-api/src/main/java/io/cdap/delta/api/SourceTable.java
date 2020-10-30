@@ -18,7 +18,6 @@ package io.cdap.delta.api;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -34,8 +33,8 @@ public class SourceTable {
   // TODO: CDAP-16261 have a better way to identify the table
   private final String schema;
   private final Set<SourceColumn> columns;
-  private final Set<DMLOperation> dmlBlacklist;
-  private final Set<DDLOperation> ddlBlacklist;
+  private final Set<DMLOperation.Type> dmlBlacklist;
+  private final Set<DDLOperation.Type> ddlBlacklist;
 
   public SourceTable(String database, String table) {
     this(database, table, Collections.emptySet());
@@ -46,8 +45,8 @@ public class SourceTable {
   }
 
   public SourceTable(String database, String table, @Nullable String schema,
-                     Set<SourceColumn> columns, Set<DMLOperation> dmlBlacklist,
-                     Set<DDLOperation> ddlBlacklist) {
+                     Set<SourceColumn> columns, Set<DMLOperation.Type> dmlBlacklist,
+                     Set<DDLOperation.Type> ddlBlacklist) {
     this.database = database;
     this.table = table;
     this.schema = schema;
@@ -75,7 +74,7 @@ public class SourceTable {
   /**
    * @return set of DML operations that should be ignored
    */
-  public Set<DMLOperation> getDmlBlacklist() {
+  public Set<DMLOperation.Type> getDmlBlacklist() {
     return dmlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(dmlBlacklist);
   }
 
@@ -87,7 +86,7 @@ public class SourceTable {
   /**
    * @return set of DDL operations that should be ignored
    */
-  public Set<DDLOperation> getDdlBlacklist() {
+  public Set<DDLOperation.Type> getDdlBlacklist() {
     return ddlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(ddlBlacklist);
   }
 

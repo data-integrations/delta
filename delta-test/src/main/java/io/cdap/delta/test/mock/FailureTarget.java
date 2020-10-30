@@ -22,7 +22,9 @@ import io.cdap.cdap.api.plugin.PluginConfig;
 import io.cdap.cdap.api.plugin.PluginPropertyField;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DDLEvent;
+import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
+import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaFailureException;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.DeltaTargetContext;
@@ -77,7 +79,7 @@ public class FailureTarget implements DeltaTarget {
 
       @Override
       public void applyDDL(Sequenced<DDLEvent> event) throws IOException, DeltaFailureException {
-        context.incrementCount(event.getEvent().getOperation());
+        context.incrementCount(new DDLOperation(event.getEvent().getTable(), event.getEvent().getOperation()));
         throwIfNeeded(event.getSequenceNumber(), event.getEvent().getDatabase(), event.getEvent().getTable());
         context.setTableReplicating(event.getEvent().getDatabase(), event.getEvent().getTable());
         context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
@@ -86,7 +88,7 @@ public class FailureTarget implements DeltaTarget {
       @Override
       public void applyDML(Sequenced<DMLEvent> event) throws IOException, DeltaFailureException {
         DMLEvent dml = event.getEvent();
-        context.incrementCount(dml.getOperation());
+        context.incrementCount(new DMLOperation(event.getEvent().getTable(), dml.getOperation()));
         throwIfNeeded(event.getSequenceNumber(), dml.getDatabase(), dml.getTable());
         context.setTableReplicating(dml.getDatabase(), dml.getTable());
         context.commitOffset(dml.getOffset(), event.getSequenceNumber());

@@ -16,15 +16,85 @@
 
 package io.cdap.delta.api;
 
+import java.util.Objects;
+import javax.annotation.Nullable;
+
 /**
- * A DDL operation
+ * Represents DDL operation.
  */
-public enum DDLOperation {
-  CREATE_DATABASE,
-  DROP_DATABASE,
-  CREATE_TABLE,
-  DROP_TABLE,
-  TRUNCATE_TABLE,
-  ALTER_TABLE,
-  RENAME_TABLE
+public class DDLOperation {
+  /**
+   * Type of DDL Operation
+   */
+  public enum Type {
+    CREATE_DATABASE,
+    DROP_DATABASE,
+    CREATE_TABLE,
+    DROP_TABLE,
+    TRUNCATE_TABLE,
+    ALTER_TABLE,
+    RENAME_TABLE
+  }
+
+  private final String tableName;
+  private final String prevTableName;
+  private final DDLOperation.Type type;
+
+  public DDLOperation(@Nullable String tableName, DDLOperation.Type type) {
+    this(tableName, null, type);
+  }
+
+  /**
+   * Create a rename table DDL operation.
+   * @param prevTableName previous name of the table
+   * @param tableName new name of the table
+   * @return rename table DDLOperation
+   * @throws IllegalArgumentException when either the prevTableName or tableName is null
+   */
+  public static DDLOperation createRenameTableOperation(String prevTableName, String tableName) {
+    if (prevTableName == null || tableName == null) {
+      throw new IllegalArgumentException("For table rename ddl operation both previous table name and " +
+                                           "renamed table names are required.");
+    }
+    return new DDLOperation(prevTableName, tableName, Type.RENAME_TABLE);
+  }
+
+  private DDLOperation(@Nullable String tableName, @Nullable String prevTableName, DDLOperation.Type type) {
+    this.tableName = tableName;
+    this.prevTableName = prevTableName;
+    this.type = type;
+  }
+
+  @Nullable
+  public String getTableName() {
+    return tableName;
+  }
+
+  @Nullable
+  public String getPrevTableName() {
+    return prevTableName;
+  }
+
+  public Type getType() {
+    return type;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DDLOperation that = (DDLOperation) o;
+    return Objects.equals(tableName, that.tableName) &&
+      Objects.equals(prevTableName, that.prevTableName) &&
+      type == that.type;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tableName, prevTableName, type);
+  }
 }

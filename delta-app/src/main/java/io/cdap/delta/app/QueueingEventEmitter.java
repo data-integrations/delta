@@ -39,8 +39,8 @@ import java.util.stream.Collectors;
  * If emitting an event is interrupted, all subsequent emit calls will be no-ops.
  */
 public class QueueingEventEmitter implements EventEmitter {
-  private final Set<DMLOperation> dmlBlacklist;
-  private final Set<DDLOperation> ddlBlacklist;
+  private final Set<DMLOperation.Type> dmlBlacklist;
+  private final Set<DDLOperation.Type> ddlBlacklist;
   private final Map<DBTable, SourceTable> tableDefinitions;
   private final BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
   private long sequenceNumber;
@@ -88,10 +88,10 @@ public class QueueingEventEmitter implements EventEmitter {
   }
 
   private boolean shouldIgnore(DDLEvent event) {
-    DDLOperation ddlOperation = event.getOperation();
+    DDLOperation.Type ddlOperation = event.getOperation();
     if (ddlBlacklist.contains(ddlOperation)) {
       return true;
-    } else if (ddlOperation == DDLOperation.CREATE_DATABASE || ddlOperation == DDLOperation.DROP_DATABASE) {
+    } else if (ddlOperation == DDLOperation.Type.CREATE_DATABASE || ddlOperation == DDLOperation.Type.DROP_DATABASE) {
       return false;
     }
 
