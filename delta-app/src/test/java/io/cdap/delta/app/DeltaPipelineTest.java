@@ -82,7 +82,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .build();
   private static final DMLEvent EVENT2 = DMLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "1")))
-    .setOperation(DMLOperation.Type.INSERT)
+    .setOperationType(DMLOperation.Type.INSERT)
     .setDatabase("deebee")
     .setTable("taybull")
     .setIngestTimestamp(1000L)
@@ -353,7 +353,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       }
       for (TableReplicationState state : pipelineState.getTables()) {
         if (EVENT2.getDatabase().equals(state.getDatabase()) &&
-          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.FAILING) {
+          EVENT2.getOperation().getTableName().equals(state.getTable()) && state.getState() == TableState.FAILING) {
           return true;
         }
       }
@@ -368,7 +368,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       stateService.load();
       for (TableReplicationState state : stateService.getState().getTables()) {
         if (EVENT2.getDatabase().equals(state.getDatabase()) &&
-          EVENT2.getTable().equals(state.getTable()) && state.getState() == TableState.REPLICATING) {
+          EVENT2.getOperation().getTableName().equals(state.getTable()) && state.getState() == TableState.REPLICATING) {
           return true;
         }
       }

@@ -28,25 +28,21 @@ import javax.annotation.Nullable;
  * A DDL change event.
  */
 public class DDLEvent extends ChangeEvent {
-  private final DDLOperation.Type operation;
+  private final DDLOperation operation;
   private final Schema schema;
   private final String database;
-  private final String prevTable;
-  private final String table;
   private final List<String> primaryKey;
 
-  private DDLEvent(Offset offset, DDLOperation.Type operation, @Nullable Schema schema, String database,
-                   @Nullable String prevTable, @Nullable String table, List<String> primaryKey, boolean isSnapshot) {
+  private DDLEvent(Offset offset, String database, DDLOperation operation, @Nullable Schema schema,
+                   List<String> primaryKey, boolean isSnapshot) {
     super(offset, isSnapshot, ChangeType.DDL);
     this.operation = operation;
     this.schema = schema;
     this.database = database;
-    this.prevTable = prevTable;
-    this.table = table;
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
   }
 
-  public DDLOperation.Type getOperation() {
+  public DDLOperation getOperation() {
     return operation;
   }
 
@@ -57,15 +53,6 @@ public class DDLEvent extends ChangeEvent {
 
   public String getDatabase() {
     return database;
-  }
-
-  public String getPrevTable() {
-    return prevTable;
-  }
-
-  @Nullable
-  public String getTable() {
-    return table;
   }
 
   public List<String> getPrimaryKey() {
@@ -84,17 +71,15 @@ public class DDLEvent extends ChangeEvent {
       return false;
     }
     DDLEvent ddlEvent = (DDLEvent) o;
-    return operation == ddlEvent.operation &&
+    return Objects.equals(operation, ddlEvent.operation) &&
       Objects.equals(schema, ddlEvent.schema) &&
       Objects.equals(database, ddlEvent.database) &&
-      Objects.equals(prevTable, ddlEvent.prevTable) &&
-      Objects.equals(table, ddlEvent.table) &&
       Objects.equals(primaryKey, ddlEvent.primaryKey);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), operation, schema, database, prevTable, table, primaryKey);
+    return Objects.hash(super.hashCode(), operation, schema, database, primaryKey);
   }
 
   public static Builder builder(DDLEvent event) {
@@ -121,11 +106,11 @@ public class DDLEvent extends ChangeEvent {
     private Builder(DDLEvent event) {
       this.offset = event.getOffset();
       this.isSnapshot = event.isSnapshot();
-      this.operation = event.getOperation();
+      this.operation = event.getOperation().getType();
       this.schema = event.getSchema();
       this.database = event.getDatabase();
-      this.prevTable = event.getPrevTable();
-      this.table = event.getTable();
+      this.prevTable = event.getOperation().getPrevTableName();
+      this.table = event.getOperation().getTableName();
       this.primaryKey = event.getPrimaryKey();
     }
 
@@ -160,7 +145,13 @@ public class DDLEvent extends ChangeEvent {
     }
 
     public DDLEvent build() {
-      return new DDLEvent(offset, operation, schema, database, prevTable, table, primaryKey, isSnapshot);
+      DDLOperation ddlOperation;
+      if (operation == DDLOperation.Type.RENAME_TABLE) {
+        ddlOperation = DDLOperation.createRenameTableOperation(prevTable, table);
+      } else {
+        ddlOperation = new DDLOperation(table, operation);
+      }
+      return new DDLEvent(offset, database, ddlOperation, schema, primaryKey, isSnapshot);
     }
   }
 }
