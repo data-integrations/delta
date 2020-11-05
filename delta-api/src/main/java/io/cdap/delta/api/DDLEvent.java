@@ -28,14 +28,14 @@ import javax.annotation.Nullable;
  * A DDL change event.
  */
 public class DDLEvent extends ChangeEvent {
-  private final DDLOperation operation;
+  private final DDLOperation.Type operation;
   private final Schema schema;
   private final String database;
   private final String prevTable;
   private final String table;
   private final List<String> primaryKey;
 
-  private DDLEvent(Offset offset, DDLOperation operation, @Nullable Schema schema, String database,
+  private DDLEvent(Offset offset, DDLOperation.Type operation, @Nullable Schema schema, String database,
                    @Nullable String prevTable, @Nullable String table, List<String> primaryKey, boolean isSnapshot) {
     super(offset, isSnapshot, ChangeType.DDL);
     this.operation = operation;
@@ -46,7 +46,7 @@ public class DDLEvent extends ChangeEvent {
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
   }
 
-  public DDLOperation getOperation() {
+  public DDLOperation.Type getOperation() {
     return operation;
   }
 
@@ -109,7 +109,7 @@ public class DDLEvent extends ChangeEvent {
    * Builder for a DDL event.
    */
   public static class Builder extends ChangeEvent.Builder<Builder> {
-    private DDLOperation operation;
+    private DDLOperation.Type operation;
     private Schema schema;
     private String database;
     private String prevTable;
@@ -129,7 +129,7 @@ public class DDLEvent extends ChangeEvent {
       this.primaryKey = event.getPrimaryKey();
     }
 
-    public Builder setOperation(DDLOperation operation) {
+    public Builder setOperation(DDLOperation.Type operation) {
       this.operation = operation;
       return this;
     }

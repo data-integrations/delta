@@ -16,11 +16,53 @@
 
 package io.cdap.delta.api;
 
+import java.util.Objects;
+
 /**
- * Type of DML operation.
+ * Represents a DML Operation.
  */
-public enum DMLOperation {
-  INSERT,
-  DELETE,
-  UPDATE
+public class DMLOperation {
+
+  /**
+   * Type of DML operation.
+   */
+  public enum Type {
+    INSERT,
+    DELETE,
+    UPDATE
+  }
+
+  private final String tableName;
+  private final DMLOperation.Type type;
+
+  public DMLOperation(String tableName, DMLOperation.Type operationType) {
+    this.tableName = tableName;
+    this.type = operationType;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public Type getType() {
+    return type;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DMLOperation that = (DMLOperation) o;
+    return tableName.equals(that.tableName) &&
+      type == that.type;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tableName, type);
+  }
 }

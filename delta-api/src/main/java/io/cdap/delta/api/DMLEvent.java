@@ -25,7 +25,7 @@ import javax.annotation.Nullable;
  * A DML change event.
  */
 public class DMLEvent extends ChangeEvent {
-  private final DMLOperation operation;
+  private final DMLOperation.Type operation;
   private final String database;
   private final String table;
   private final StructuredRecord row;
@@ -33,7 +33,7 @@ public class DMLEvent extends ChangeEvent {
   private final String transactionId;
   private final long ingestTimestampMillis;
 
-  private DMLEvent(Offset offset, DMLOperation operation, String database, String table, StructuredRecord row,
+  private DMLEvent(Offset offset, DMLOperation.Type operation, String database, String table, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
                    boolean isSnapshot) {
     super(offset, isSnapshot, ChangeType.DML);
@@ -46,7 +46,7 @@ public class DMLEvent extends ChangeEvent {
     this.ingestTimestampMillis = ingestTimestampMillis;
   }
 
-  public DMLOperation getOperation() {
+  public DMLOperation.Type getOperation() {
     return operation;
   }
 
@@ -117,7 +117,7 @@ public class DMLEvent extends ChangeEvent {
    * Builder for a DML event.
    */
   public static class Builder extends ChangeEvent.Builder<Builder> {
-    private DMLOperation operation;
+    private DMLOperation.Type operation;
     private String database;
     private String table;
     private StructuredRecord row;
@@ -139,7 +139,7 @@ public class DMLEvent extends ChangeEvent {
       this.isSnapshot = event.isSnapshot();
     }
 
-    public Builder setOperation(DMLOperation operation) {
+    public Builder setOperation(DMLOperation.Type operation) {
       this.operation = operation;
       return this;
     }

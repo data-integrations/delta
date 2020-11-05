@@ -27,7 +27,7 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
    * Record that a DML operation was processed. Metrics on the number of operations processed are stored in memory
    * and actually written out when {@link #commitOffset(Offset, long)} is called.
    *
-   * @param op type of DML operation
+   * @param op a DML operation
    */
   void incrementCount(DMLOperation op);
 
@@ -35,7 +35,7 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
    * Record that a DDL operation was processed. Metrics on the number of operations processed are stored in memory
    * and actually written out when {@link #commitOffset(Offset, long)} is called.
    *
-   * @param op type of DDL operation
+   * @param op a DDL operation
    */
   void incrementCount(DDLOperation op);
 
@@ -47,7 +47,8 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
    * always have the same corresponding sequence number.
    *
    * Also writes out metrics on the number of DML and DDL operations that were applied since the last successful
-   * commit, as recorded by calls to {@link #incrementCount(DDLOperation)} and {@link #incrementCount(DMLOperation)}.
+   * commit, as recorded by calls to {@link #incrementCount(DDLOperation)} and
+   * {@link #incrementCount(DMLOperation)}.
    *
    * @param offset offset to commitOffset
    * @param sequenceNumber the sequence number for the offset

@@ -49,7 +49,7 @@
   <properties>
     <jee.version>7</jee.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>6.1.1</cdap.version>
+    <cdap.version>6.3.0-SNAPSHOT</cdap.version>
     <debezium.version>0.9.5.Final</debezium.version>
     <failsafe.version>2.3.3</failsafe.version>
     <guava.version>13.0.1</guava.version>

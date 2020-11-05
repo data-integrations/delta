@@ -159,10 +159,9 @@ public class DeltaWorker extends AbstractWorker {
 
     Path path = new Path(offsetBasePath);
     StateStore stateStore = StateStore.from(path);
-    EventMetrics eventMetrics = new EventMetrics(metrics, targetName);
     PipelineStateService stateService = new PipelineStateService(id, stateStore);
     stateService.load();
-    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context, eventMetrics,
+    deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context,
                                     stateService, config.getRetryConfig().getMaxDurationSeconds(),
                                     context.getRuntimeArguments());
     MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
@@ -172,17 +171,17 @@ public class DeltaWorker extends AbstractWorker {
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
     offset = offsetAndSequence.getOffset();
 
-    Set<DDLOperation> ddlBlacklist = new HashSet<>(config.getDdlBlacklist());
+    Set<DDLOperation.Type> ddlBlacklist = new HashSet<>(config.getDdlBlacklist());
     // targets will not behave properly if they don't get create table events
-    ddlBlacklist.remove(DDLOperation.CREATE_TABLE);
+    ddlBlacklist.remove(DDLOperation.Type.CREATE_TABLE);
     Set<SourceTable> expandedTables = config.getTables().stream()
       .filter(t -> assignedTables.contains(new TableId(t.getDatabase(), t.getTable(), t.getSchema())))
       .map(t -> {
-        Set<DMLOperation> expandedDmlBlacklist = new HashSet<>(t.getDmlBlacklist());
+        Set<DMLOperation.Type> expandedDmlBlacklist = new HashSet<>(t.getDmlBlacklist());
         expandedDmlBlacklist.addAll(config.getDmlBlacklist());
-        Set<DDLOperation> expandedDdlBlacklist = new HashSet<>(t.getDdlBlacklist());
+        Set<DDLOperation.Type> expandedDdlBlacklist = new HashSet<>(t.getDdlBlacklist());
         expandedDdlBlacklist.addAll(ddlBlacklist);
-        expandedDdlBlacklist.remove(DDLOperation.CREATE_TABLE);
+        expandedDdlBlacklist.remove(DDLOperation.Type.CREATE_TABLE);
         return new SourceTable(t.getDatabase(), t.getTable(), t.getSchema(),
                                t.getColumns(), expandedDmlBlacklist, expandedDdlBlacklist);
       })

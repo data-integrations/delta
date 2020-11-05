@@ -45,8 +45,8 @@ public class DeltaConfig extends Config {
   private final Resources resources;
   private final String offsetBasePath;
   private final List<SourceTable> tables;
-  private final Set<DMLOperation> dmlBlacklist;
-  private final Set<DDLOperation> ddlBlacklist;
+  private final Set<DMLOperation.Type> dmlBlacklist;
+  private final Set<DDLOperation.Type> ddlBlacklist;
   private final RetryConfig retries;
   private final ParallelismConfig parallelism;
   // should only be set by CDAP admin when creating the system service
@@ -54,7 +54,7 @@ public class DeltaConfig extends Config {
 
   private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
                       Resources resources, String offsetBasePath, List<SourceTable> tables,
-                      Set<DMLOperation> dmlBlacklist, Set<DDLOperation> ddlBlacklist,
+                      Set<DMLOperation.Type> dmlBlacklist, Set<DDLOperation.Type> ddlBlacklist,
                       RetryConfig retries, ParallelismConfig parallelism) {
     this.description = description;
     this.stages = new ArrayList<>(stages);
@@ -95,13 +95,13 @@ public class DeltaConfig extends Config {
     return tables == null ? Collections.emptyList() : Collections.unmodifiableList(tables);
   }
 
-  public Set<DMLOperation> getDmlBlacklist() {
+  public Set<DMLOperation.Type> getDmlBlacklist() {
     return dmlBlacklist == null ? Collections.emptySet() : Collections.unmodifiableSet(dmlBlacklist);
   }
 
-  public Set<DDLOperation> getDdlBlacklist() {
+  public Set<DDLOperation.Type> getDdlBlacklist() {
     // blacklist drop database event by default if ddlBlacklist is null
-    return ddlBlacklist == null ? Collections.singleton(DDLOperation.DROP_DATABASE) :
+    return ddlBlacklist == null ? Collections.singleton(DDLOperation.Type.DROP_DATABASE) :
       Collections.unmodifiableSet(ddlBlacklist);
   }
 
@@ -225,8 +225,8 @@ public class DeltaConfig extends Config {
     private String offsetBasePath;
     private Resources resources;
     private List<SourceTable> tables;
-    private Set<DMLOperation> dmlBlacklist;
-    private Set<DDLOperation> ddlBlacklist;
+    private Set<DMLOperation.Type> dmlBlacklist;
+    private Set<DDLOperation.Type> ddlBlacklist;
     private RetryConfig retries;
     private ParallelismConfig parallelism;
 
@@ -271,13 +271,13 @@ public class DeltaConfig extends Config {
       return this;
     }
 
-    public Builder setDMLBlacklist(Collection<DMLOperation> blacklist) {
+    public Builder setDMLBlacklist(Collection<DMLOperation.Type> blacklist) {
       this.dmlBlacklist.clear();
       this.dmlBlacklist.addAll(blacklist);
       return this;
     }
 
-    public Builder setDDLBlacklist(Collection<DDLOperation> blacklist) {
+    public Builder setDDLBlacklist(Collection<DDLOperation.Type> blacklist) {
       this.ddlBlacklist.clear();
       this.ddlBlacklist.addAll(blacklist);
       return this;
