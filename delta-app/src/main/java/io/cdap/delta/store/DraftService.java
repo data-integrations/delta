@@ -196,6 +196,7 @@ public class DraftService {
    * @throws TableNotFoundException if the table does not exist
    * @throws IOException if the table detail could not be read
    * @throws Exception if there was an error creating the table registry
+   * @throws IllegalArgumentException if the table is not selected in the draft
    */
   public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, String db, String table)
     throws Exception {
@@ -206,10 +207,16 @@ public class DraftService {
     if (target == null) {
       throw new InvalidDraftException("Cannot assess a table without a configured target.");
     }
+    SourceTable selectedTable = deltaConfig.getTables()
+      .stream()
+      .filter(streamTable -> db.equals(streamTable.getDatabase()) && table.equals(streamTable.getTable()))
+      .findAny()
+      .orElseThrow(() -> new IllegalArgumentException(String.format("Table '%s' in database '%s' is not a selected " +
+                                                                    "table in the draft", table, db)));
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
          TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target)) {
-      return assessTable(new SourceTable(db, table), tableRegistry, sourceTableAssessor, targetTableAssessor);
+      return assessTable(selectedTable, tableRegistry, sourceTableAssessor, targetTableAssessor);
     }
   }
 
