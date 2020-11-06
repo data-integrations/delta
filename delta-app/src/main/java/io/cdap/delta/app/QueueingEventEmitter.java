@@ -88,15 +88,17 @@ public class QueueingEventEmitter implements EventEmitter {
   }
 
   private boolean shouldIgnore(DDLEvent event) {
-    DDLOperation.Type ddlOperation = event.getOperation();
-    if (ddlBlacklist.contains(ddlOperation)) {
+    DDLOperation.Type ddlOperationType = event.getOperation().getType();
+    if (ddlBlacklist.contains(ddlOperationType)) {
       return true;
-    } else if (ddlOperation == DDLOperation.Type.CREATE_DATABASE || ddlOperation == DDLOperation.Type.DROP_DATABASE) {
+    } else if (ddlOperationType == DDLOperation.Type.CREATE_DATABASE ||
+      ddlOperationType == DDLOperation.Type.DROP_DATABASE) {
       return false;
     }
 
-    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(), event.getTable()));
-    if (sourceTable != null && sourceTable.getDdlBlacklist().contains(ddlOperation)) {
+    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(),
+                                                               event.getOperation().getTableName()));
+    if (sourceTable != null && sourceTable.getDdlBlacklist().contains(ddlOperationType)) {
       return true;
     }
 
@@ -104,12 +106,13 @@ public class QueueingEventEmitter implements EventEmitter {
   }
 
   private boolean shouldIgnore(DMLEvent event) {
-    if (dmlBlacklist.contains(event.getOperation())) {
+    if (dmlBlacklist.contains(event.getOperation().getType())) {
       return true;
     }
 
-    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(), event.getTable()));
-    if (sourceTable != null && sourceTable.getDmlBlacklist().contains(event.getOperation())) {
+    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(),
+                                                               event.getOperation().getTableName()));
+    if (sourceTable != null && sourceTable.getDmlBlacklist().contains(event.getOperation().getType())) {
       return true;
     }
     return !tableDefinitions.isEmpty() && sourceTable == null;

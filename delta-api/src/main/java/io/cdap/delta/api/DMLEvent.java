@@ -25,37 +25,31 @@ import javax.annotation.Nullable;
  * A DML change event.
  */
 public class DMLEvent extends ChangeEvent {
-  private final DMLOperation.Type operation;
+  private final DMLOperation operation;
   private final String database;
-  private final String table;
   private final StructuredRecord row;
   private final StructuredRecord previousRow;
   private final String transactionId;
   private final long ingestTimestampMillis;
 
-  private DMLEvent(Offset offset, DMLOperation.Type operation, String database, String table, StructuredRecord row,
+  private DMLEvent(Offset offset, String database, DMLOperation operation, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
                    boolean isSnapshot) {
     super(offset, isSnapshot, ChangeType.DML);
-    this.operation = operation;
     this.database = database;
-    this.table = table;
+    this.operation = operation;
     this.row = row;
     this.previousRow = previousRow;
     this.transactionId = transactionId;
     this.ingestTimestampMillis = ingestTimestampMillis;
   }
 
-  public DMLOperation.Type getOperation() {
+  public DMLOperation getOperation() {
     return operation;
   }
 
   public String getDatabase() {
     return database;
-  }
-
-  public String getTable() {
-    return table;
   }
 
   public StructuredRecord getRow() {
@@ -91,9 +85,8 @@ public class DMLEvent extends ChangeEvent {
     }
     DMLEvent dmlEvent = (DMLEvent) o;
     return ingestTimestampMillis == dmlEvent.ingestTimestampMillis &&
-      operation == dmlEvent.operation &&
+      Objects.equals(operation, dmlEvent.operation) &&
       Objects.equals(database, dmlEvent.database) &&
-      Objects.equals(table, dmlEvent.table) &&
       Objects.equals(row, dmlEvent.row) &&
       Objects.equals(previousRow, dmlEvent.previousRow) &&
       Objects.equals(transactionId, dmlEvent.transactionId);
@@ -101,8 +94,7 @@ public class DMLEvent extends ChangeEvent {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), operation, database, table, row, previousRow,
-                        transactionId, ingestTimestampMillis);
+    return Objects.hash(super.hashCode(), operation, database, row, previousRow, transactionId, ingestTimestampMillis);
   }
 
   public static Builder builder(DMLEvent event) {
@@ -117,7 +109,7 @@ public class DMLEvent extends ChangeEvent {
    * Builder for a DML event.
    */
   public static class Builder extends ChangeEvent.Builder<Builder> {
-    private DMLOperation.Type operation;
+    private DMLOperation.Type operationType;
     private String database;
     private String table;
     private StructuredRecord row;
@@ -129,9 +121,9 @@ public class DMLEvent extends ChangeEvent {
 
     private Builder(DMLEvent event) {
       this.offset = event.getOffset();
-      this.operation = event.getOperation();
+      this.operationType = event.getOperation().getType();
       this.database = event.getDatabase();
-      this.table = event.getTable();
+      this.table = event.getOperation().getTableName();
       this.row = event.getRow();
       this.previousRow = event.getPreviousRow();
       this.transactionId = event.getTransactionId();
@@ -139,8 +131,8 @@ public class DMLEvent extends ChangeEvent {
       this.isSnapshot = event.isSnapshot();
     }
 
-    public Builder setOperation(DMLOperation.Type operation) {
-      this.operation = operation;
+    public Builder setOperationType(DMLOperation.Type operationType) {
+      this.operationType = operationType;
       return this;
     }
 
@@ -175,7 +167,7 @@ public class DMLEvent extends ChangeEvent {
     }
 
     public DMLEvent build() {
-      return new DMLEvent(offset, operation, database, table, row, previousRow,
+      return new DMLEvent(offset, database, new DMLOperation(table, operationType), row, previousRow,
                           transactionId, ingestTimestampMillis, isSnapshot);
     }
   }

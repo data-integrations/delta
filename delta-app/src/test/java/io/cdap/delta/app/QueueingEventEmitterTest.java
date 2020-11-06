@@ -50,7 +50,7 @@ public class QueueingEventEmitterTest {
     .build();
   private static final DMLEvent DML = DMLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "1")))
-    .setOperation(DMLOperation.Type.INSERT)
+    .setOperationType(DMLOperation.Type.INSERT)
     .setDatabase("deebee")
     .setTable("taybull")
     .setIngestTimestamp(1000L)
