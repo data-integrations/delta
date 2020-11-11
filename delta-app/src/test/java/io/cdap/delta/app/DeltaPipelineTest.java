@@ -129,8 +129,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    waitForMetric(appId, "target.ddl", 1);
-    waitForMetric(appId, "target.dml.insert", 1);
+    waitForMetric(appId, "ddl", 1);
+    waitForMetric(appId, "dml.insert", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -179,7 +179,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    waitForMetric(appId, "target.ddl", 1);
+    waitForMetric(appId, "ddl", 1);
     TimeUnit.SECONDS.sleep(20);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
@@ -203,7 +203,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     // offset should have been saved, with the next run starting from that offset
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    waitForMetric(appId, "target.dml.insert", 1);
+    waitForMetric(appId, "dml.insert", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -342,7 +342,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     sourceProceedFile.createNewFile();
 
     // wait for the 1st event to be applied, after which the target should start throwing exceptions
-    waitForMetric(appId, "target.ddl", 1);
+    waitForMetric(appId, "ddl", 1);
 
     // wait for the replication state for the table to be set to ERROR.
     Tasks.waitFor(true, () -> {
@@ -383,8 +383,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
     // verify that metrics were not double counted during errors
-    waitForMetric(appId, "target.ddl", 1);
-    waitForMetric(appId, "target.dml.insert", 1);
+    waitForMetric(appId, "ddl", 1);
+    waitForMetric(appId, "dml.insert", 1);
 
     Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
     // check that state is killed and not failed
@@ -419,8 +419,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    waitForMetric(appId, "target.ddl", 2);
-    waitForMetric(appId, "target.dml.insert", 1);
+    waitForMetric(appId, "ddl", 2);
+    waitForMetric(appId, "dml.insert", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
