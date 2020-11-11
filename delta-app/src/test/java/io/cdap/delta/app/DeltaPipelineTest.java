@@ -62,7 +62,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -71,32 +70,40 @@ import java.util.concurrent.TimeoutException;
  * Tests for delta pipelines
  */
 public class DeltaPipelineTest extends DeltaPipelineTestBase {
-  private static final Schema SCHEMA = Schema.recordOf("taybull", Schema.Field.of("id", Schema.of(Schema.Type.INT)));
+  private static final String DATABASE = "deebee";
+  private static final String TABLE = "taybull";
+  private static final String TABLE2 = "taybull2";
+
+  private static final Schema SCHEMA = Schema.recordOf(TABLE, Schema.Field.of("id", Schema.of(Schema.Type.INT)));
+
   private static final DDLEvent EVENT1 = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "0")))
     .setOperation(DDLOperation.Type.CREATE_TABLE)
-    .setDatabase("deebee")
-    .setTable("taybull")
-    .setPrimaryKey(Collections.singletonList("id"))
-    .setSchema(SCHEMA)
-    .build();
-  private static final DMLEvent EVENT2 = DMLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", "1")))
-    .setOperationType(DMLOperation.Type.INSERT)
-    .setDatabase("deebee")
-    .setTable("taybull")
-    .setIngestTimestamp(1000L)
-    .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
-    .build();
-  private static final DDLEvent EVENT3 = DDLEvent.builder()
-    .setOffset(new Offset(Collections.singletonMap("order", "2")))
-    .setOperation(DDLOperation.Type.CREATE_TABLE)
-    .setDatabase("deebee")
-    .setTable("taybull2")
+    .setDatabase(DATABASE)
+    .setTable(TABLE)
     .setPrimaryKey(Collections.singletonList("id"))
     .setSchema(SCHEMA)
     .build();
 
+  private static final DDLEvent EVENT3 = DDLEvent.builder()
+    .setOffset(new Offset(Collections.singletonMap("order", "2")))
+    .setOperation(DDLOperation.Type.CREATE_TABLE)
+    .setDatabase(DATABASE)
+    .setTable(TABLE2)
+    .setPrimaryKey(Collections.singletonList("id"))
+    .setSchema(SCHEMA)
+    .build();
+
+  private static DMLEvent createDMLEvent() {
+    return DMLEvent.builder()
+      .setOffset(new Offset(Collections.singletonMap("order", "1")))
+      .setOperationType(DMLOperation.Type.INSERT)
+      .setDatabase("deebee")
+      .setTable(TABLE)
+      .setIngestTimestamp(System.currentTimeMillis())
+      .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
+      .build();
+  }
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
 
@@ -111,7 +118,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
-    events.add(EVENT2);
+    events.add(createDMLEvent());
 
     String offsetBasePath = outputFolder.getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
@@ -131,6 +138,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     waitForMetric(appId, "ddl", 1);
     waitForMetric(appId, "dml.insert", 1);
+    // Latency should be somewhere between 1 seconds and 30 seconds
+    waitForMetric(appId, "dml.latency.seconds", 1, 30);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -148,7 +157,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
-    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATING, null);
+    TableReplicationState tableState = new TableReplicationState(DATABASE, TABLE, TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
                                                                           Collections.singleton(tableState), null);
     PipelineReplicationState actualState = stateService.getState();
@@ -161,7 +170,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
-    events.add(EVENT2);
+    events.add(createDMLEvent());
 
     String offsetBasePath = outputFolder.getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, 1));
@@ -204,6 +213,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     waitForMetric(appId, "dml.insert", 1);
+    // Latency should be somewhere between 1 seconds and 30 seconds
+    waitForMetric(appId, "dml.latency.seconds", 1, 30);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
@@ -220,7 +231,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   public void testFailImmediately() throws Exception {
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
-    events.add(EVENT2);
+    events.add(createDMLEvent());
 
     String offsetBasePath = TMP_FOLDER.newFolder("testFailImmediately").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
@@ -253,7 +264,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
-    events.add(EVENT2);
+    events.add(createDMLEvent());
 
     String offsetBasePath = TMP_FOLDER.newFolder("testStopWhenFailing").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, sourceProceedFile));
@@ -302,7 +313,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
-    events.add(EVENT2);
+    events.add(createDMLEvent());
 
     String offsetBasePath = TMP_FOLDER.newFolder("testFailureRetries").getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, sourceProceedFile));
@@ -352,8 +363,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
         return false;
       }
       for (TableReplicationState state : pipelineState.getTables()) {
-        if (EVENT2.getDatabase().equals(state.getDatabase()) &&
-          EVENT2.getOperation().getTableName().equals(state.getTable()) && state.getState() == TableState.FAILING) {
+        if (DATABASE.equals(state.getDatabase()) &&
+          TABLE.equals(state.getTable()) && state.getState() == TableState.FAILING) {
           return true;
         }
       }
@@ -367,8 +378,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Tasks.waitFor(true, () -> {
       stateService.load();
       for (TableReplicationState state : stateService.getState().getTables()) {
-        if (EVENT2.getDatabase().equals(state.getDatabase()) &&
-          EVENT2.getOperation().getTableName().equals(state.getTable()) && state.getState() == TableState.REPLICATING) {
+        if (DATABASE.equals(state.getDatabase()) &&
+          TABLE.equals(state.getTable()) && state.getState() == TableState.REPLICATING) {
           return true;
         }
       }
@@ -385,6 +396,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     // verify that metrics were not double counted during errors
     waitForMetric(appId, "ddl", 1);
     waitForMetric(appId, "dml.insert", 1);
+    // Latency should be somewhere between 1 seconds and 30 seconds
+    waitForMetric(appId, "dml.latency.seconds", 1, 30);
 
     Assert.assertEquals(1, manager.getHistory(ProgramRunStatus.KILLED).size());
     // check that state is killed and not failed
@@ -395,9 +408,10 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   public void testMultipleInstances() throws Exception {
     File outputFolder = TMP_FOLDER.newFolder("testMultipleInstances");
 
+    DMLEvent dmlEvent = createDMLEvent();
     List<ChangeEvent> events = new ArrayList<>();
     events.add(EVENT1);
-    events.add(EVENT2);
+    events.add(dmlEvent);
     events.add(EVENT3);
 
     String offsetBasePath = outputFolder.getAbsolutePath();
@@ -408,7 +422,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       .setTarget(target)
       .setOffsetBasePath(offsetBasePath)
       // configure instance 0 to read taybull and instance1 to read taybull2
-      .setTables(Arrays.asList(new SourceTable("deebee", "taybull"), new SourceTable("deebee", "taybull2")))
+      .setTables(Arrays.asList(new SourceTable(DATABASE, TABLE), new SourceTable(DATABASE, TABLE2)))
       .setParallelism(new ParallelismConfig(2))
       .build();
 
@@ -421,11 +435,13 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     waitForMetric(appId, "ddl", 2);
     waitForMetric(appId, "dml.insert", 1);
+    // Latency should be somewhere between 1 seconds and 30 seconds
+    waitForMetric(appId, "dml.latency.seconds", 1, 30);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
     // check events written for instance 0
-    List<? extends ChangeEvent> expected = Arrays.asList(EVENT1, EVENT2);
+    List<? extends ChangeEvent> expected = Arrays.asList(EVENT1, dmlEvent);
     List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
     Assert.assertEquals(expected, actual);
 
@@ -451,7 +467,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
 
-    TableReplicationState tableState = new TableReplicationState("deebee", "taybull", TableState.REPLICATING, null);
+    TableReplicationState tableState = new TableReplicationState(DATABASE, TABLE, TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
                                                                           Collections.singleton(tableState), null);
     PipelineReplicationState actualState = stateService.getState();
@@ -465,7 +481,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     offsetAndSequence = stateStore.readOffset(workerId);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
-    tableState = new TableReplicationState("deebee", "taybull2", TableState.REPLICATING, null);
+    tableState = new TableReplicationState(DATABASE, TABLE2, TableState.REPLICATING, null);
     expectedState = new PipelineReplicationState(PipelineState.OK, Collections.singleton(tableState), null);
     actualState = stateService.getState();
     Assert.assertEquals(expectedState, actualState);
@@ -473,14 +489,30 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
   private void waitForMetric(ApplicationId appId, String metric, int expected)
     throws TimeoutException, InterruptedException, ExecutionException {
+    Map<String, String> tags = createMetricTags(appId);
+    // use this instead of getMetricsManager().waitForTotalMetricCount(), because that method will
+    // allow the metric to be higher than the passed in count
+    Tasks.waitFor((long) expected,
+                  () -> getMetricsManager().getTotalMetric(tags, "user." + metric),
+                  30, TimeUnit.SECONDS);
+  }
+
+  private void waitForMetric(ApplicationId appId, String metric, long loweBound, long upperBound)
+    throws InterruptedException, ExecutionException, TimeoutException {
+    Map<String, String> tags = createMetricTags(appId);
+    Tasks.waitFor(true,
+                  () -> {
+                    long value = getMetricsManager().getTotalMetric(tags, "user." + metric);
+                    return value >= loweBound && value <= upperBound;
+                  },
+                  30, TimeUnit.SECONDS);
+  }
+
+  private Map<String, String> createMetricTags(ApplicationId appId) {
     Map<String, String> tags = new HashMap<>();
     tags.put(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace());
     tags.put(Constants.Metrics.Tag.APP, appId.getEntityName());
     tags.put(Constants.Metrics.Tag.WORKER, DeltaWorker.NAME);
-    // use this instead of getMetricsManager().waitForTotalMetricCount(), because that method will
-    // allow the metric to be higher than the passed in count
-    Tasks.waitFor((long) expected,
-                  (Callable<Long>) () -> getMetricsManager().getTotalMetric(tags, "user." + metric),
-                  30, TimeUnit.SECONDS);
+    return tags;
   }
 }

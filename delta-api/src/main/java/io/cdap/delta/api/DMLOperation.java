@@ -34,10 +34,12 @@ public class DMLOperation {
 
   private final String tableName;
   private final DMLOperation.Type type;
+  private final long ingestTimestampMillis;
 
-  public DMLOperation(String tableName, DMLOperation.Type operationType) {
+  public DMLOperation(String tableName, DMLOperation.Type operationType, long ingestTimestampMillis) {
     this.tableName = tableName;
     this.type = operationType;
+    this.ingestTimestampMillis = ingestTimestampMillis;
   }
 
   public String getTableName() {
@@ -46,6 +48,10 @@ public class DMLOperation {
 
   public Type getType() {
     return type;
+  }
+
+  public long getIngestTimestampMillis() {
+    return ingestTimestampMillis;
   }
 
   @Override
@@ -58,11 +64,12 @@ public class DMLOperation {
     }
     DMLOperation that = (DMLOperation) o;
     return tableName.equals(that.tableName) &&
-      type == that.type;
+      type == that.type &&
+      ingestTimestampMillis == that.ingestTimestampMillis;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, type);
+    return Objects.hash(tableName, type, ingestTimestampMillis);
   }
 }
