@@ -78,7 +78,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     String tableName = op.getTableName();
     EventMetrics eventMetrics = tableEventMetrics.computeIfAbsent(
       tableName, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, tableName))));
-    eventMetrics.incrementDMLCount(op.getType());
+    eventMetrics.incrementDMLCount(op);
   }
 
   @Override

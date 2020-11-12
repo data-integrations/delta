@@ -167,8 +167,8 @@ public class DMLEvent extends ChangeEvent {
     }
 
     public DMLEvent build() {
-      return new DMLEvent(offset, database, new DMLOperation(table, operationType), row, previousRow,
-                          transactionId, ingestTimestampMillis, isSnapshot);
+      return new DMLEvent(offset, database, new DMLOperation(table, operationType, ingestTimestampMillis), row,
+                          previousRow, transactionId, ingestTimestampMillis, isSnapshot);
     }
   }
 }

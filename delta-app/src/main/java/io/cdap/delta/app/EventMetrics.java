@@ -29,6 +29,7 @@ public class EventMetrics {
   private final Metrics metrics;
   private final Map<DMLOperation.Type, Integer> dmlEventCounts;
   private int ddlEventCount;
+  private long oldestTimeStampInMillis;
 
   public EventMetrics(Metrics metrics) {
     this.metrics = metrics;
@@ -36,8 +37,13 @@ public class EventMetrics {
     clear();
   }
 
-  public synchronized void incrementDMLCount(DMLOperation.Type op) {
-    dmlEventCounts.put(op, dmlEventCounts.get(op) + 1);
+  public synchronized void incrementDMLCount(DMLOperation op) {
+    dmlEventCounts.put(op.getType(), dmlEventCounts.get(op.getType()) + 1);
+    if (oldestTimeStampInMillis == 0) {
+      oldestTimeStampInMillis = op.getIngestTimestampMillis();
+    } else {
+      oldestTimeStampInMillis = Math.min(op.getIngestTimestampMillis(), oldestTimeStampInMillis);
+    }
   }
 
   public synchronized void incrementDDLCount() {
@@ -48,12 +54,16 @@ public class EventMetrics {
     for (DMLOperation.Type op : dmlEventCounts.keySet()) {
       metrics.count(String.format("dml.%s", op.name().toLowerCase()), dmlEventCounts.get(op));
     }
+
+    metrics.gauge("dml.latency.seconds", oldestTimeStampInMillis == 0L ? 0
+      : (System.currentTimeMillis() - oldestTimeStampInMillis) / 1000);
     metrics.count("ddl", ddlEventCount);
     clear();
   }
 
   public synchronized void clear() {
     ddlEventCount = 0;
+    oldestTimeStampInMillis = 0;
     for (DMLOperation.Type op : DMLOperation.Type.values()) {
       dmlEventCounts.put(op, 0);
     }
