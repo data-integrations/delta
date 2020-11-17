@@ -25,6 +25,7 @@ import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.cdap.api.worker.AbstractWorker;
 import io.cdap.cdap.api.worker.WorkerContext;
+import io.cdap.cdap.api.worker.WorkerSpecification;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.DDLOperation;
@@ -38,6 +39,7 @@ import io.cdap.delta.api.EventReader;
 import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.Sequenced;
+import io.cdap.delta.api.SourceProperties;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.InstanceConfig;
@@ -76,6 +78,7 @@ public class DeltaWorker extends AbstractWorker {
   private static final String GENERATION = "generation";
   private static final String TABLE_ASSIGNMENTS = "table.assignments";
   private static final String EVENT_QUEUE_SIZE = "event.queue.size";
+  private static final String SOURCE_PROPERTIES = "source.properties";
   private static final Type TABLE_ASSIGNMENTS_TYPE = new TypeToken<Map<Integer, Set<TableId>>>() { }.getType();
 
   private final AtomicBoolean shouldStop;
@@ -85,6 +88,7 @@ public class DeltaWorker extends AbstractWorker {
   private Metrics metrics;
 
   private DeltaConfig config;
+  private SourceProperties sourceProperties;
   private DeltaContext deltaContext;
   private EventConsumer eventConsumer;
   private EventReader eventReader;
@@ -104,9 +108,10 @@ public class DeltaWorker extends AbstractWorker {
     this.shouldStop = new AtomicBoolean(false);
   }
 
-  DeltaWorker(DeltaConfig config) {
+  DeltaWorker(DeltaConfig config, SourceProperties sourceProperties) {
     this();
     this.config = config;
+    this.sourceProperties = sourceProperties;
   }
 
   @Override
@@ -120,7 +125,9 @@ public class DeltaWorker extends AbstractWorker {
 
     tableAssignments = assignTables(config);
     props.put(TABLE_ASSIGNMENTS, GSON.toJson(tableAssignments));
-
+    if (sourceProperties != null) {
+      props.put(SOURCE_PROPERTIES, GSON.toJson(sourceProperties));
+    }
     Integer numInstances = config.getParallelism().getNumInstances();
     if (numInstances != null && numInstances > tableAssignments.size()) {
       LOG.warn("Due to the number of source tables, "
@@ -149,6 +156,11 @@ public class DeltaWorker extends AbstractWorker {
       return;
     }
 
+    WorkerSpecification workerSpec = context.getSpecification();
+    String sourcePropertiesJSON = workerSpec.getProperties().getOrDefault(SOURCE_PROPERTIES, null);
+    SourceProperties sourceProperties = sourcePropertiesJSON == null ? null :
+      GSON.fromJson(sourcePropertiesJSON, SourceProperties.class);
+
     String sourceName = config.getSource().getName();
     String targetName = config.getTarget().getName();
     String offsetBasePath = config.getOffsetBasePath();
@@ -163,7 +175,7 @@ public class DeltaWorker extends AbstractWorker {
     stateService.load();
     deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context,
                                     stateService, config.getRetryConfig().getMaxDurationSeconds(),
-                                    context.getRuntimeArguments());
+                                    context.getRuntimeArguments(), sourceProperties);
     MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
                                                               context, context.getNamespace());
     source = context.newPluginInstance(sourceName, macroEvaluator);

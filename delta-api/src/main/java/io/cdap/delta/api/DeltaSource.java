@@ -31,9 +31,9 @@ public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
   /**
    * Configure the source. This is called when the application is deployed.
    *
-   * @param configurer configurer used to set configuration settings and register plugins
+   * @param configurer source configurer used to set configuration settings and register plugins
    */
-  void configure(Configurer configurer);
+  void configure(SourceConfigurer configurer);
 
   /**
    * Create an event reader used to read change events. This is called after the application is deployed, whenever

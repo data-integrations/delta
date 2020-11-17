@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.io.IOException;
+import javax.annotation.Nullable;
 
 /**
  * Context for a CDC Target.
@@ -97,4 +98,11 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
    *   a change in state.
    */
   void dropTableState(String database, String table) throws IOException;
+
+  /**
+   * @return the properties about source in the replicator pipeline which will be useful to targets.
+   * If no such properties are provided by source {@code null} is returned
+   */
+  @Nullable
+  SourceProperties getSourceProperties();
 }
