@@ -28,6 +28,7 @@ import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
+import io.cdap.delta.api.SourceProperties;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
 import org.slf4j.Logger;
@@ -57,10 +58,12 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final int maxRetrySeconds;
   private final Map<String, String> runtimeArguments;
   private final AtomicReference<Throwable> failure;
+  private final SourceProperties sourceProperties;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, PipelineStateService stateService,
-               int maxRetrySeconds, Map<String, String> runtimeArguments) {
+               int maxRetrySeconds, Map<String, String> runtimeArguments,
+               @Nullable SourceProperties sourceProperties) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
@@ -71,6 +74,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.maxRetrySeconds = maxRetrySeconds;
     this.runtimeArguments = Collections.unmodifiableMap(new HashMap<>(runtimeArguments));
     this.failure = new AtomicReference<>(null);
+    this.sourceProperties = sourceProperties;
   }
 
   @Override
@@ -120,6 +124,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void dropTableState(String database, String table) throws IOException {
     stateService.dropTable(new DBTable(database, table));
+  }
+
+  @Override
+  public SourceProperties getSourceProperties() {
+    return sourceProperties;
   }
 
   OffsetAndSequence loadOffset() throws IOException {

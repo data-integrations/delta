@@ -21,7 +21,9 @@ import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
+import io.cdap.delta.api.SourceConfigurer;
 import io.cdap.delta.app.service.AssessmentService;
+import io.cdap.delta.app.service.DefaultSourceConfigurer;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.Stage;
 
@@ -46,11 +48,12 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
 
     DeltaSource source = registerPlugin(sourceConf);
     Configurer configurer = new DefaultConfigurer(getConfigurer());
-    source.configure(configurer);
+    DefaultSourceConfigurer sourceConfigurer = new DefaultSourceConfigurer(configurer);
+    source.configure(sourceConfigurer);
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
 
-    addWorker(new DeltaWorker(conf));
+    addWorker(new DeltaWorker(conf, sourceConfigurer.getSourceProperties()));
 
     String description = conf.getDescription();
     if (description == null) {
