@@ -22,6 +22,8 @@ import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableRegistry;
 
+import javax.annotation.Nullable;
+
 /**
  * Mock TableRegistry that just returns pre-defined objects.
  */
@@ -42,7 +44,7 @@ public class MockTableRegistry implements TableRegistry {
   }
 
   @Override
-  public TableDetail describeTable(String database, String table) {
+  public TableDetail describeTable(String database, String table, @Nullable String schema) {
     return tableDetail;
   }
 

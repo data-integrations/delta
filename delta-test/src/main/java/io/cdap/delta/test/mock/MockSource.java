@@ -101,7 +101,7 @@ public class MockSource implements DeltaSource {
       }
 
       @Override
-      public TableDetail describeTable(String database, String table) {
+      public TableDetail describeTable(String database, String table, @Nullable String schema) {
         return null;
       }
 

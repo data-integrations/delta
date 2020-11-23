@@ -18,6 +18,7 @@ package io.cdap.delta.api.assessment;
 
 import java.io.Closeable;
 import java.io.IOException;
+import javax.annotation.Nullable;
 
 /**
  * Fetches information about tables in a database. The registry is used when a user is configuring a delta pipeline.
@@ -35,11 +36,14 @@ public interface TableRegistry extends Closeable {
    *
    * @param database name of the database that table resides in
    * @param table the table name
+   * @param schema name of the schema that table resides in, it's only required for some DB to
+   *               identify a table.
    * @return detail about the table
    * @throws TableNotFoundException if the specified table does not exist
    * @throws IOException if the table information could not be read
    */
-  TableDetail describeTable(String database, String table) throws TableNotFoundException, IOException;
+  TableDetail describeTable(String database, String table, @Nullable String schema)
+    throws TableNotFoundException, IOException;
 
   /**
    * Standardize raw column information into a standard schema that will be sent to the target.

@@ -24,9 +24,15 @@ import java.util.Objects;
 public class DBTable {
   private final String database;
   private final String table;
+  private final String schema;
 
   public DBTable(String database, String table) {
+    this(database, null, table);
+  }
+
+  public DBTable(String database, String schema, String table) {
     this.database = database;
+    this.schema = schema;
     this.table = table;
   }
 
@@ -38,9 +44,13 @@ public class DBTable {
     return table;
   }
 
+  public String getSchema() {
+    return schema;
+  }
+
   /**
-   * Validates that both database and table are non-null and non-empty. This is required when the object is created
-   * by deserializing user provided input.
+   * Validates that both database and table are non-null and non-empty. This is required when the object is created by
+   * deserializing user provided input.
    */
   public void validate() {
     if (database == null || database.isEmpty()) {
@@ -60,8 +70,7 @@ public class DBTable {
       return false;
     }
     DBTable dbTable = (DBTable) o;
-    return Objects.equals(database, dbTable.database) &&
-      Objects.equals(table, dbTable.table);
+    return Objects.equals(database, dbTable.database) && Objects.equals(table, dbTable.table);
   }
 
   @Override
