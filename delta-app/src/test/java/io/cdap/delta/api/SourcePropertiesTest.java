@@ -24,10 +24,11 @@ import java.util.Arrays;
 
 public class SourcePropertiesTest {
   @Test
-  public void testSerDe() throws Exception {
+  public void testSerDe() {
     SourceProperties expected = new SourceProperties.Builder()
       .setOrdering(SourceProperties.Ordering.UN_ORDERED)
-      .setRowIdKey(new RowIdKey(Arrays.asList("a", "b"))).build();
+      .setRowIdKey(new RowIdKey(Arrays.asList("a", "b")))
+      .setSourceTimeStampColumnName("source_timestamp").build();
     Gson gson = new Gson();
     String s = gson.toJson(expected);
     SourceProperties another = gson.fromJson(s, SourceProperties.class);
@@ -35,10 +36,9 @@ public class SourcePropertiesTest {
   }
 
   @Test
-  public void testValidate() throws Exception {
-    SourceProperties properties;
+  public void testValidate() {
     try {
-      properties = new SourceProperties.Builder()
+      new SourceProperties.Builder()
         .setOrdering(SourceProperties.Ordering.UN_ORDERED).build();
       Assert.fail("Creating source properties should have failed since row id key is not provided but source is " +
                     "configured to generate unordered events.");
@@ -46,7 +46,16 @@ public class SourcePropertiesTest {
     }
 
     try {
-      properties = new SourceProperties.Builder()
+      new SourceProperties.Builder()
+        .setOrdering(SourceProperties.Ordering.UN_ORDERED)
+        .setRowIdKey(new RowIdKey(Arrays.asList("a", "b"))).build();
+      Assert.fail("Creating source properties should have failed since row id key is not provided but source is " +
+                    "configured to generate unordered events.");
+    } catch (IllegalArgumentException ignored) {
+    }
+
+    try {
+      new SourceProperties.Builder()
         .setRowIdKey(new RowIdKey(Arrays.asList("a", "b"))).build();
       Assert.fail("Creating source properties should have failed since row id key is provided but source is " +
                     "configured to generate ordered events.");

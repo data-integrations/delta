@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * Represents properties of source in replicator pipeline that are exposed to the targets.
@@ -33,18 +34,34 @@ public class SourceProperties {
 
   private final Ordering ordering;
   private final RowIdKey rowIdKey;
+  private final String sourceTimeStampColumnName;
 
-  private SourceProperties(Ordering ordering, RowIdKey rowIdKey) {
+  private SourceProperties(Ordering ordering, RowIdKey rowIdKey, String sourceTimeStampColumnName) {
     this.ordering = ordering;
     this.rowIdKey = rowIdKey;
+    this.sourceTimeStampColumnName = sourceTimeStampColumnName;
   }
 
   public Ordering getOrdering() {
     return ordering;
   }
 
+  /**
+   * @return the {@link RowIdKey} property for source if the source is configured to
+   * generate {@code Ordering.UN_Ordered} events, otherwise {@code null} is returned
+   */
+  @Nullable
   public RowIdKey getRowIdKey() {
     return rowIdKey;
+  }
+
+  /**
+   * @return the column representing source event timestamp for source if it is configured to
+   * generate {@code Ordering.UN_Ordered} events, otherwise {@code null} is returned
+   */
+  @Nullable
+  public String getSourceTimeStampColumnName() {
+    return sourceTimeStampColumnName;
   }
 
   @Override
@@ -57,12 +74,13 @@ public class SourceProperties {
     }
     SourceProperties that = (SourceProperties) o;
     return ordering == that.ordering &&
-      rowIdKey.equals(that.rowIdKey);
+      Objects.equals(rowIdKey, that.rowIdKey) &&
+      Objects.equals(sourceTimeStampColumnName, that.sourceTimeStampColumnName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(ordering, rowIdKey);
+    return Objects.hash(ordering, rowIdKey, sourceTimeStampColumnName);
   }
 
   /**
@@ -71,6 +89,7 @@ public class SourceProperties {
   public static class Builder {
     private Ordering ordering;
     private RowIdKey rowIdKey;
+    private String sourceTimeStampColumnName;
 
     public Builder() {
       ordering = Ordering.ORDERED;
@@ -101,19 +120,30 @@ public class SourceProperties {
     }
 
     /**
+     * Sets the name of the column which will represent the timestamp when the record changed on the source database.
+     *
+     * @param sourceTimeStampColumnName source timestamp column name
+     * @return this builder
+     */
+    public SourceProperties.Builder setSourceTimeStampColumnName(String sourceTimeStampColumnName) {
+      this.sourceTimeStampColumnName = sourceTimeStampColumnName;
+      return this;
+    }
+
+    /**
      * @return an instance of {@code SourceProperties}
      * @throws IllegalArgumentException when properties validation fails
      */
     public SourceProperties build() throws IllegalArgumentException {
-      if (ordering == Ordering.UN_ORDERED && rowIdKey == null) {
-        throw new IllegalArgumentException("RowIDKey is required for the source which will generate " +
-                                             "un-ordered events.");
+      if (ordering == Ordering.UN_ORDERED && (rowIdKey == null || sourceTimeStampColumnName == null)) {
+        throw new IllegalArgumentException("Both RowIDKey and source timestamp column name are required for the " +
+                                             "source which will generate un-ordered events.");
       }
-      if (ordering == Ordering.ORDERED && rowIdKey != null) {
-        throw new IllegalArgumentException("RowIDKey is provided however source is not set to " +
-                                             "generate un-ordered events.");
+      if (ordering == Ordering.ORDERED && (rowIdKey != null || sourceTimeStampColumnName != null)) {
+        throw new IllegalArgumentException("RowIDKey or source time stamp column name is provided however source " +
+                                             "is not set to generate un-ordered events.");
       }
-      return new SourceProperties(ordering, rowIdKey);
+      return new SourceProperties(ordering, rowIdKey, sourceTimeStampColumnName);
     }
   }
 }
