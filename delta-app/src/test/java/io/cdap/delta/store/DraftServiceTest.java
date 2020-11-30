@@ -110,7 +110,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaSource mockSource = new MockSource(mockTableRegistry, null);
     Configurer mockConfigurer = new MockConfigurer(mockSource, null);
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, mockConfigurer));
-    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, mockConfigurer, "deebee", "taybull", null));
+    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, mockConfigurer, "deebee", null, "taybull"));
   }
 
   @Test(expected = DraftNotFoundException.class)
@@ -168,7 +168,7 @@ public class DraftServiceTest extends SystemAppTestBase {
                                          c.getSuggestion()))
       .collect(Collectors.toList());
     TableAssessmentResponse expected = new TableAssessmentResponse(fullColumns, Collections.emptyList());
-    TableAssessmentResponse actual = service.assessTable(draftId, mockConfigurer, "deebee", "taybull", null);
+    TableAssessmentResponse actual = service.assessTable(draftId, mockConfigurer, "deebee", null, "taybull");
     Assert.assertEquals(expected, actual);
   }
 
@@ -269,7 +269,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     TableAssessmentResponse expectedAssessment = new TableAssessmentResponse(fullColumns, Collections.emptyList());
     Configurer configurer = new PropertyBasedMockConfigurer();
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
-    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", "taybull", null));
-    Assert.assertEquals(expectedAssessment, service.assessTable(draftId, configurer, "deebee", "taybull", null));
+    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", null, "taybull"));
+    Assert.assertEquals(expectedAssessment, service.assessTable(draftId, configurer, "deebee", null, "taybull"));
   }
 }

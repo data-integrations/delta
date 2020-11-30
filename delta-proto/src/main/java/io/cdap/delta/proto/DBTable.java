@@ -17,6 +17,7 @@
 package io.cdap.delta.proto;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * A database and a table.
@@ -30,7 +31,7 @@ public class DBTable {
     this(database, null, table);
   }
 
-  public DBTable(String database, String schema, String table) {
+  public DBTable(String database, @Nullable String schema, String table) {
     this.database = database;
     this.schema = schema;
     this.table = table;
@@ -44,7 +45,7 @@ public class DBTable {
     return table;
   }
 
-  public String getSchema() {
+  @Nullable public String getSchema() {
     return schema;
   }
 
@@ -70,11 +71,12 @@ public class DBTable {
       return false;
     }
     DBTable dbTable = (DBTable) o;
-    return Objects.equals(database, dbTable.database) && Objects.equals(table, dbTable.table);
+    return Objects.equals(database, dbTable.database) && Objects.equals(schema, dbTable.schema) &&
+      Objects.equals(table, dbTable.table);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table);
+    return Objects.hash(database, schema, table);
   }
 }
