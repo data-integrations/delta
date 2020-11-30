@@ -31,17 +31,19 @@ public class DMLEvent extends ChangeEvent {
   private final StructuredRecord previousRow;
   private final String transactionId;
   private final long ingestTimestampMillis;
+  private final String rowId;
 
   private DMLEvent(Offset offset, String database, DMLOperation operation, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
-                   boolean isSnapshot) {
-    super(offset, isSnapshot, ChangeType.DML);
+                   @Nullable Long sourceTimestampMillis, boolean isSnapshot, @Nullable String rowId) {
+    super(offset, isSnapshot, ChangeType.DML, sourceTimestampMillis);
     this.database = database;
     this.operation = operation;
     this.row = row;
     this.previousRow = previousRow;
     this.transactionId = transactionId;
     this.ingestTimestampMillis = ingestTimestampMillis;
+    this.rowId = rowId;
   }
 
   public DMLOperation getOperation() {
@@ -72,6 +74,11 @@ public class DMLEvent extends ChangeEvent {
     return ingestTimestampMillis;
   }
 
+  @Nullable
+  public String getRowId() {
+    return rowId;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -85,6 +92,7 @@ public class DMLEvent extends ChangeEvent {
     }
     DMLEvent dmlEvent = (DMLEvent) o;
     return ingestTimestampMillis == dmlEvent.ingestTimestampMillis &&
+      Objects.equals(rowId, dmlEvent.rowId) &&
       Objects.equals(operation, dmlEvent.operation) &&
       Objects.equals(database, dmlEvent.database) &&
       Objects.equals(row, dmlEvent.row) &&
@@ -94,7 +102,8 @@ public class DMLEvent extends ChangeEvent {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), operation, database, row, previousRow, transactionId, ingestTimestampMillis);
+    return Objects.hash(super.hashCode(), operation, database, row, previousRow, transactionId, ingestTimestampMillis,
+                        rowId);
   }
 
   public static Builder builder(DMLEvent event) {
@@ -116,6 +125,7 @@ public class DMLEvent extends ChangeEvent {
     private StructuredRecord previousRow;
     private String transactionId;
     private long ingestTimestampMillis;
+    private String rowId;
 
     private Builder() { }
 
@@ -166,9 +176,14 @@ public class DMLEvent extends ChangeEvent {
       return this;
     }
 
+    public Builder setRowId(String rowId) {
+      this.rowId = rowId;
+      return this;
+    }
+
     public DMLEvent build() {
       return new DMLEvent(offset, database, new DMLOperation(table, operationType, ingestTimestampMillis), row,
-                          previousRow, transactionId, ingestTimestampMillis, isSnapshot);
+                          previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
     }
   }
 }
