@@ -106,6 +106,11 @@ public class MockSource implements DeltaSource {
       }
 
       @Override
+      public TableDetail describeTable(String database, String schema, String table) {
+        return null;
+      }
+
+      @Override
       public StandardizedTableDetail standardize(TableDetail tableDetail) {
         return null;
       }

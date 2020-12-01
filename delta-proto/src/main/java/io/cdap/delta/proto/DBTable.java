@@ -17,6 +17,7 @@
 package io.cdap.delta.proto;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * A database and a table.
@@ -24,9 +25,15 @@ import java.util.Objects;
 public class DBTable {
   private final String database;
   private final String table;
+  private final String schema;
 
   public DBTable(String database, String table) {
+    this(database, null, table);
+  }
+
+  public DBTable(String database, @Nullable String schema, String table) {
     this.database = database;
+    this.schema = schema;
     this.table = table;
   }
 
@@ -38,9 +45,13 @@ public class DBTable {
     return table;
   }
 
+  @Nullable public String getSchema() {
+    return schema;
+  }
+
   /**
-   * Validates that both database and table are non-null and non-empty. This is required when the object is created
-   * by deserializing user provided input.
+   * Validates that both database and table are non-null and non-empty. This is required when the object is created by
+   * deserializing user provided input.
    */
   public void validate() {
     if (database == null || database.isEmpty()) {
@@ -60,12 +71,12 @@ public class DBTable {
       return false;
     }
     DBTable dbTable = (DBTable) o;
-    return Objects.equals(database, dbTable.database) &&
+    return Objects.equals(database, dbTable.database) && Objects.equals(schema, dbTable.schema) &&
       Objects.equals(table, dbTable.table);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table);
+    return Objects.hash(database, schema, table);
   }
 }

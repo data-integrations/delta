@@ -39,7 +39,26 @@ public interface TableRegistry extends Closeable {
    * @throws TableNotFoundException if the specified table does not exist
    * @throws IOException if the table information could not be read
    */
-  TableDetail describeTable(String database, String table) throws TableNotFoundException, IOException;
+  default TableDetail describeTable(String database, String table)
+    throws TableNotFoundException, IOException {
+    return TableDetail.builder(database, table, null).build();
+  }
+
+  /**
+   * Return details about a table.
+   *
+   * @param database name of the database that table resides in
+   * @param schema name of the schema that table resides in, it's only required for some DB to
+   * @param table the table name
+   *               identify a table.
+   * @return detail about the table
+   * @throws TableNotFoundException if the specified table does not exist
+   * @throws IOException if the table information could not be read
+   */
+  default TableDetail describeTable(String database, String schema, String table)
+    throws TableNotFoundException, IOException {
+    return TableDetail.builder(database, table, schema).build();
+  }
 
   /**
    * Standardize raw column information into a standard schema that will be sent to the target.

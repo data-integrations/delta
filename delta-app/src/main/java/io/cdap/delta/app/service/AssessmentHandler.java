@@ -173,8 +173,9 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
 
       DraftId draftId = new DraftId(namespace, draftName);
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
-      TableDetail tableDetail = draftService.describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer),
-                                                                dbTable.getDatabase(), dbTable.getTable());
+      TableDetail tableDetail = draftService
+        .describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable.getDatabase(),
+          dbTable.getSchema(), dbTable.getTable());
       responder.sendString(GSON.toJson(tableDetail));
     });
   }
@@ -212,8 +213,9 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       }
 
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
-      TableAssessmentResponse assessment = draftService.assessTable(draftId, new DefaultConfigurer(pluginConfigurer),
-                                                                    dbTable.getDatabase(), dbTable.getTable());
+      TableAssessmentResponse assessment = draftService
+        .assessTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable.getDatabase(), dbTable.getSchema(),
+          dbTable.getTable());
       responder.sendString(GSON.toJson(assessment));
     }));
   }

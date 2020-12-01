@@ -47,6 +47,11 @@ public class MockTableRegistry implements TableRegistry {
   }
 
   @Override
+  public TableDetail describeTable(String database, String schema, String table) {
+    return tableDetail;
+  }
+
+  @Override
   public StandardizedTableDetail standardize(TableDetail tableDetail) {
     return new StandardizedTableDetail(tableDetail.getDatabase(), tableDetail.getTable(),
                                        tableDetail.getPrimaryKey(), schema);

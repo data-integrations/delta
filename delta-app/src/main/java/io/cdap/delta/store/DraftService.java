@@ -163,6 +163,7 @@ public class DraftService {
    * @param draftId id of the draft
    * @param configurer configurer used to instantiate plugins
    * @param database the table database
+   * @param  schema the table schema, only required for some databases (e.g. Oracle)
    * @param table the table name
    * @return list of tables readable by the source in the draft
    * @throws DraftNotFoundException if the draft does not exist
@@ -171,11 +172,15 @@ public class DraftService {
    * @throws IOException if the was an IO error fetching the table detail
    * @throws Exception if there was an error creating the table registry
    */
-  public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database, String table)
-    throws Exception {
+  public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database,
+    @Nullable String schema, String table) throws Exception {
     Draft draft = getDraft(draftId);
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
-      return tableRegistry.describeTable(database, table);
+      if (schema == null) {
+        return tableRegistry.describeTable(database, table);
+      } else {
+        return tableRegistry.describeTable(database, schema, table);
+      }
     }
   }
 
@@ -189,6 +194,7 @@ public class DraftService {
    * @param draftId id of the draft
    * @param configurer configurer used to instantiate plugins
    * @param db the database the table lives in
+   * @param schema the schema of the table to assess, it's only required for some databases such as Oracle
    * @param table the table to assess
    * @return list of tables readable by the source in the draft
    * @throws DraftNotFoundException if the draft does not exist
@@ -198,8 +204,8 @@ public class DraftService {
    * @throws Exception if there was an error creating the table registry
    * @throws IllegalArgumentException if the table is not selected in the draft
    */
-  public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, String db, String table)
-    throws Exception {
+  public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, String db, @Nullable String schema,
+    String table) throws Exception {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
     deltaConfig = evaluateMacros(draftId, deltaConfig);
@@ -207,12 +213,12 @@ public class DraftService {
     if (target == null) {
       throw new InvalidDraftException("Cannot assess a table without a configured target.");
     }
-    SourceTable selectedTable = deltaConfig.getTables()
-      .stream()
-      .filter(streamTable -> db.equals(streamTable.getDatabase()) && table.equals(streamTable.getTable()))
-      .findAny()
-      .orElseThrow(() -> new IllegalArgumentException(String.format("Table '%s' in database '%s' is not a selected " +
-                                                                    "table in the draft", table, db)));
+    SourceTable selectedTable = deltaConfig.getTables().stream().filter(
+      streamTable -> db.equals(streamTable.getDatabase()) && table.equals(streamTable.getTable()) &&
+        (schema == streamTable.getSchema() || schema != null && schema.equals(streamTable.getSchema()))).findAny()
+      .orElseThrow(() -> new IllegalArgumentException(String
+        .format("Table '%s' in database '%s' and schema '%s' is not a selected table in the draft", table, db,
+          schema)));
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
          TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target)) {
@@ -274,7 +280,7 @@ public class DraftService {
           TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
                                                            targetTableAssessor);
           missingFeatures.addAll(assessment.getFeatures());
-          tableAssessments.add(summarize(db, table, sourceTable.getSchema(), assessment));
+          tableAssessments.add(summarize(db, sourceTable.getSchema(), table, assessment));
         } catch (TableNotFoundException e) {
           connectivityIssues.add(
             new Problem("Table Not Found",
@@ -300,15 +306,22 @@ public class DraftService {
     throws IOException, TableNotFoundException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
+    String schema = sourceTable.getSchema();
     Set<String> columnWhitelist = sourceTable.getColumns().stream()
       .map(SourceColumn::getName)
       .collect(Collectors.toSet());
 
     // fetch detail about the table, then filter out columns that will not be read by the source
-    TableDetail detail = tableRegistry.describeTable(db, table);
+    TableDetail detail;
+    if (schema == null) {
+      detail = tableRegistry.describeTable(db, table);
+    } else {
+      detail = tableRegistry.describeTable(db, schema, table);
+    }
+
     List<Problem> missingFeatures = new ArrayList<>(detail.getFeatures());
     List<String> unselectedPrimaryKeys = detail.getPrimaryKey().stream()
-      // if there are no columns specified, it means this primary key will be read/selected
+      // if there are no columns specified, it means all columns of the table are selected
       .filter(columnWhitelist.isEmpty() ? col -> false : col -> !columnWhitelist.contains(col))
       .collect(Collectors.toList());
     if (unselectedPrimaryKeys.size() == 1) {
@@ -316,7 +329,7 @@ public class DraftService {
         new Problem("Missing Primary Key",
                     String.format("Column '%s' is part of the primary key for table '%s' in database '%s', " +
                                     "but is not selected to be replicated", unselectedPrimaryKeys.get(0),
-                                  detail.getTable(), detail.getDatabase()),
+                                  table, db),
                     "Please make sure this column been selected",
                     "This can result in different data at the target than at the source"));
     } else if (unselectedPrimaryKeys.size() > 1) {
@@ -325,7 +338,7 @@ public class DraftService {
                     String.format("Columns '%s' are part of the primary key for table '%s' in database '%s', " +
                                     "but are not selected to be replicated",
                                   String.join(",", unselectedPrimaryKeys),
-                                  detail.getTable(), detail.getDatabase()),
+                                  table, db),
                     "Please make sure columns been selected",
                     "This can result in different data at the target than at the source"));
     }
@@ -334,7 +347,7 @@ public class DraftService {
       // if there are no columns specified, it means all columns should be read
       .filter(columnWhitelist.isEmpty() ? col -> true : col -> columnWhitelist.contains(col.getName()))
       .collect(Collectors.toList());
-    TableDetail filteredDetail = TableDetail.builder(db, table, detail.getSchema())
+    TableDetail filteredDetail = TableDetail.builder(db, table, schema)
       .setPrimaryKey(detail.getPrimaryKey())
       .setColumns(selectedColumns)
       .setFeatures(missingFeatures)
@@ -451,8 +464,8 @@ public class DraftService {
     }
   }
 
-  private TableSummaryAssessment summarize(String db, String table, @Nullable String schema,
-                                           TableAssessmentResponse assessment) {
+  private TableSummaryAssessment summarize(String db, @Nullable String schema, String table,
+    TableAssessmentResponse assessment) {
     int numUnsupported = 0;
     int numPartial = 0;
     int numColumns = 0;
