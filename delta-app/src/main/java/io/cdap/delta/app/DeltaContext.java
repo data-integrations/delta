@@ -178,6 +178,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
+  public String getPipelineId() {
+    return id.getPipelineId().toString();
+  }
+
+  @Override
   public PluginProperties getPluginProperties(String pluginId) {
     return pluginContext.getPluginProperties(pluginId);
   }

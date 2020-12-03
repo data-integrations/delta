@@ -42,4 +42,9 @@ public class DeltaPipelineId {
   public long getGeneration() {
     return generation;
   }
+
+  @Override
+  public String toString() {
+    return namespace + "-" + app + "-" + generation;
+  }
 }
