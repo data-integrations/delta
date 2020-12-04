@@ -25,13 +25,23 @@ import java.util.Objects;
  */
 public class SourceColumn {
   private final String name;
+  private final boolean suppressWarning;
 
   public SourceColumn(String name) {
+    this(name, false);
+  }
+
+  public SourceColumn(String name, boolean suppressWarning) {
     this.name = name;
+    this.suppressWarning = suppressWarning;
   }
 
   public String getName() {
     return name;
+  }
+
+  public boolean isSuppressWarning() {
+    return suppressWarning;
   }
 
   @Override
@@ -43,11 +53,11 @@ public class SourceColumn {
       return false;
     }
     SourceColumn that = (SourceColumn) o;
-    return Objects.equals(name, that.name);
+    return Objects.equals(name, that.name) && Objects.equals(suppressWarning, that.suppressWarning);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name);
+    return Objects.hash(name, suppressWarning);
   }
 }
