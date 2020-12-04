@@ -64,7 +64,8 @@ public class QueueingEventEmitter implements EventEmitter {
     }
 
     try {
-      eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+      eventQueue.put(new Sequenced<>(event, event.getSourceTimestampMillis() == null ? ++sequenceNumber
+        : event.getSourceTimestampMillis()));
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events
@@ -79,7 +80,8 @@ public class QueueingEventEmitter implements EventEmitter {
     }
 
     try {
-      eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+      eventQueue.put(new Sequenced<>(event, event.getSourceTimestampMillis() == null ? ++sequenceNumber
+        : event.getSourceTimestampMillis()));
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events

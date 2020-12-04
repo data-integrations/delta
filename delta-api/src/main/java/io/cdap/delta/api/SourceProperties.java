@@ -32,19 +32,13 @@ public class SourceProperties {
   }
 
   private final Ordering ordering;
-  private final RowIdKey rowIdKey;
 
-  private SourceProperties(Ordering ordering, RowIdKey rowIdKey) {
+  private SourceProperties(Ordering ordering) {
     this.ordering = ordering;
-    this.rowIdKey = rowIdKey;
   }
 
   public Ordering getOrdering() {
     return ordering;
-  }
-
-  public RowIdKey getRowIdKey() {
-    return rowIdKey;
   }
 
   @Override
@@ -56,13 +50,12 @@ public class SourceProperties {
       return false;
     }
     SourceProperties that = (SourceProperties) o;
-    return ordering == that.ordering &&
-      rowIdKey.equals(that.rowIdKey);
+    return ordering == that.ordering;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(ordering, rowIdKey);
+    return Objects.hash(ordering);
   }
 
   /**
@@ -70,7 +63,6 @@ public class SourceProperties {
    */
   public static class Builder {
     private Ordering ordering;
-    private RowIdKey rowIdKey;
 
     public Builder() {
       ordering = Ordering.ORDERED;
@@ -87,33 +79,10 @@ public class SourceProperties {
     }
 
     /**
-     * Sets the row id key which will uniquely identify the row in the table.
-     * If the source is generating un-ordered events, value for the row id key should not change.
-     * If the value for row id key changes, targets in replicator app will not be able to
-     * accurately apply changes in the destination.
-     *
-     * @param rowIdKey row id key
-     * @return this builder
-     */
-    public SourceProperties.Builder setRowIdKey(RowIdKey rowIdKey) {
-      this.rowIdKey = rowIdKey;
-      return this;
-    }
-
-    /**
      * @return an instance of {@code SourceProperties}
-     * @throws IllegalArgumentException when properties validation fails
      */
     public SourceProperties build() throws IllegalArgumentException {
-      if (ordering == Ordering.UN_ORDERED && rowIdKey == null) {
-        throw new IllegalArgumentException("RowIDKey is required for the source which will generate " +
-                                             "un-ordered events.");
-      }
-      if (ordering == Ordering.ORDERED && rowIdKey != null) {
-        throw new IllegalArgumentException("RowIDKey is provided however source is not set to " +
-                                             "generate un-ordered events.");
-      }
-      return new SourceProperties(ordering, rowIdKey);
+      return new SourceProperties(ordering);
     }
   }
 }

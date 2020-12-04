@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * A change event.
@@ -25,11 +26,14 @@ public abstract class ChangeEvent {
   private final Offset offset;
   private final boolean isSnapshot;
   private final ChangeType changeType;
+  private final Long sourceTimestampMillis;
 
-  protected ChangeEvent(Offset offset, boolean isSnapshot, ChangeType changeType) {
+  protected ChangeEvent(Offset offset, boolean isSnapshot, ChangeType changeType,
+                        @Nullable Long sourceTimestampMillis) {
     this.offset = offset;
     this.isSnapshot = isSnapshot;
     this.changeType = changeType;
+    this.sourceTimestampMillis = sourceTimestampMillis;
   }
 
   public Offset getOffset() {
@@ -44,6 +48,11 @@ public abstract class ChangeEvent {
     return changeType;
   }
 
+  @Nullable
+  public Long getSourceTimestampMillis() {
+    return sourceTimestampMillis;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -55,12 +64,13 @@ public abstract class ChangeEvent {
     ChangeEvent that = (ChangeEvent) o;
     return isSnapshot == that.isSnapshot &&
       Objects.equals(offset, that.offset) &&
+      Objects.equals(sourceTimestampMillis, that.sourceTimestampMillis) &&
       changeType == that.changeType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(offset, isSnapshot, changeType);
+    return Objects.hash(offset, isSnapshot, changeType, sourceTimestampMillis);
   }
 
   /**
@@ -71,6 +81,7 @@ public abstract class ChangeEvent {
   public static class Builder<T extends Builder> {
     protected Offset offset;
     protected boolean isSnapshot;
+    protected Long sourceTimestampMillis;
 
     public T setOffset(Offset offset) {
       this.offset = offset;
@@ -79,6 +90,16 @@ public abstract class ChangeEvent {
 
     public T setSnapshot(boolean isSnapshot) {
       this.isSnapshot = isSnapshot;
+      return (T) this;
+    }
+
+    /**
+     * Set the source timestamp for this change event. This value is used in determining the ordering
+     * of events when source generates the un-ordered events. Not setting this for such sources could result
+     * into the incorrect data on target.
+     */
+    public T setSourceTimestamp(long sourceTimestampMillis) {
+      this.sourceTimestampMillis = sourceTimestampMillis;
       return (T) this;
     }
   }

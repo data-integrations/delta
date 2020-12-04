@@ -34,8 +34,8 @@ public class DDLEvent extends ChangeEvent {
   private final List<String> primaryKey;
 
   private DDLEvent(Offset offset, String database, DDLOperation operation, @Nullable Schema schema,
-                   List<String> primaryKey, boolean isSnapshot) {
-    super(offset, isSnapshot, ChangeType.DDL);
+                   List<String> primaryKey, boolean isSnapshot, @Nullable Long sourceTimestampMillis) {
+    super(offset, isSnapshot, ChangeType.DDL, sourceTimestampMillis);
     this.operation = operation;
     this.schema = schema;
     this.database = database;
@@ -151,7 +151,7 @@ public class DDLEvent extends ChangeEvent {
       } else {
         ddlOperation = new DDLOperation(table, operation);
       }
-      return new DDLEvent(offset, database, ddlOperation, schema, primaryKey, isSnapshot);
+      return new DDLEvent(offset, database, ddlOperation, schema, primaryKey, isSnapshot, sourceTimestampMillis);
     }
   }
 }
