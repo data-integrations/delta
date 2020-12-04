@@ -71,4 +71,22 @@ public class DefaultSourceConfigurer implements SourceConfigurer {
                                      PluginSelector selector) {
     return delegate.usePluginClass(pluginType, pluginName, pluginId, properties, selector);
   }
+
+  @Nullable
+  @Override
+  public String getNamespace() {
+    return delegate.getNamespace();
+  }
+
+  @Nullable
+  @Override
+  public String getName() {
+    return delegate.getName();
+  }
+
+  @Nullable
+  @Override
+  public Long getGeneration() {
+    return delegate.getGeneration();
+  }
 }

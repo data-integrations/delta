@@ -28,9 +28,20 @@ import javax.annotation.Nullable;
  */
 public class DefaultConfigurer implements Configurer {
   private final PluginConfigurer delegate;
+  private final Long generation;
+  private final String namespace;
+  private final String name;
 
   public DefaultConfigurer(PluginConfigurer delegate) {
+    this(delegate, null, null, null);
+  }
+
+  public DefaultConfigurer(PluginConfigurer delegate, @Nullable String namespace, @Nullable String name,
+    @Nullable Long generation) {
     this.delegate = delegate;
+    this.namespace = namespace;
+    this.name = name;
+    this.generation = generation;
   }
 
   @Nullable
@@ -58,5 +69,23 @@ public class DefaultConfigurer implements Configurer {
   public <T> Class<T> usePluginClass(String pluginType, String pluginName, String pluginId, PluginProperties properties,
                                      PluginSelector selector) {
     return delegate.usePluginClass(pluginType, pluginName, pluginId, properties, selector);
+  }
+
+  @Nullable
+  @Override
+  public String getNamespace() {
+    return namespace;
+  }
+
+  @Nullable
+  @Override
+  public String getName() {
+    return name;
+  }
+
+  @Nullable
+  @Override
+  public Long getGeneration() {
+    return generation;
   }
 }

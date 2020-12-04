@@ -59,4 +59,22 @@ public class MockConfigurer implements Configurer {
     }
     return null;
   }
+
+  @Nullable
+  @Override
+  public String getNamespace() {
+    return null;
+  }
+
+  @Nullable
+  @Override
+  public String getName() {
+    return null;
+  }
+
+  @Nullable
+  @Override
+  public Long getGeneration() {
+    return null;
+  }
 }

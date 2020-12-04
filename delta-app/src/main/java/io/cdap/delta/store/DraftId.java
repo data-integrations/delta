@@ -55,9 +55,4 @@ public class DraftId {
   public int hashCode() {
     return Objects.hash(namespace, name);
   }
-
-  @Override
-  public String toString() {
-    return namespace + "-" + name;
-  }
 }

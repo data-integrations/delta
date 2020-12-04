@@ -220,10 +220,8 @@ public class DraftService {
         .format("Table '%s' in database '%s' and schema '%s' is not a selected table in the draft", table, db,
           schema)));
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
-         TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
-           draftId);
-         TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target,
-           draftId)) {
+         TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
+         TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target)) {
       return assessTable(selectedTable, tableRegistry, sourceTableAssessor, targetTableAssessor);
     }
   }
@@ -251,10 +249,9 @@ public class DraftService {
     deltaConfig = evaluateMacros(draftId, deltaConfig);
 
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
-         TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
-           draftId);
+         TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource());
          TableAssessor<StandardizedTableDetail> targetTableAssessor =
-           createTableAssessor(configurer, deltaConfig.getTarget(), draftId)) {
+           createTableAssessor(configurer, deltaConfig.getTarget())) {
 
       List<Problem> missingFeatures = new ArrayList<>();
       List<Problem> connectivityIssues = new ArrayList<>();
@@ -443,7 +440,7 @@ public class DraftService {
     return deltaSource.createTableRegistry(configurer);
   }
 
-  private <T> TableAssessor<T> createTableAssessor(Configurer configurer, Stage stage, DraftId id) {
+  private <T> TableAssessor<T> createTableAssessor(Configurer configurer, Stage stage) {
     Plugin pluginConfig = stage.getPlugin();
     TableAssessorSupplier<T> plugin;
     try {
@@ -460,7 +457,7 @@ public class DraftService {
     }
 
     try {
-      return plugin.createTableAssessor(configurer, id.toString());
+      return plugin.createTableAssessor(configurer);
     } catch (Exception e) {
       throw new InvalidDraftException(String.format("Unable to instantiate table assessor for stage '%s': %s",
                                                     stage.getName(), e.getMessage()), e);

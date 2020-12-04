@@ -18,9 +18,19 @@ package io.cdap.delta.api;
 
 import io.cdap.cdap.api.plugin.PluginConfigurer;
 
+import javax.annotation.Nullable;
+
 /**
  * Configures a data transfer.
  */
 public interface Configurer extends PluginConfigurer {
 
+  @Nullable
+  String getNamespace();
+
+  @Nullable
+  String getName();
+
+  @Nullable
+  Long getGeneration();
 }

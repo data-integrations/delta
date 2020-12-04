@@ -32,20 +32,5 @@ public interface TableAssessorSupplier<T> {
    * @return a table assessor
    * @throws Exception if the table assessor could not be created
    */
-  default TableAssessor<T> createTableAssessor(Configurer configurer) throws Exception {
-   throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Create a table assessor that will check if there will be potential problems replicating a table.
-   *
-   * @param configurer configurer used to instantiate plugins
-   * @param draftId the id of the replicator draft, it can be used as the prefix of the id for some temporary resources
-   *                created by Assessor. With such prefix, it will be easy to detect/cleanup dangling resources
-   * @return a table assessor
-   * @throws Exception if the table assessor could not be created
-   */
-  default TableAssessor<T> createTableAssessor(Configurer configurer, String draftId) throws Exception {
-    return createTableAssessor(configurer);
-  }
+  TableAssessor<T> createTableAssessor(Configurer configurer) throws Exception;
 }
