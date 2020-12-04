@@ -16,6 +16,8 @@
 
 package io.cdap.delta.app;
 
+import io.cdap.delta.api.DeltaPipelineId;
+
 import java.util.Objects;
 
 /**

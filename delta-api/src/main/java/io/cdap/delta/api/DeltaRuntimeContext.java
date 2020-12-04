@@ -74,4 +74,9 @@ public interface DeltaRuntimeContext extends PluginContext {
    * @param val state to write
    */
   void putState(String key, byte[] val) throws IOException;
+
+  /**
+   * @return the id of the delta pipeline
+   */
+  DeltaPipelineId getPipelineId();
 }
