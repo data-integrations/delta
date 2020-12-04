@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.delta.app;
+package io.cdap.delta.api;
 
 /**
  * Uniquely identifies a delta pipeline.
@@ -43,8 +43,4 @@ public class DeltaPipelineId {
     return generation;
   }
 
-  @Override
-  public String toString() {
-    return namespace + "-" + app + "-" + generation;
-  }
 }

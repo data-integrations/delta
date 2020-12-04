@@ -17,8 +17,8 @@
 package io.cdap.delta.store;
 
 import com.google.common.io.ByteStreams;
+import io.cdap.delta.api.DeltaPipelineId;
 import io.cdap.delta.api.Offset;
-import io.cdap.delta.app.DeltaPipelineId;
 import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.OffsetAndSequence;
 import org.apache.hadoop.conf.Configuration;

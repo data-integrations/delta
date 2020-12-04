@@ -78,5 +78,5 @@ public interface DeltaRuntimeContext extends PluginContext {
   /**
    * @return the id of the delta pipeline
    */
-  String getPipelineId();
+  DeltaPipelineId getPipelineId();
 }

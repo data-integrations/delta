@@ -24,6 +24,7 @@ import io.cdap.cdap.api.plugin.PluginContext;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLOperation;
+import io.cdap.delta.api.DeltaPipelineId;
 import io.cdap.delta.api.DeltaSourceContext;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.Offset;
@@ -178,8 +179,8 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public String getPipelineId() {
-    return id.getPipelineId().toString();
+  public DeltaPipelineId getPipelineId() {
+    return id.getPipelineId();
   }
 
   @Override
