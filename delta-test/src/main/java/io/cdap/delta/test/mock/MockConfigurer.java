@@ -71,10 +71,4 @@ public class MockConfigurer implements Configurer {
   public String getName() {
     return null;
   }
-
-  @Nullable
-  @Override
-  public Long getGeneration() {
-    return null;
-  }
 }

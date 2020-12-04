@@ -28,20 +28,17 @@ import javax.annotation.Nullable;
  */
 public class DefaultConfigurer implements Configurer {
   private final PluginConfigurer delegate;
-  private final Long generation;
   private final String namespace;
   private final String name;
 
   public DefaultConfigurer(PluginConfigurer delegate) {
-    this(delegate, null, null, null);
+    this(delegate, null, null);
   }
 
-  public DefaultConfigurer(PluginConfigurer delegate, @Nullable String namespace, @Nullable String name,
-    @Nullable Long generation) {
+  public DefaultConfigurer(PluginConfigurer delegate, @Nullable String namespace, @Nullable String name) {
     this.delegate = delegate;
     this.namespace = namespace;
     this.name = name;
-    this.generation = generation;
   }
 
   @Nullable
@@ -81,11 +78,5 @@ public class DefaultConfigurer implements Configurer {
   @Override
   public String getName() {
     return name;
-  }
-
-  @Nullable
-  @Override
-  public Long getGeneration() {
-    return generation;
   }
 }

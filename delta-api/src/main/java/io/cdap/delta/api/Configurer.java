@@ -30,7 +30,4 @@ public interface Configurer extends PluginConfigurer {
 
   @Nullable
   String getName();
-
-  @Nullable
-  Long getGeneration();
 }

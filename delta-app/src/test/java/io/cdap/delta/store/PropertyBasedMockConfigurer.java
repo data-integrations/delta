@@ -108,10 +108,4 @@ public class PropertyBasedMockConfigurer implements Configurer {
   public String getName() {
     return null;
   }
-
-  @Nullable
-  @Override
-  public Long getGeneration() {
-    return null;
-  }
 }

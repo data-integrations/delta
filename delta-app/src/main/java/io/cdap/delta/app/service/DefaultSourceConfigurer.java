@@ -83,10 +83,4 @@ public class DefaultSourceConfigurer implements SourceConfigurer {
   public String getName() {
     return delegate.getName();
   }
-
-  @Nullable
-  @Override
-  public Long getGeneration() {
-    return delegate.getGeneration();
-  }
 }

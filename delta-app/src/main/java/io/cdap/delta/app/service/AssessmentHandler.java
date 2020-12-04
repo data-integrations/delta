@@ -149,7 +149,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       DraftId draftId = new DraftId(namespace, draftName);
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       TableList tableList = draftService.listDraftTables(draftId, new DefaultConfigurer(pluginConfigurer,
-        draftId.getNamespace().getName(), draftId.getName(), draftId.getNamespace().getGeneration()));
+        draftId.getNamespace().getName(), draftId.getName()));
       responder.sendString(GSON.toJson(tableList));
     });
   }
@@ -175,8 +175,8 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       DraftId draftId = new DraftId(namespace, draftName);
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       TableDetail tableDetail = draftService.describeDraftTable(draftId,
-        new DefaultConfigurer(pluginConfigurer, draftId.getNamespace().getName(), draftId.getName(),
-          draftId.getNamespace().getGeneration()), dbTable.getDatabase(), dbTable.getSchema(), dbTable.getTable());
+        new DefaultConfigurer(pluginConfigurer, draftId.getNamespace().getName(), draftId.getName()),
+        dbTable.getDatabase(), dbTable.getSchema(), dbTable.getTable());
       responder.sendString(GSON.toJson(tableDetail));
     });
   }
@@ -190,7 +190,7 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
       DraftId draftId = new DraftId(namespace, draftName);
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       PipelineAssessment assessment = draftService.assessPipeline(draftId, new DefaultConfigurer(pluginConfigurer,
-        draftId.getNamespace().getName(), draftId.getName(), draftId.getNamespace().getGeneration()));
+        draftId.getNamespace().getName(), draftId.getName()));
       responder.sendString(GSON.toJson(assessment));
     }));
   }
@@ -216,8 +216,8 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
 
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       TableAssessmentResponse assessment = draftService.assessTable(draftId,
-        new DefaultConfigurer(pluginConfigurer, draftId.getNamespace().getName(), draftId.getName(),
-          draftId.getNamespace().getGeneration()), dbTable.getDatabase(), dbTable.getSchema(), dbTable.getTable());
+        new DefaultConfigurer(pluginConfigurer, draftId.getNamespace().getName(), draftId.getName()),
+        dbTable.getDatabase(), dbTable.getSchema(), dbTable.getTable());
       responder.sendString(GSON.toJson(assessment));
     }));
   }
