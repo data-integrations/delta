@@ -176,10 +176,11 @@ public class DeltaWorker extends AbstractWorker {
     stateService.load();
     deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context,
                                     stateService, config.getRetryConfig().getMaxDurationSeconds(),
-                                    context.getRuntimeArguments(), sourceProperties);
+                                    context.getRuntimeArguments(), sourceProperties, config.getTables());
     MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(),
                                                               context, context.getNamespace());
     source = context.newPluginInstance(sourceName, macroEvaluator);
+    source.initailize(deltaContext);
     target = context.newPluginInstance(targetName, macroEvaluator);
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
     offset = offsetAndSequence.getOffset();
