@@ -56,6 +56,8 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -486,6 +488,79 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     expectedState = new PipelineReplicationState(PipelineState.OK, Collections.singleton(tableState), null);
     actualState = stateService.getState();
     Assert.assertEquals(expectedState, actualState);
+  }
+
+  @Test
+  public void testDataSizeMetric() throws Exception {
+    Schema dmlSchema = Schema.recordOf(TABLE, Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+                                       Schema.Field.of("f1", Schema.of(Schema.Type.BOOLEAN)),
+                                       Schema.Field.of("f2", Schema.of(Schema.Type.INT)),
+                                       Schema.Field.of("f3", Schema.of(Schema.Type.FLOAT)),
+                                       Schema.Field.of("f4", Schema.enumWith("enum1", "enum2")),
+                                       Schema.Field.of("f5", Schema.of(Schema.Type.LONG)),
+                                       Schema.Field.of("f6", Schema.of(Schema.Type.DOUBLE)),
+                                       Schema.Field.of("f7", Schema.of(Schema.Type.BYTES)),
+                                       Schema.Field.of("f8", Schema.of(Schema.Type.BYTES)),
+                                       Schema.Field.of("f9", Schema.nullableOf(Schema.of(Schema.Type.BYTES))),
+                                       Schema.Field.of("f10", Schema.of(Schema.Type.STRING)));
+
+
+    DDLEvent ddlEvent = DDLEvent.builder()
+      .setOffset(new Offset(Collections.singletonMap("order", "0")))
+      .setOperation(DDLOperation.Type.CREATE_TABLE)
+      .setDatabase(DATABASE)
+      .setTable(TABLE)
+      .setPrimaryKey(Collections.singletonList("id"))
+      .setSchema(dmlSchema)
+      .build();
+
+    File outputFolder = TMP_FOLDER.newFolder("testDataSizeMetric");
+
+    DMLEvent dmlEvent = DMLEvent.builder()
+      .setOffset(new Offset(Collections.singletonMap("order", "1")))
+      .setOperationType(DMLOperation.Type.INSERT)
+      .setDatabase(DATABASE)
+      .setTable(TABLE)
+      .setIngestTimestamp(System.currentTimeMillis())
+      .setRow(StructuredRecord.builder(dmlSchema).set("id", 0) // 4 bytes for INT
+                .set("f1", true) // 1 byte for BOOLEAN
+                .set("f2", 1) // 4 bytes for INT
+                .set("f3", 1f) // 4 bytes for FLOAT
+                .set("f4", "enum1") // 4 bytes for ENUM
+                .set("f5", 2L) // 8 bytes for LONG
+                .set("f6", 10.0) // 8 bytes for DOUBLE
+                .set("f7", new byte[10]) // 10 bytes for byte[]
+                .set("f8", ByteBuffer.allocate(10)) // 10 bytes for ByteBuffer
+                .set("f10", "some string") // 13 bytes: "\"some string\"".getBytes(StandardCharsets.UTF_8).length
+                .build()) // total 64 bytes
+      .build();
+
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(ddlEvent);
+    events.add(dmlEvent);
+
+    String offsetBasePath = outputFolder.getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events));
+    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      // configure instance 0 to read taybull and instance1 to read taybull2
+      .setTables(Arrays.asList(new SourceTable(DATABASE, TABLE), new SourceTable(DATABASE, TABLE2)))
+      .setParallelism(new ParallelismConfig(2))
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testDataSizeMetric");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
+
+    waitForMetric(appId, "dml.data.processed.bytes", 64);
+    manager.stop();
+    manager.waitForStopped(60, TimeUnit.SECONDS);
   }
 
   private void waitForMetric(ApplicationId appId, String metric, int expected)
