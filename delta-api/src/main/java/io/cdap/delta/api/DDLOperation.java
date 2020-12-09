@@ -36,12 +36,17 @@ public class DDLOperation {
     RENAME_TABLE
   }
 
+  private final String schema;
   private final String tableName;
   private final String prevTableName;
   private final DDLOperation.Type type;
 
+  public DDLOperation(@Nullable String schema, @Nullable String tableName, DDLOperation.Type type) {
+    this(schema, tableName, null, type);
+  }
+
   public DDLOperation(@Nullable String tableName, DDLOperation.Type type) {
-    this(tableName, null, type);
+    this(null, tableName, type);
   }
 
   /**
@@ -59,10 +64,17 @@ public class DDLOperation {
     return new DDLOperation(prevTableName, tableName, Type.RENAME_TABLE);
   }
 
-  private DDLOperation(@Nullable String tableName, @Nullable String prevTableName, DDLOperation.Type type) {
+  private DDLOperation(@Nullable String schema, @Nullable String tableName, @Nullable String prevTableName,
+    DDLOperation.Type type) {
+    this.schema = schema;
     this.tableName = tableName;
     this.prevTableName = prevTableName;
     this.type = type;
+  }
+
+  @Nullable
+  public String getSchema() {
+    return schema;
   }
 
   @Nullable

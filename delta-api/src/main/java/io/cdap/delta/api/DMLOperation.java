@@ -17,11 +17,14 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * Represents a DML Operation.
  */
 public class DMLOperation {
+
+
 
   /**
    * Type of DML operation.
@@ -29,19 +32,30 @@ public class DMLOperation {
   public enum Type {
     INSERT,
     DELETE,
-    UPDATE
+    UPDATE;
   }
 
+  private final String schema;
   private final String tableName;
   private final DMLOperation.Type type;
   private final long ingestTimestampMillis;
   private final int sizeInBytes;
 
-  public DMLOperation(String tableName, DMLOperation.Type operationType, long ingestTimestampMillis, int sizeInBytes) {
+  public DMLOperation(@Nullable String schema, String tableName, DMLOperation.Type operationType,
+    long ingestTimestampMillis, int sizeInBytes) {
+    this.schema = schema;
     this.tableName = tableName;
     this.type = operationType;
     this.ingestTimestampMillis = ingestTimestampMillis;
     this.sizeInBytes = sizeInBytes;
+  }
+
+  public DMLOperation(String tableName, DMLOperation.Type operationType, long ingestTimestampMillis, int sizeInBytes) {
+    this(null, tableName, operationType, ingestTimestampMillis, sizeInBytes);
+  }
+
+  public String getSchema() {
+    return schema;
   }
 
   public String getTableName() {

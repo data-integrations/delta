@@ -127,6 +127,7 @@ public class DMLEvent extends ChangeEvent {
   public static class Builder extends ChangeEvent.Builder<Builder> {
     private DMLOperation.Type operationType;
     private String database;
+    private String schema;
     private String table;
     private StructuredRecord row;
     private StructuredRecord previousRow;
@@ -140,6 +141,7 @@ public class DMLEvent extends ChangeEvent {
       this.offset = event.getOffset();
       this.operationType = event.getOperation().getType();
       this.database = event.getDatabase();
+      this.schema = event.getOperation().getSchema();
       this.table = event.getOperation().getTableName();
       this.row = event.getRow();
       this.previousRow = event.getPreviousRow();
@@ -156,6 +158,11 @@ public class DMLEvent extends ChangeEvent {
 
     public Builder setDatabase(String database) {
       this.database = database;
+      return this;
+    }
+
+    public Builder setSchema(String schema) {
+      this.schema = schema;
       return this;
     }
 
@@ -193,9 +200,9 @@ public class DMLEvent extends ChangeEvent {
       int sizeInBytes = (operationType == DMLOperation.Type.INSERT ||
         operationType == DMLOperation.Type.UPDATE) ? computeSizeInBytes(row) : 0;
 
-      return new DMLEvent(offset, database, new DMLOperation(table, operationType, ingestTimestampMillis, sizeInBytes),
-                          row, previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot,
-                          rowId);
+      return new DMLEvent(offset, database,
+        new DMLOperation(schema, table, operationType, ingestTimestampMillis, sizeInBytes), row, previousRow,
+        transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
     }
 
     private int computeSizeInBytes(StructuredRecord row) {
