@@ -82,7 +82,7 @@ public interface DeltaRuntimeContext extends PluginContext {
   DeltaPipelineId getPipelineId();
 
   /**
-   * @return all the Tables to be replicated
+   * @return  all the tables to be replicated by the current pipeline
    */
-  Set<SourceTable> getTables();
+  Set<SourceTable> getAllTables();
 }

@@ -190,7 +190,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
-  public Set<SourceTable> getTables() {
+  public Set<SourceTable> getAllTables() {
     return tables;
   }
 

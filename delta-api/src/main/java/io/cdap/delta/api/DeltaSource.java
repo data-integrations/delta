@@ -40,7 +40,7 @@ public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
    * @param context {@link DeltaSourceContext}
    * @throws Exception if there is any error during initialization
    */
-  default void initailize(DeltaSourceContext context) throws Exception {
+  default void initialize(DeltaSourceContext context) throws Exception {
   }
 
   /**
