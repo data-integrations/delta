@@ -30,6 +30,7 @@ import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.api.SourceProperties;
+import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
 import org.slf4j.Logger;
@@ -38,7 +39,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 
@@ -60,11 +64,12 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final Map<String, String> runtimeArguments;
   private final AtomicReference<Throwable> failure;
   private final SourceProperties sourceProperties;
+  private final Set<SourceTable> tables;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, PipelineStateService stateService,
                int maxRetrySeconds, Map<String, String> runtimeArguments,
-               @Nullable SourceProperties sourceProperties) {
+               @Nullable SourceProperties sourceProperties, List<SourceTable> tables) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
@@ -76,6 +81,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.runtimeArguments = Collections.unmodifiableMap(new HashMap<>(runtimeArguments));
     this.failure = new AtomicReference<>(null);
     this.sourceProperties = sourceProperties;
+    this.tables = Collections.unmodifiableSet(new HashSet<>(tables));
   }
 
   @Override
@@ -181,6 +187,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public DeltaPipelineId getPipelineId() {
     return id.getPipelineId();
+  }
+
+  @Override
+  public Set<SourceTable> getAllTables() {
+    return tables;
   }
 
   @Override

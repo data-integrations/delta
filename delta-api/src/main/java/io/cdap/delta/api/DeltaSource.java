@@ -20,8 +20,6 @@ import io.cdap.delta.api.assessment.TableAssessorSupplier;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableRegistry;
 
-import java.util.List;
-
 /**
  * Pluggable interface for reading change events
  */
@@ -34,6 +32,16 @@ public interface DeltaSource extends TableAssessorSupplier<TableDetail> {
    * @param configurer source configurer used to set configuration settings and register plugins
    */
   void configure(SourceConfigurer configurer);
+
+  /**
+   * Initialize the Delta Source stage. This is called after the application is deployed, whenever
+   * the program is initialized.
+   *
+   * @param context {@link DeltaSourceContext}
+   * @throws Exception if there is any error during initialization
+   */
+  default void initialize(DeltaSourceContext context) throws Exception {
+  }
 
   /**
    * Create an event reader used to read change events. This is called after the application is deployed, whenever
