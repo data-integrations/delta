@@ -21,6 +21,7 @@ import io.cdap.cdap.api.plugin.PluginContext;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import javax.annotation.Nullable;
 
 /**
@@ -79,4 +80,9 @@ public interface DeltaRuntimeContext extends PluginContext {
    * @return the id of the delta pipeline
    */
   DeltaPipelineId getPipelineId();
+
+  /**
+   * @return  all the tables to be replicated by the current pipeline
+   */
+  Set<SourceTable> getAllTables();
 }
