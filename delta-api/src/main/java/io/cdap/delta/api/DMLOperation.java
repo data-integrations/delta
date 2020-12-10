@@ -35,11 +35,13 @@ public class DMLOperation {
   private final String tableName;
   private final DMLOperation.Type type;
   private final long ingestTimestampMillis;
+  private final int sizeInBytes;
 
-  public DMLOperation(String tableName, DMLOperation.Type operationType, long ingestTimestampMillis) {
+  public DMLOperation(String tableName, DMLOperation.Type operationType, long ingestTimestampMillis, int sizeInBytes) {
     this.tableName = tableName;
     this.type = operationType;
     this.ingestTimestampMillis = ingestTimestampMillis;
+    this.sizeInBytes = sizeInBytes;
   }
 
   public String getTableName() {
@@ -54,6 +56,10 @@ public class DMLOperation {
     return ingestTimestampMillis;
   }
 
+  public int getSizeInBytes() {
+    return sizeInBytes;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -65,11 +71,12 @@ public class DMLOperation {
     DMLOperation that = (DMLOperation) o;
     return tableName.equals(that.tableName) &&
       type == that.type &&
-      ingestTimestampMillis == that.ingestTimestampMillis;
+      ingestTimestampMillis == that.ingestTimestampMillis &&
+      sizeInBytes == that.sizeInBytes;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, type, ingestTimestampMillis);
+    return Objects.hash(tableName, type, ingestTimestampMillis, sizeInBytes);
   }
 }

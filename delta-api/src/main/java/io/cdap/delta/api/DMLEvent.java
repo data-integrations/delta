@@ -16,8 +16,15 @@
 
 package io.cdap.delta.api;
 
+import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Objects;
 import javax.annotation.Nullable;
 
@@ -139,6 +146,7 @@ public class DMLEvent extends ChangeEvent {
       this.transactionId = event.getTransactionId();
       this.ingestTimestampMillis = event.getIngestTimestampMillis();
       this.isSnapshot = event.isSnapshot();
+      this.sourceTimestampMillis = event.getSourceTimestampMillis();
     }
 
     public Builder setOperationType(DMLOperation.Type operationType) {
@@ -182,8 +190,55 @@ public class DMLEvent extends ChangeEvent {
     }
 
     public DMLEvent build() {
-      return new DMLEvent(offset, database, new DMLOperation(table, operationType, ingestTimestampMillis), row,
-                          previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
+      int sizeInBytes = (operationType == DMLOperation.Type.INSERT ||
+        operationType == DMLOperation.Type.UPDATE) ? computeSizeInBytes(row) : 0;
+
+      return new DMLEvent(offset, database, new DMLOperation(table, operationType, ingestTimestampMillis, sizeInBytes),
+                          row, previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot,
+                          rowId);
+    }
+
+    private int computeSizeInBytes(StructuredRecord row) {
+      List<Schema.Field> fields = row.getSchema().getFields();
+      if (fields == null) {
+        return 0;
+      }
+      int sizeInBytes = 0;
+      for (Schema.Field field : fields) {
+        Schema fieldSchema = field.getSchema();
+        fieldSchema = fieldSchema.isNullable() ? fieldSchema.getNonNullable() : fieldSchema;
+        Object value = row.get(field.getName());
+        if (value == null) {
+          continue;
+        }
+        switch (fieldSchema.getType()) {
+          case BOOLEAN:
+            sizeInBytes += 1;
+            break;
+          case INT:
+          case FLOAT:
+          case ENUM:
+            sizeInBytes += 4;
+            break;
+          case LONG:
+          case DOUBLE:
+            sizeInBytes += 8;
+            break;
+          case BYTES:
+            if (value instanceof ByteBuffer) {
+              sizeInBytes += Bytes.toBytes((ByteBuffer) value).length;
+            } else {
+              sizeInBytes += ((byte[]) value).length;
+            }
+            break;
+          case STRING:
+            sizeInBytes += ((String) value).getBytes(StandardCharsets.UTF_8).length;
+            break;
+          default:
+            break;
+        }
+      }
+      return sizeInBytes;
     }
   }
 }
