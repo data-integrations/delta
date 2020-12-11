@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * Represents a DML Operation.
@@ -29,19 +30,32 @@ public class DMLOperation {
   public enum Type {
     INSERT,
     DELETE,
-    UPDATE
+    UPDATE;
   }
 
+  private final String databaseName;
+  private final String schemaName;
   private final String tableName;
   private final DMLOperation.Type type;
   private final long ingestTimestampMillis;
   private final int sizeInBytes;
 
-  public DMLOperation(String tableName, DMLOperation.Type operationType, long ingestTimestampMillis, int sizeInBytes) {
+  public DMLOperation(String databaseName, @Nullable String schemaName, String tableName,
+    DMLOperation.Type operationType, long ingestTimestampMillis, int sizeInBytes) {
+    this.databaseName = databaseName;
+    this.schemaName = schemaName;
     this.tableName = tableName;
     this.type = operationType;
     this.ingestTimestampMillis = ingestTimestampMillis;
     this.sizeInBytes = sizeInBytes;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public String getSchemaName() {
+    return schemaName;
   }
 
   public String getTableName() {
@@ -69,14 +83,13 @@ public class DMLOperation {
       return false;
     }
     DMLOperation that = (DMLOperation) o;
-    return tableName.equals(that.tableName) &&
-      type == that.type &&
-      ingestTimestampMillis == that.ingestTimestampMillis &&
-      sizeInBytes == that.sizeInBytes;
+    return Objects.equals(databaseName, that.databaseName) && Objects.equals(schemaName, that.schemaName) &&
+      Objects.equals(tableName, that.tableName) && type == that.type &&
+      ingestTimestampMillis == that.ingestTimestampMillis && sizeInBytes == that.sizeInBytes;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, type, ingestTimestampMillis, sizeInBytes);
+    return Objects.hash(databaseName, schemaName, tableName, type, ingestTimestampMillis, sizeInBytes);
   }
 }

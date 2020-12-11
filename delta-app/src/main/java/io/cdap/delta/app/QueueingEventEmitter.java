@@ -98,7 +98,7 @@ public class QueueingEventEmitter implements EventEmitter {
       return false;
     }
 
-    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(),
+    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getOperation().getDatabaseName(),
                                                                event.getOperation().getTableName()));
     if (sourceTable != null && sourceTable.getDdlBlacklist().contains(ddlOperationType)) {
       return true;
@@ -112,8 +112,8 @@ public class QueueingEventEmitter implements EventEmitter {
       return true;
     }
 
-    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(),
-                                                               event.getOperation().getTableName()));
+    SourceTable sourceTable =
+      tableDefinitions.get(new DBTable(event.getOperation().getDatabaseName(), event.getOperation().getTableName()));
     if (sourceTable != null && sourceTable.getDmlBlacklist().contains(event.getOperation().getType())) {
       return true;
     }
