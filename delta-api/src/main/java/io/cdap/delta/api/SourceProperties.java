@@ -23,18 +23,14 @@ import java.util.Objects;
  */
 public class SourceProperties {
 
-  /**
-   * Enum describing ordering of events.
-   */
+  private final boolean rowIdSupported;
 
-  private final boolean supportRowId;
-
-  private SourceProperties(boolean supportRowId) {
-    this.supportRowId = supportRowId;
+  private SourceProperties(boolean rowIdSupported) {
+    this.rowIdSupported = rowIdSupported;
   }
 
-  public boolean getSupportRowId() {
-    return supportRowId;
+  public boolean isRowIdSupported() {
+    return rowIdSupported;
   }
 
   @Override
@@ -46,19 +42,19 @@ public class SourceProperties {
       return false;
     }
     SourceProperties that = (SourceProperties) o;
-    return supportRowId == that.supportRowId;
+    return rowIdSupported == that.rowIdSupported;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(supportRowId);
+    return Objects.hash(rowIdSupported);
   }
 
   /**
    * Builder for a source properties.
    */
   public static class Builder {
-    private boolean supportRowId;
+    private boolean rowIdSupported;
 
     public Builder() {
     }
@@ -68,8 +64,8 @@ public class SourceProperties {
      *
      * @return this builder
      */
-    public SourceProperties.Builder setSupportRowId(boolean supportRowId) {
-      this.supportRowId = supportRowId;
+    public SourceProperties.Builder setRowIdSupported(boolean rowIdSupported) {
+      this.rowIdSupported = rowIdSupported;
       return this;
     }
 
@@ -77,7 +73,7 @@ public class SourceProperties {
      * @return an instance of {@code SourceProperties}
      */
     public SourceProperties build() throws IllegalArgumentException {
-      return new SourceProperties(supportRowId);
+      return new SourceProperties(rowIdSupported);
     }
   }
 }
