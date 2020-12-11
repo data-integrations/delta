@@ -54,11 +54,11 @@ public class DDLOperation {
    * @return rename table DDLOperation
    * @throws IllegalArgumentException when either the prevTableName or tableName is null
    */
-  public static DDLOperation createRenameTableOperation(String databaseName, @Nullable String schemaName, String prevTableName,
-    String tableName) {
+  public static DDLOperation createRenameTableOperation(String databaseName, @Nullable String schemaName,
+    String prevTableName, String tableName) {
     if (prevTableName == null || tableName == null) {
-      throw new IllegalArgumentException("For table rename ddl operation both previous table name and " +
-                                           "renamed table names are required.");
+      throw new IllegalArgumentException(
+        "For table rename ddl operation both previous table name and renamed table names are required.");
     }
     return new DDLOperation(databaseName, schemaName, prevTableName, tableName, Type.RENAME_TABLE);
   }

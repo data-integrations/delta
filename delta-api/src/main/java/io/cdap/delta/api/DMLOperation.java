@@ -24,8 +24,6 @@ import javax.annotation.Nullable;
  */
 public class DMLOperation {
 
-
-
   /**
    * Type of DML operation.
    */

@@ -31,18 +31,16 @@ import javax.annotation.Nullable;
  */
 public class DMLEvent extends ChangeEvent {
   private final DMLOperation operation;
-  private final String database;
   private final StructuredRecord row;
   private final StructuredRecord previousRow;
   private final String transactionId;
   private final long ingestTimestampMillis;
   private final String rowId;
 
-  private DMLEvent(Offset offset, String database, DMLOperation operation, StructuredRecord row,
+  private DMLEvent(Offset offset, DMLOperation operation, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
                    @Nullable Long sourceTimestampMillis, boolean isSnapshot, @Nullable String rowId) {
     super(offset, isSnapshot, ChangeType.DML, sourceTimestampMillis);
-    this.database = database;
     this.operation = operation;
     this.row = row;
     this.previousRow = previousRow;
@@ -53,10 +51,6 @@ public class DMLEvent extends ChangeEvent {
 
   public DMLOperation getOperation() {
     return operation;
-  }
-
-  public String getDatabase() {
-    return database;
   }
 
   public StructuredRecord getRow() {
@@ -99,7 +93,6 @@ public class DMLEvent extends ChangeEvent {
     return ingestTimestampMillis == dmlEvent.ingestTimestampMillis &&
       Objects.equals(rowId, dmlEvent.rowId) &&
       Objects.equals(operation, dmlEvent.operation) &&
-      Objects.equals(database, dmlEvent.database) &&
       Objects.equals(row, dmlEvent.row) &&
       Objects.equals(previousRow, dmlEvent.previousRow) &&
       Objects.equals(transactionId, dmlEvent.transactionId);
@@ -107,7 +100,7 @@ public class DMLEvent extends ChangeEvent {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), operation, database, row, previousRow, transactionId, ingestTimestampMillis,
+    return Objects.hash(super.hashCode(), operation, row, previousRow, transactionId, ingestTimestampMillis,
                         rowId);
   }
 
@@ -138,7 +131,7 @@ public class DMLEvent extends ChangeEvent {
     private Builder(DMLEvent event) {
       this.offset = event.getOffset();
       this.operationType = event.getOperation().getType();
-      this.databaseName = event.getDatabase();
+      this.databaseName = event.getOperation().getDatabaseName();
       this.schemaName = event.getOperation().getSchemaName();
       this.tableName = event.getOperation().getTableName();
       this.row = event.getRow();
@@ -198,7 +191,7 @@ public class DMLEvent extends ChangeEvent {
       int sizeInBytes = (operationType == DMLOperation.Type.INSERT ||
         operationType == DMLOperation.Type.UPDATE) ? computeSizeInBytes(row) : 0;
 
-      return new DMLEvent(offset, databaseName,
+      return new DMLEvent(offset,
         new DMLOperation(databaseName, schemaName, tableName, operationType, ingestTimestampMillis, sizeInBytes), row,
         previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
     }

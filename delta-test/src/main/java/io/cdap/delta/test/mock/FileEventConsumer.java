@@ -89,9 +89,8 @@ public class FileEventConsumer implements EventConsumer {
     events.add(event.getEvent());
     context.incrementCount(event.getEvent().getOperation());
     if (emitErrorForDML) {
-      context.setTableError(event.getEvent().getDatabase(),
-                            event.getEvent().getOperation().getTableName(),
-                            new ReplicationError(new Exception()));
+      context.setTableError(event.getEvent().getOperation().getDatabaseName(),
+        event.getEvent().getOperation().getTableName(), new ReplicationError(new Exception()));
     }
     context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
   }
