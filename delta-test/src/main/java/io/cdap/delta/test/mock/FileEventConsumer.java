@@ -28,6 +28,7 @@ import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DeltaTargetContext;
 import io.cdap.delta.api.EventConsumer;
+import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.api.Sequenced;
 
 import java.io.File;
@@ -51,11 +52,13 @@ public class FileEventConsumer implements EventConsumer {
   private final File file;
   private final List<ChangeEvent> events;
   private final DeltaTargetContext context;
+  private final boolean emitErrorForDML;
 
-  FileEventConsumer(File file, DeltaTargetContext context) {
+  FileEventConsumer(File file, DeltaTargetContext context, boolean emitErrorForDML) {
     this.file = file;
     this.events = new ArrayList<>();
     this.context = context;
+    this.emitErrorForDML = emitErrorForDML;
   }
 
   @Override
@@ -85,6 +88,11 @@ public class FileEventConsumer implements EventConsumer {
   public void applyDML(Sequenced<DMLEvent> event) throws IOException {
     events.add(event.getEvent());
     context.incrementCount(event.getEvent().getOperation());
+    if (emitErrorForDML) {
+      context.setTableError(event.getEvent().getDatabase(),
+                            event.getEvent().getOperation().getTableName(),
+                            new ReplicationError(new Exception()));
+    }
     context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
   }
 

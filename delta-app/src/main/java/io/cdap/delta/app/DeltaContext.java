@@ -87,9 +87,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void incrementCount(DMLOperation op) {
     String tableName = op.getTableName();
-    EventMetrics eventMetrics = tableEventMetrics.computeIfAbsent(
-      tableName, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, tableName))));
-    eventMetrics.incrementDMLCount(op);
+    getEventMetricsForTable(tableName).incrementDMLCount(op);
   }
 
   @Override
@@ -99,9 +97,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
       // This can happen for DDL operations such as CREATE_DATABASE
       return;
     }
-    EventMetrics eventMetrics = tableEventMetrics.computeIfAbsent(
-      tableName, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, tableName))));
-    eventMetrics.incrementDDLCount();
+    getEventMetricsForTable(tableName).incrementDDLCount();
   }
 
   @Override
@@ -116,6 +112,12 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void setTableError(String database, String table, ReplicationError error) throws IOException {
     stateService.setTableError(new DBTable(database, table), error);
+    getEventMetricsForTable(table).incrementDMLErrorCount();
+  }
+
+  private EventMetrics getEventMetricsForTable(String table) {
+    return tableEventMetrics.computeIfAbsent(
+      table, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, table))));
   }
 
   @Override

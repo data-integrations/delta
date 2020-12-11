@@ -140,7 +140,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     waitForMetric(appId, "ddl", 1);
-    waitForMetric(appId, "dml.insert", 1);
+    waitForMetric(appId, "dml.inserts", 1);
     // Latency should be somewhere between 1 seconds and 30 seconds
     waitForMetric(appId, "dml.latency.seconds", 1, 30);
     manager.stop();
@@ -215,7 +215,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     // offset should have been saved, with the next run starting from that offset
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
-    waitForMetric(appId, "dml.insert", 1);
+    waitForMetric(appId, "dml.inserts", 1);
     // Latency should be somewhere between 1 seconds and 30 seconds
     waitForMetric(appId, "dml.latency.seconds", 1, 30);
     manager.stop();
@@ -398,7 +398,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // verify that metrics were not double counted during errors
     waitForMetric(appId, "ddl", 1);
-    waitForMetric(appId, "dml.insert", 1);
+    waitForMetric(appId, "dml.inserts", 1);
     // Latency should be somewhere between 1 seconds and 30 seconds
     waitForMetric(appId, "dml.latency.seconds", 1, 30);
 
@@ -437,7 +437,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     waitForMetric(appId, "ddl", 2);
-    waitForMetric(appId, "dml.insert", 1);
+    waitForMetric(appId, "dml.inserts", 1);
     // Latency should be somewhere between 1 seconds and 30 seconds
     waitForMetric(appId, "dml.latency.seconds", 1, 30);
     manager.stop();
@@ -491,7 +491,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   }
 
   @Test
-  public void testDataSizeMetric() throws Exception {
+  public void testDataSizeAndErrorMetric() throws Exception {
     Schema dmlSchema = Schema.recordOf(TABLE, Schema.Field.of("id", Schema.of(Schema.Type.INT)),
                                        Schema.Field.of("f1", Schema.of(Schema.Type.BOOLEAN)),
                                        Schema.Field.of("f2", Schema.of(Schema.Type.INT)),
@@ -541,7 +541,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     String offsetBasePath = outputFolder.getAbsolutePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
-    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
+    Stage target = new Stage("target", MockTarget.getPlugin(outputFolder, true));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -552,13 +552,14 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       .build();
 
     AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
-    ApplicationId appId = NamespaceId.DEFAULT.app("testDataSizeMetric");
+    ApplicationId appId = NamespaceId.DEFAULT.app("testDataSizeAndErrorMetric");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     waitForMetric(appId, "dml.data.processed.bytes", 64);
+    waitForMetric(appId, "dml.errors", 1);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
   }
