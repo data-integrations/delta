@@ -57,7 +57,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -82,8 +81,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   private static final DDLEvent EVENT1 = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "0")))
     .setOperation(DDLOperation.Type.CREATE_TABLE)
-    .setDatabase(DATABASE)
-    .setTable(TABLE)
+    .setDatabaseName(DATABASE)
+    .setTableName(TABLE)
     .setPrimaryKey(Collections.singletonList("id"))
     .setSchema(SCHEMA)
     .build();
@@ -91,8 +90,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   private static final DDLEvent EVENT3 = DDLEvent.builder()
     .setOffset(new Offset(Collections.singletonMap("order", "2")))
     .setOperation(DDLOperation.Type.CREATE_TABLE)
-    .setDatabase(DATABASE)
-    .setTable(TABLE2)
+    .setDatabaseName(DATABASE)
+    .setTableName(TABLE2)
     .setPrimaryKey(Collections.singletonList("id"))
     .setSchema(SCHEMA)
     .build();
@@ -101,8 +100,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     return DMLEvent.builder()
       .setOffset(new Offset(Collections.singletonMap("order", "1")))
       .setOperationType(DMLOperation.Type.INSERT)
-      .setDatabase("deebee")
-      .setTable(TABLE)
+      .setDatabaseName("deebee")
+      .setTableName(TABLE)
       .setIngestTimestamp(System.currentTimeMillis())
       .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
       .build();
@@ -508,8 +507,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     DDLEvent ddlEvent = DDLEvent.builder()
       .setOffset(new Offset(Collections.singletonMap("order", "0")))
       .setOperation(DDLOperation.Type.CREATE_TABLE)
-      .setDatabase(DATABASE)
-      .setTable(TABLE)
+      .setDatabaseName(DATABASE)
+      .setTableName(TABLE)
       .setPrimaryKey(Collections.singletonList("id"))
       .setSchema(dmlSchema)
       .build();
@@ -519,8 +518,8 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     DMLEvent dmlEvent = DMLEvent.builder()
       .setOffset(new Offset(Collections.singletonMap("order", "1")))
       .setOperationType(DMLOperation.Type.INSERT)
-      .setDatabase(DATABASE)
-      .setTable(TABLE)
+      .setDatabaseName(DATABASE)
+      .setTableName(TABLE)
       .setIngestTimestamp(System.currentTimeMillis())
       .setRow(StructuredRecord.builder(dmlSchema).set("id", 0) // 4 bytes for INT
                 .set("f1", true) // 1 byte for BOOLEAN
