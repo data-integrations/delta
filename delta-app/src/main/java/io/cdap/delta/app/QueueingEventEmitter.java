@@ -98,7 +98,7 @@ public class QueueingEventEmitter implements EventEmitter {
       return false;
     }
 
-    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getDatabase(),
+    SourceTable sourceTable = tableDefinitions.get(new DBTable(event.getOperation().getDatabaseName(), 
                                                                event.getOperation().getTableName()));
     if (sourceTable != null && sourceTable.getDdlBlacklist().contains(ddlOperationType)) {
       return true;

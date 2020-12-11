@@ -20,8 +20,6 @@ import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -126,9 +124,9 @@ public class DMLEvent extends ChangeEvent {
    */
   public static class Builder extends ChangeEvent.Builder<Builder> {
     private DMLOperation.Type operationType;
-    private String database;
-    private String schema;
-    private String table;
+    private String databaseName;
+    private String schemaName;
+    private String tableName;
     private StructuredRecord row;
     private StructuredRecord previousRow;
     private String transactionId;
@@ -140,9 +138,9 @@ public class DMLEvent extends ChangeEvent {
     private Builder(DMLEvent event) {
       this.offset = event.getOffset();
       this.operationType = event.getOperation().getType();
-      this.database = event.getDatabase();
-      this.schema = event.getOperation().getSchema();
-      this.table = event.getOperation().getTableName();
+      this.databaseName = event.getDatabase();
+      this.schemaName = event.getOperation().getSchemaName();
+      this.tableName = event.getOperation().getTableName();
       this.row = event.getRow();
       this.previousRow = event.getPreviousRow();
       this.transactionId = event.getTransactionId();
@@ -156,18 +154,18 @@ public class DMLEvent extends ChangeEvent {
       return this;
     }
 
-    public Builder setDatabase(String database) {
-      this.database = database;
+    public Builder setDatabaseName(String databaseName) {
+      this.databaseName = databaseName;
       return this;
     }
 
-    public Builder setSchema(String schema) {
-      this.schema = schema;
+    public Builder setSchemaName(String schemaName) {
+      this.schemaName = schemaName;
       return this;
     }
 
-    public Builder setTable(String table) {
-      this.table = table;
+    public Builder setTableName(String tableName) {
+      this.tableName = tableName;
       return this;
     }
 
@@ -200,9 +198,9 @@ public class DMLEvent extends ChangeEvent {
       int sizeInBytes = (operationType == DMLOperation.Type.INSERT ||
         operationType == DMLOperation.Type.UPDATE) ? computeSizeInBytes(row) : 0;
 
-      return new DMLEvent(offset, database,
-        new DMLOperation(schema, table, operationType, ingestTimestampMillis, sizeInBytes), row, previousRow,
-        transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
+      return new DMLEvent(offset, databaseName,
+        new DMLOperation(databaseName, schemaName, tableName, operationType, ingestTimestampMillis, sizeInBytes), row,
+        previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
     }
 
     private int computeSizeInBytes(StructuredRecord row) {

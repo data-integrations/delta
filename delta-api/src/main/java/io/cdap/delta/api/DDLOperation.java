@@ -36,17 +36,15 @@ public class DDLOperation {
     RENAME_TABLE
   }
 
-  private final String schema;
+  private final String databaseName;
+  private final String schemaName;
   private final String tableName;
   private final String prevTableName;
   private final DDLOperation.Type type;
 
-  public DDLOperation(@Nullable String schema, @Nullable String tableName, DDLOperation.Type type) {
-    this(schema, tableName, null, type);
-  }
-
-  public DDLOperation(@Nullable String tableName, DDLOperation.Type type) {
-    this(null, tableName, type);
+  public DDLOperation(String databaseName, @Nullable String schemaName, @Nullable String tableName,
+    DDLOperation.Type type) {
+    this(databaseName, schemaName, tableName, null, type);
   }
 
   /**
@@ -56,25 +54,32 @@ public class DDLOperation {
    * @return rename table DDLOperation
    * @throws IllegalArgumentException when either the prevTableName or tableName is null
    */
-  public static DDLOperation createRenameTableOperation(String prevTableName, String tableName) {
+  public static DDLOperation createRenameTableOperation(String databaseName, @Nullable String schemaName, String prevTableName,
+    String tableName) {
     if (prevTableName == null || tableName == null) {
       throw new IllegalArgumentException("For table rename ddl operation both previous table name and " +
                                            "renamed table names are required.");
     }
-    return new DDLOperation(prevTableName, tableName, Type.RENAME_TABLE);
+    return new DDLOperation(databaseName, schemaName, prevTableName, tableName, Type.RENAME_TABLE);
   }
 
-  private DDLOperation(@Nullable String schema, @Nullable String tableName, @Nullable String prevTableName,
+  private DDLOperation(String databaseName, @Nullable String schemaName, @Nullable String tableName,
+    @Nullable String prevTableName,
     DDLOperation.Type type) {
-    this.schema = schema;
+    this.databaseName = databaseName;
+    this.schemaName = schemaName;
     this.tableName = tableName;
     this.prevTableName = prevTableName;
     this.type = type;
   }
 
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
   @Nullable
-  public String getSchema() {
-    return schema;
+  public String getSchemaName() {
+    return schemaName;
   }
 
   @Nullable
@@ -100,13 +105,13 @@ public class DDLOperation {
       return false;
     }
     DDLOperation that = (DDLOperation) o;
-    return Objects.equals(tableName, that.tableName) &&
-      Objects.equals(prevTableName, that.prevTableName) &&
+    return Objects.equals(databaseName, that.databaseName) && Objects.equals(schemaName, that.schemaName) &&
+      Objects.equals(tableName, that.tableName) && Objects.equals(prevTableName, that.prevTableName) &&
       type == that.type;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, prevTableName, type);
+    return Objects.hash(databaseName, schemaName, tableName, prevTableName, type);
   }
 }

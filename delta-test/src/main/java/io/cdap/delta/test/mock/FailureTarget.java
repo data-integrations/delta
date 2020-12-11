@@ -80,8 +80,9 @@ public class FailureTarget implements DeltaTarget {
       public void applyDDL(Sequenced<DDLEvent> event) throws IOException, DeltaFailureException {
         DDLOperation ddlOperation = event.getEvent().getOperation();
         context.incrementCount(ddlOperation);
-        throwIfNeeded(event.getSequenceNumber(), event.getEvent().getDatabase(), ddlOperation.getTableName());
-        context.setTableReplicating(event.getEvent().getDatabase(), ddlOperation.getTableName());
+        throwIfNeeded(event.getSequenceNumber(), event.getEvent().getOperation().getDatabaseName(),
+          ddlOperation.getTableName());
+        context.setTableReplicating(event.getEvent().getOperation().getDatabaseName(), ddlOperation.getTableName());
         context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
       }
 

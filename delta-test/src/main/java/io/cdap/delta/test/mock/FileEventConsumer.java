@@ -81,7 +81,7 @@ public class FileEventConsumer implements EventConsumer {
     DDLOperation ddlOperation = event.getEvent().getOperation();
     context.incrementCount(ddlOperation);
     context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
-    context.setTableReplicating(event.getEvent().getDatabase(), ddlOperation.getTableName());
+    context.setTableReplicating(event.getEvent().getOperation().getDatabaseName(), ddlOperation.getTableName());
   }
 
   @Override
