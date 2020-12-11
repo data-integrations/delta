@@ -16,6 +16,7 @@
 
 package io.cdap.delta.test.mock;
 
+import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.plugin.PluginClass;
 import io.cdap.cdap.api.plugin.PluginConfig;
@@ -60,7 +61,7 @@ public class MockTarget implements DeltaTarget {
     if (outputFile.exists()) {
       outputFile.delete();
     }
-    return new FileEventConsumer(outputFile, context);
+    return new FileEventConsumer(outputFile, context, conf.emitErrorForDML);
   }
 
   @Override
@@ -73,6 +74,7 @@ public class MockTarget implements DeltaTarget {
    */
   private static class Conf extends PluginConfig {
     private String path;
+    private boolean emitErrorForDML;
   }
 
   /**
@@ -81,16 +83,31 @@ public class MockTarget implements DeltaTarget {
    * to read events written by the target.
    *
    * @param filePath path to the file to write events to
-   * @return plugin configuration for the mock source
+   * @return plugin configuration for the mock target
    */
   public static Plugin getPlugin(File filePath) {
-    return new Plugin(NAME, DeltaTarget.PLUGIN_TYPE, Collections.singletonMap("path", filePath.getAbsolutePath()),
-                      Artifact.EMPTY);
+    return getPlugin(filePath, false);
+  }
+
+  /**
+   * Get the plugin configuration for a mock target that should write events to a local file.
+   * After the pipeline is stopped, use {@link FileEventConsumer#readEvents(File, int)}
+   * to read events written by the target.
+   *
+   * @param filePath path to the file to write events to
+   * @param emitErrorForDML configuration for whether error should be emitted by target for each dml operation
+   * @return plugin configuration for the mock target
+   */
+  public static Plugin getPlugin(File filePath, boolean emitErrorForDML) {
+    return new Plugin(NAME, DeltaTarget.PLUGIN_TYPE,
+                      ImmutableMap.of("path", filePath.getAbsolutePath(),
+                                      "emitErrorForDML", String.valueOf(emitErrorForDML)), Artifact.EMPTY);
   }
 
   private static PluginClass getPluginClass() {
     Map<String, PluginPropertyField> properties = new HashMap<>();
     properties.put("path", new PluginPropertyField("path", "", "string", true, false));
+    properties.put("emitErrorForDML", new PluginPropertyField("emitErrorForDML", "", "boolean", true, false));
     return new PluginClass(DeltaTarget.PLUGIN_TYPE, NAME, "", MockTarget.class.getName(), "conf", properties);
   }
 }
