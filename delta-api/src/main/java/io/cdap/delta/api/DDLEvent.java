@@ -30,15 +30,13 @@ import javax.annotation.Nullable;
 public class DDLEvent extends ChangeEvent {
   private final DDLOperation operation;
   private final Schema schema;
-  private final String database;
   private final List<String> primaryKey;
 
-  private DDLEvent(Offset offset, String database, DDLOperation operation, @Nullable Schema schema,
+  private DDLEvent(Offset offset, DDLOperation operation, @Nullable Schema schema,
                    List<String> primaryKey, boolean isSnapshot, @Nullable Long sourceTimestampMillis) {
     super(offset, isSnapshot, ChangeType.DDL, sourceTimestampMillis);
     this.operation = operation;
     this.schema = schema;
-    this.database = database;
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
   }
 
@@ -49,10 +47,6 @@ public class DDLEvent extends ChangeEvent {
   @Nullable
   public Schema getSchema() {
     return schema;
-  }
-
-  public String getDatabase() {
-    return database;
   }
 
   public List<String> getPrimaryKey() {
@@ -73,13 +67,12 @@ public class DDLEvent extends ChangeEvent {
     DDLEvent ddlEvent = (DDLEvent) o;
     return Objects.equals(operation, ddlEvent.operation) &&
       Objects.equals(schema, ddlEvent.schema) &&
-      Objects.equals(database, ddlEvent.database) &&
       Objects.equals(primaryKey, ddlEvent.primaryKey);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), operation, schema, database, primaryKey);
+    return Objects.hash(super.hashCode(), operation, schema, primaryKey);
   }
 
   public static Builder builder(DDLEvent event) {
@@ -96,9 +89,10 @@ public class DDLEvent extends ChangeEvent {
   public static class Builder extends ChangeEvent.Builder<Builder> {
     private DDLOperation.Type operation;
     private Schema schema;
-    private String database;
-    private String prevTable;
-    private String table;
+    private String databaseName;
+    private String schemaName;
+    private String prevTableName;
+    private String tableName;
     private List<String> primaryKey = new ArrayList<>();
 
     private Builder() { }
@@ -108,9 +102,10 @@ public class DDLEvent extends ChangeEvent {
       this.isSnapshot = event.isSnapshot();
       this.operation = event.getOperation().getType();
       this.schema = event.getSchema();
-      this.database = event.getDatabase();
-      this.prevTable = event.getOperation().getPrevTableName();
-      this.table = event.getOperation().getTableName();
+      this.schemaName = event.getOperation().getSchemaName();
+      this.databaseName = event.getOperation().getDatabaseName();
+      this.prevTableName = event.getOperation().getPrevTableName();
+      this.tableName = event.getOperation().getTableName();
       this.primaryKey = event.getPrimaryKey();
     }
 
@@ -124,18 +119,23 @@ public class DDLEvent extends ChangeEvent {
       return this;
     }
 
-    public Builder setDatabase(String database) {
-      this.database = database;
+    public Builder setDatabaseName(String databaseName) {
+      this.databaseName = databaseName;
       return this;
     }
 
-    public Builder setPrevTable(String prevTable) {
-      this.prevTable = prevTable;
+    public Builder setSchemaName(String schemaName) {
+      this.schemaName = schemaName;
       return this;
     }
 
-    public Builder setTable(String table) {
-      this.table = table;
+    public Builder setPrevTableName(String prevTableName) {
+      this.prevTableName = prevTableName;
+      return this;
+    }
+
+    public Builder setTableName(String tableName) {
+      this.tableName = tableName;
       return this;
     }
 
@@ -147,11 +147,11 @@ public class DDLEvent extends ChangeEvent {
     public DDLEvent build() {
       DDLOperation ddlOperation;
       if (operation == DDLOperation.Type.RENAME_TABLE) {
-        ddlOperation = DDLOperation.createRenameTableOperation(prevTable, table);
+        ddlOperation = DDLOperation.createRenameTableOperation(databaseName, schemaName, prevTableName, tableName);
       } else {
-        ddlOperation = new DDLOperation(table, operation);
+        ddlOperation = new DDLOperation(databaseName, schemaName, tableName, operation);
       }
-      return new DDLEvent(offset, database, ddlOperation, schema, primaryKey, isSnapshot, sourceTimestampMillis);
+      return new DDLEvent(offset, ddlOperation, schema, primaryKey, isSnapshot, sourceTimestampMillis);
     }
   }
 }

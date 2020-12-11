@@ -80,8 +80,9 @@ public class FailureTarget implements DeltaTarget {
       public void applyDDL(Sequenced<DDLEvent> event) throws IOException, DeltaFailureException {
         DDLOperation ddlOperation = event.getEvent().getOperation();
         context.incrementCount(ddlOperation);
-        throwIfNeeded(event.getSequenceNumber(), event.getEvent().getDatabase(), ddlOperation.getTableName());
-        context.setTableReplicating(event.getEvent().getDatabase(), ddlOperation.getTableName());
+        throwIfNeeded(event.getSequenceNumber(), event.getEvent().getOperation().getDatabaseName(),
+          ddlOperation.getTableName());
+        context.setTableReplicating(event.getEvent().getOperation().getDatabaseName(), ddlOperation.getTableName());
         context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
       }
 
@@ -89,8 +90,9 @@ public class FailureTarget implements DeltaTarget {
       public void applyDML(Sequenced<DMLEvent> event) throws IOException, DeltaFailureException {
         DMLEvent dml = event.getEvent();
         context.incrementCount(dml.getOperation());
-        throwIfNeeded(event.getSequenceNumber(), dml.getDatabase(), dml.getOperation().getTableName());
-        context.setTableReplicating(dml.getDatabase(), dml.getOperation().getTableName());
+        throwIfNeeded(event.getSequenceNumber(), dml.getOperation().getDatabaseName(),
+          dml.getOperation().getTableName());
+        context.setTableReplicating(dml.getOperation().getDatabaseName(), dml.getOperation().getTableName());
         context.commitOffset(dml.getOffset(), event.getSequenceNumber());
       }
 
