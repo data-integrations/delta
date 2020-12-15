@@ -140,6 +140,7 @@ public class DMLEvent extends ChangeEvent {
       this.ingestTimestampMillis = event.getIngestTimestampMillis();
       this.isSnapshot = event.isSnapshot();
       this.sourceTimestampMillis = event.getSourceTimestampMillis();
+      this.rowId = event.getRowId();
     }
 
     public Builder setOperationType(DMLOperation.Type operationType) {
