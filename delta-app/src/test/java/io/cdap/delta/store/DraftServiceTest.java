@@ -178,7 +178,8 @@ public class DraftServiceTest extends SystemAppTestBase {
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable(
-      "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"))));
+      "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"),
+            new SourceColumn("suppressed", true))));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
@@ -191,6 +192,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
     columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
     columns.add(new ColumnDetail("age", JDBCType.INTEGER, true));
+    columns.add(new ColumnDetail("suppressed", JDBCType.INTEGER, true));
     Schema schema = Schema.recordOf(
       "taybull",
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
@@ -207,6 +209,11 @@ public class DraftServiceTest extends SystemAppTestBase {
                             .setSupport(ColumnSupport.NO)
                             .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
                             .build());
+    columnAssessments.add(ColumnAssessment.builder("suppressed", "int")
+                            .setSourceColumn("suppressed")
+                            .setSupport(ColumnSupport.PARTIAL)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
     TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
 
     MockTableAssessor mockAssessor = new MockTableAssessor(expectedTableAssessment);
@@ -215,7 +222,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaTarget mockTarget = new MockTarget(mockAssessor);
     Configurer mockConfigurer = new MockConfigurer(mockSource, mockTarget);
 
-    TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 2, 1, 0, null);
+    TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
                                                          Collections.emptyList(), Collections.emptyList());
     PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
