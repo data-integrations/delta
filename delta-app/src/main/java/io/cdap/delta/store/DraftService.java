@@ -280,7 +280,7 @@ public class DraftService {
           TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
                                                            targetTableAssessor);
           missingFeatures.addAll(assessment.getFeatures());
-          tableAssessments.add(summarize(db, sourceTable.getSchema(), table, assessment));
+          tableAssessments.add(summarize(db, sourceTable.getSchema(), sourceTable, assessment));
         } catch (TableNotFoundException e) {
           connectivityIssues.add(
             new Problem("Table Not Found",
@@ -464,7 +464,7 @@ public class DraftService {
     }
   }
 
-  private TableSummaryAssessment summarize(String db, @Nullable String schema, String table,
+  private TableSummaryAssessment summarize(String db, @Nullable String schema, SourceTable table,
     TableAssessmentResponse assessment) {
     int numUnsupported = 0;
     int numPartial = 0;
@@ -473,11 +473,19 @@ public class DraftService {
       if (columnAssessment.getSupport() == ColumnSupport.NO) {
         numUnsupported++;
       } else if (columnAssessment.getSupport() == ColumnSupport.PARTIAL) {
-        numPartial++;
+        Set<SourceColumn> columns = table.getColumns();
+        SourceColumn existingColumn = columns.stream()
+          .filter(column -> columnAssessment.getSourceName().equals(column.getName()))
+          .findAny()
+          .orElse(null);
+
+        if (existingColumn == null || !existingColumn.isSuppressWarning()) {
+          numPartial++;
+        }
       }
       numColumns++;
     }
-    return new TableSummaryAssessment(db, table, numColumns, numUnsupported, numPartial, schema);
+    return new TableSummaryAssessment(db, table.getTable(), numColumns, numUnsupported, numPartial, schema);
   }
 
   private DeltaConfig evaluateMacros(DraftId draftId, DeltaConfig config) {
