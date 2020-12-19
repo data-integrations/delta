@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
  * Standardized information about a source table. This contains the schema of data that the target will see after the
@@ -30,18 +31,30 @@ import java.util.Objects;
 public class StandardizedTableDetail {
   private final String database;
   private final String table;
+  private final String schemaName;
   private final List<String> primaryKey;
   private final Schema schema;
 
-  public StandardizedTableDetail(String database, String table, List<String> primaryKey, Schema schema) {
+  public StandardizedTableDetail(String database, @Nullable String schemaName, String table, List<String> primaryKey,
+    Schema schema) {
     this.database = database;
+    this.schemaName = schemaName;
     this.table = table;
     this.primaryKey = Collections.unmodifiableList(new ArrayList<>(primaryKey));
     this.schema = schema;
   }
 
+  public StandardizedTableDetail(String database, String table, List<String> primaryKey, Schema schema) {
+    this(database, null, table, primaryKey, schema);
+  }
+
   public String getDatabase() {
     return database;
+  }
+
+  @Nullable
+  public String getSchemaName() {
+    return schemaName;
   }
 
   public String getTable() {
@@ -65,14 +78,13 @@ public class StandardizedTableDetail {
       return false;
     }
     StandardizedTableDetail that = (StandardizedTableDetail) o;
-    return Objects.equals(database, that.database) &&
-      Objects.equals(table, that.table) &&
-      Objects.equals(primaryKey, that.primaryKey) &&
+    return Objects.equals(database, that.database) && Objects.equals(schemaName, that.schemaName) &&
+      Objects.equals(table, that.table) && Objects.equals(primaryKey, that.primaryKey) &&
       Objects.equals(schema, that.schema);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table, primaryKey, schema);
+    return Objects.hash(database, schemaName, table, primaryKey, schema);
   }
 }
