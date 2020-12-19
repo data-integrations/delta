@@ -52,6 +52,7 @@ public class StandardizedTableDetail {
     return database;
   }
 
+  @Nullable
   public String getSchemaName() {
     return schemaName;
   }
