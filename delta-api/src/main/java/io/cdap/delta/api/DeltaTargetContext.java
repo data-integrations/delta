@@ -69,6 +69,18 @@ public interface DeltaTargetContext extends DeltaRuntimeContext {
   void setTableError(String database, String table, ReplicationError error) throws IOException;
 
   /**
+   * Record that there are currently errors applying events to a specified table.
+   *
+   * @param database database that the table is in
+   * @param schema schema in which table is present. Can be {@code null} for the databases which don't support schema
+   * @param table table that is having errors
+   * @param error information about the error
+   * @throws IOException if there was an error persisting the change in state. This can only be thrown if there was
+   *   a change in state.
+   */
+  void setTableError(String database, @Nullable String schema, String table, ReplicationError error) throws IOException;
+
+  /**
    * Record that a table is being replicated. This should be called after the initial table snapshot has been applied,
    * and if there was a recovery from an error.
    *
