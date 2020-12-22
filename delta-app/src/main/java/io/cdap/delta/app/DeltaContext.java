@@ -16,6 +16,7 @@
 
 package io.cdap.delta.app;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.macro.InvalidMacroException;
 import io.cdap.cdap.api.macro.MacroEvaluator;
@@ -53,6 +54,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
   private static final String STATE_PREFIX = "state-";
   private static final String PROGRAM_METRIC_ENTITY = "ent";
+  private static final String DOT_SEPARATOR = ".";
   private final DeltaWorkerId id;
   private final String runId;
   private final Metrics metrics;
@@ -86,8 +88,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   @Override
   public void incrementCount(DMLOperation op) {
-    String tableName = op.getTableName();
-    getEventMetricsForTable(tableName).incrementDMLCount(op);
+    getEventMetricsForTable(op.getDatabaseName(), op.getSchemaName(), op.getTableName()).incrementDMLCount(op);
   }
 
   @Override
@@ -97,7 +98,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
       // This can happen for DDL operations such as CREATE_DATABASE
       return;
     }
-    getEventMetricsForTable(tableName).incrementDDLCount();
+    getEventMetricsForTable(op.getDatabaseName(), op.getSchemaName(), tableName).incrementDDLCount();
   }
 
   @Override
@@ -111,13 +112,20 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   @Override
   public void setTableError(String database, String table, ReplicationError error) throws IOException {
-    stateService.setTableError(new DBTable(database, table), error);
-    getEventMetricsForTable(table).incrementDMLErrorCount();
+    setTableError(database, null, table, error);
   }
 
-  private EventMetrics getEventMetricsForTable(String table) {
+  @Override
+  public void setTableError(String database, @Nullable String schema, String table,
+                            ReplicationError error) throws IOException {
+    stateService.setTableError(new DBTable(database, schema, table), error);
+    getEventMetricsForTable(database, schema, table).incrementDMLErrorCount();
+  }
+
+  private EventMetrics getEventMetricsForTable(String database, String schema, String table) {
+    String fullyQualifiedTableName = Joiner.on(DOT_SEPARATOR).skipNulls().join(database, schema, table);
     return tableEventMetrics.computeIfAbsent(
-      table, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, table))));
+      table, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, fullyQualifiedTableName))));
   }
 
   @Override
