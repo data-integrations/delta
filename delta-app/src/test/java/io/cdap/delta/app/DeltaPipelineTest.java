@@ -47,6 +47,7 @@ import io.cdap.delta.store.StateStore;
 import io.cdap.delta.test.DeltaPipelineTestBase;
 import io.cdap.delta.test.mock.FailureTarget;
 import io.cdap.delta.test.mock.FileEventConsumer;
+import io.cdap.delta.test.mock.MockErrorTarget;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
 import org.apache.hadoop.fs.Path;
@@ -571,6 +572,36 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     Tasks.waitFor((long) expected,
                   () -> getMetricsManager().getTotalMetric(tags, "user." + metric),
                   30, TimeUnit.SECONDS);
+  }
+
+  @Test
+  public void testErrorOnlyMetric() throws Exception {
+    File outputFolder = TMP_FOLDER.newFolder("testErrorOnlyMetric");
+
+    List<ChangeEvent> events = new ArrayList<>();
+    events.add(EVENT1);
+    events.add(createDMLEvent());
+    events.add(createDMLEvent());
+
+    String offsetBasePath = outputFolder.getAbsolutePath();
+    Stage source = new Stage("src", MockSource.getPlugin(events));
+    Stage target = new Stage("target", MockErrorTarget.getPlugin());
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(source)
+      .setTarget(target)
+      .setOffsetBasePath(offsetBasePath)
+      .build();
+
+    AppRequest<DeltaConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, config);
+    ApplicationId appId = NamespaceId.DEFAULT.app("testErrorOnlyMetric");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    WorkerManager manager = appManager.getWorkerManager(DeltaWorker.NAME);
+    manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
+
+    waitForMetric(appId, "dml.errors", 2);
+    manager.stop();
+    manager.waitForStopped(60, TimeUnit.SECONDS);
   }
 
   private void waitForMetric(ApplicationId appId, String metric, long loweBound, long upperBound)
