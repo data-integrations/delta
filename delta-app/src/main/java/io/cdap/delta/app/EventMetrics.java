@@ -28,7 +28,6 @@ import java.util.Map;
 public class EventMetrics {
   private final Metrics metrics;
   private final Map<DMLOperation.Type, Integer> dmlEventCounts;
-  private int dmlErrorCount;
   private int ddlEventCount;
   private long oldestTimeStampInMillis;
   private int bytesProcessed;
@@ -53,8 +52,8 @@ public class EventMetrics {
     ddlEventCount++;
   }
 
-  public synchronized void incrementDMLErrorCount() {
-    dmlErrorCount++;
+  public synchronized void emitDMLErrorMetric() {
+    metrics.count("dml.errors", 1);
   }
 
   public synchronized void emitMetrics() {
@@ -63,7 +62,6 @@ public class EventMetrics {
     }
 
     metrics.count("dml.data.processed.bytes", bytesProcessed);
-    metrics.count("dml.errors", dmlErrorCount);
     metrics.gauge("dml.latency.seconds", oldestTimeStampInMillis == 0L ? 0
       : (System.currentTimeMillis() - oldestTimeStampInMillis) / 1000);
     metrics.count("ddl", ddlEventCount);
@@ -72,7 +70,6 @@ public class EventMetrics {
 
   public synchronized void clear() {
     bytesProcessed = 0;
-    dmlErrorCount = 0;
     ddlEventCount = 0;
     oldestTimeStampInMillis = 0;
     for (DMLOperation.Type op : DMLOperation.Type.values()) {
