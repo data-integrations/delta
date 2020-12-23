@@ -25,7 +25,19 @@ public class TableNotFoundException extends Exception {
     super(String.format("Table '%s' in database '%s' was not found. %s", table, database, errorMessage));
   }
 
+  public TableNotFoundException(String database, String schema, String table, String errorMessage) {
+    super(String.format("Table '%s' in database '%s' and schema '%s' was not found. %s", table, database, schema,
+      errorMessage));
+  }
+
   public TableNotFoundException(String database, String table, String errorMessage, Throwable cause) {
     super(String.format("Table '%s' in database '%s' was not found. %s", table, database, errorMessage), cause);
+  }
+
+  public TableNotFoundException(String database, String schema, String table, String errorMessage, Throwable cause) {
+    super(String
+        .format("Table '%s' in database '%s' and schema 's%', was not found. %s", table, database, schema,
+          errorMessage),
+      cause);
   }
 }
