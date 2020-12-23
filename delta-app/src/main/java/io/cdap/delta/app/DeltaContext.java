@@ -119,7 +119,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   public void setTableError(String database, @Nullable String schema, String table,
                             ReplicationError error) throws IOException {
     stateService.setTableError(new DBTable(database, schema, table), error);
-    getEventMetricsForTable(database, schema, table).incrementDMLErrorCount();
+    getEventMetricsForTable(database, schema, table).emitDMLErrorMetric();
   }
 
   private EventMetrics getEventMetricsForTable(String database, String schema, String table) {
