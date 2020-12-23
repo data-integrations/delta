@@ -16,28 +16,33 @@
 
 package io.cdap.delta.api.assessment;
 
+import javax.annotation.Nullable;
+
 /**
  * Thrown when a table is unexpectedly not found.
  */
 public class TableNotFoundException extends Exception {
 
   public TableNotFoundException(String database, String table, String errorMessage) {
-    super(String.format("Table '%s' in database '%s' was not found. %s", table, database, errorMessage));
+    this(database, null, table, errorMessage);
   }
 
-  public TableNotFoundException(String database, String schema, String table, String errorMessage) {
-    super(String.format("Table '%s' in database '%s' and schema '%s' was not found. %s", table, database, schema,
-      errorMessage));
+  public TableNotFoundException(String database, @Nullable String schema, String table, String errorMessage) {
+    super(buildErrorMessage(database, schema, table, errorMessage));
   }
 
   public TableNotFoundException(String database, String table, String errorMessage, Throwable cause) {
-    super(String.format("Table '%s' in database '%s' was not found. %s", table, database, errorMessage), cause);
+    this(database, null, table, errorMessage, cause);
   }
 
-  public TableNotFoundException(String database, String schema, String table, String errorMessage, Throwable cause) {
-    super(String
-        .format("Table '%s' in database '%s' and schema 's%', was not found. %s", table, database, schema,
-          errorMessage),
-      cause);
+  public TableNotFoundException(String database, @Nullable String schema, String table, String errorMessage,
+    Throwable cause) {
+    super(buildErrorMessage(database, schema, table, errorMessage), cause);
+  }
+
+  private static String buildErrorMessage(String database, @Nullable String schema, String table,
+    String errorMessage) {
+    String schemaInfo = schema == null ? "" : String.format("and schema '%s' ", schema);
+    return String.format("Table '%s' in database '%s' %swas not found. %s", table, database, schemaInfo, errorMessage);
   }
 }
