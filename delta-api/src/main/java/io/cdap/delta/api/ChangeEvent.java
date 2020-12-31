@@ -48,6 +48,12 @@ public abstract class ChangeEvent {
     return changeType;
   }
 
+  /**
+   *
+   * {@link SourceProperties.Ordering#UN_ORDERED unordered} should return a non null value.
+   * and this value should be able to identify the order of the event.
+   * @return the time that indicate when this event was committed on the source
+   */
   @Nullable
   public Long getSourceTimestampMillis() {
     return sourceTimestampMillis;
