@@ -113,6 +113,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   @BeforeClass
   public static void setupTest() throws Exception {
     setupArtifacts(DeltaApp.class);
+    enableCapability();
   }
 
   @Test
