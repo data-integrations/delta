@@ -26,6 +26,8 @@ import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.Sequenced;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DBTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,7 @@ import java.util.stream.Collectors;
  * If emitting an event is interrupted, all subsequent emit calls will be no-ops.
  */
 public class QueueingEventEmitter implements EventEmitter {
+  private static final Logger LOG = LoggerFactory.getLogger(QueueingEventEmitter.class);
   private final Set<DMLOperation.Type> dmlBlacklist;
   private final Set<DDLOperation.Type> ddlBlacklist;
   private final Map<DBTable, SourceTable> tableDefinitions;
@@ -65,6 +68,7 @@ public class QueueingEventEmitter implements EventEmitter {
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+      LOG.info("DDL seq: {}, type: {}", sequenceNumber, event.getOperation().getType());
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events
@@ -80,6 +84,7 @@ public class QueueingEventEmitter implements EventEmitter {
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+      LOG.info("DML seq: {}, id: {}", sequenceNumber, event.getRow().get("id"));
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events

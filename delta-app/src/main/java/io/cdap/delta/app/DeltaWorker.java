@@ -430,8 +430,8 @@ public class DeltaWorker extends AbstractWorker {
     offset = offsetAndSequence.getOffset();
     QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, offsetAndSequence.getSequenceNumber(),
                                                             eventQueue);
-
-    LOG.info("Starting from last committed offset {}", offset.get());
+    LOG.info("Starting from last committed offset {} and sequence number {}", offset.get(),
+             offsetAndSequence.getSequenceNumber());
 
     eventReader = source.createReader(readerDefinition, deltaContext, emitter);
     eventConsumer = target.createConsumer(deltaContext);
