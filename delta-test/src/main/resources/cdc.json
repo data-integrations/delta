@@ -1,0 +1,9 @@
+{
+  "label": "Enable cdc capability",
+  "status": "ENABLED",
+  "capability": "cdc",
+  "applications": [
+  ],
+  "programs": [
+  ]
+}

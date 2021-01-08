@@ -16,6 +16,9 @@
 
 package io.cdap.delta.test;
 
+import com.google.common.io.ByteStreams;
+import com.google.common.io.Files;
+import com.google.common.io.Resources;
 import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.api.plugin.PluginClass;
 import io.cdap.cdap.proto.id.ArtifactId;
@@ -27,8 +30,12 @@ import io.cdap.delta.test.mock.MockErrorTarget;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test base for delta pipelines.
@@ -60,5 +67,14 @@ public class DeltaPipelineTestBase extends TestBase {
     pluginClasses.add(FailureTarget.PLUGIN_CLASS);
     addPluginArtifact(mocksArtifactId, ARTIFACT_ID, pluginClasses,
                       MockSource.class, MockTarget.class, MockErrorTarget.class, FailureTarget.class);
+  }
+
+  protected static void enableCapability() throws IOException, InterruptedException {
+    String capabilityFolder = getConfiguration().get("capability.config.dir");
+    String cdcFile = "cdc.json";
+    URL url = DeltaPipelineTestBase.class.getClassLoader().getResource(cdcFile);
+    File outFile = new File(capabilityFolder, cdcFile);
+    ByteStreams.copy(Resources.newInputStreamSupplier(url), Files.newOutputStreamSupplier(outFile));
+    Thread.sleep(TimeUnit.MINUTES.toMillis(1));
   }
 }

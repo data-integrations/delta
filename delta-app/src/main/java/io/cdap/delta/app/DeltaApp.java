@@ -16,6 +16,7 @@
 
 package io.cdap.delta.app;
 
+import io.cdap.cdap.api.annotation.Requirements;
 import io.cdap.cdap.api.app.AbstractApplication;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
@@ -29,6 +30,7 @@ import io.cdap.delta.proto.Stage;
 /**
  * App for Delta pipelines.
  */
+@Requirements(capabilities = "cdc")
 public class DeltaApp extends AbstractApplication<DeltaConfig> {
 
   @Override
