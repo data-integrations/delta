@@ -30,6 +30,7 @@ public class SystemServicePropertyEvaluator implements PropertyEvaluator {
   private static final MacroParserOptions OPTIONS = MacroParserOptions.builder()
     .disableLookups()
     .setFunctionWhitelist(DefaultMacroEvaluator.SECURE_FUNCTION_NAME)
+    .setEscaping(false)
     .build();
   private final SystemHttpServiceContext context;
 
