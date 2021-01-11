@@ -18,13 +18,7 @@ package io.cdap.delta.test;
 
 import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.api.plugin.PluginClass;
-import io.cdap.cdap.api.retry.RetryableException;
-import io.cdap.cdap.common.ApplicationNotFoundException;
-import io.cdap.cdap.common.service.Retries;
-import io.cdap.cdap.common.service.RetryStrategies;
 import io.cdap.cdap.proto.id.ArtifactId;
-import io.cdap.cdap.proto.id.NamespaceId;
-import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.TestBase;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.assessment.TableDetail;
@@ -35,7 +29,6 @@ import io.cdap.delta.test.mock.MockTarget;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Test base for delta pipelines.
@@ -46,7 +39,6 @@ public class DeltaPipelineTestBase extends TestBase {
                                                                                 ARTIFACT_ID.getVersion());
 
   protected static void setupArtifacts(Class<?> appClass) throws Exception {
-    addAppArtifact(new ArtifactId("system", "delta-app", "1.0.0"), appClass);
     // add the app artifact
     addAppArtifact(ARTIFACT_ID, appClass,
                    // these are the packages that should be exported so that they are visible to plugins
@@ -69,27 +61,9 @@ public class DeltaPipelineTestBase extends TestBase {
     addPluginArtifact(mocksArtifactId, ARTIFACT_ID, pluginClasses,
                       MockSource.class, MockTarget.class, MockErrorTarget.class, FailureTarget.class);
     enableCapability("cdc");
-    ApplicationManager applicationManager = getApplicationManager(NamespaceId.SYSTEM.app("delta"));
-    Retries.callWithRetries(() -> {
-      try {
-        applicationManager.getInfo();
-        return null;
-      } catch (ApplicationNotFoundException exception) {
-        throw new RetryableException(String.format("Delta app not yet deployed"));
-      }
-    }, RetryStrategies.limit(10, RetryStrategies.fixDelay(15, TimeUnit.SECONDS)));
   }
 
   protected static void removeArtifacts() throws Exception {
     removeCapability("cdc");
-    ApplicationManager applicationManager = getApplicationManager(NamespaceId.SYSTEM.app("delta"));
-    Retries.callWithRetries(() -> {
-      try {
-        applicationManager.getInfo();
-        throw new RetryableException(String.format("Delta app not yet removed"));
-      } catch (ApplicationNotFoundException exception) {
-        return true;
-      }
-    }, RetryStrategies.limit(10, RetryStrategies.fixDelay(15, TimeUnit.SECONDS)));
   }
 }
