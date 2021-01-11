@@ -20,6 +20,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import io.cdap.cdap.api.NamespaceSummary;
+import io.cdap.cdap.api.macro.MacroEvaluator;
+import io.cdap.cdap.api.macro.MacroParserOptions;
 import io.cdap.cdap.api.plugin.PluginConfigurer;
 import io.cdap.cdap.api.service.http.AbstractSystemHttpServiceHandler;
 import io.cdap.cdap.api.service.http.HttpServiceRequest;
@@ -42,12 +44,13 @@ import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.StateRequest;
 import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.proto.TableReplicationState;
+import io.cdap.delta.store.DefaultMacroEvaluator;
 import io.cdap.delta.store.Draft;
 import io.cdap.delta.store.DraftId;
 import io.cdap.delta.store.DraftService;
 import io.cdap.delta.store.Namespace;
+import io.cdap.delta.store.PropertyEvaluator;
 import io.cdap.delta.store.StateStore;
-import io.cdap.delta.store.SystemServicePropertyEvaluator;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -57,6 +60,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -309,7 +313,15 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
     }
 
     try {
-      endpoint.respond(new DraftService(context, new SystemServicePropertyEvaluator(context)), namespace);
+      endpoint.respond(new DraftService(context, new PropertyEvaluator() {
+        @Override
+        public Map<String, String> evaluate(String namespace, Map<String, String> properties) {
+          MacroEvaluator macroEvaluator = new DefaultMacroEvaluator(context.getRuntimeArguments(), context, namespace);
+          return context.evaluateMacros(namespace, properties, macroEvaluator,
+            MacroParserOptions.builder().disableLookups()
+              .setFunctionWhitelist(DefaultMacroEvaluator.SECURE_FUNCTION_NAME).setEscaping(false).build());
+        }
+      }), namespace);
     } catch (CodedException e) {
       responder.sendError(e.getCode(), e.getMessage());
     } catch (TableNotFoundException e) {
