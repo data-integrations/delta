@@ -51,6 +51,7 @@ import io.cdap.delta.test.mock.MockErrorTarget;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
 import org.apache.hadoop.fs.Path;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -113,6 +114,11 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
   @BeforeClass
   public static void setupTest() throws Exception {
     setupArtifacts(DeltaApp.class);
+  }
+
+  @AfterClass
+  public static void teardown() throws Exception {
+    removeArtifacts();
   }
 
   @Test
