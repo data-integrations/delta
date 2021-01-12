@@ -60,5 +60,10 @@ public class DeltaPipelineTestBase extends TestBase {
     pluginClasses.add(FailureTarget.PLUGIN_CLASS);
     addPluginArtifact(mocksArtifactId, ARTIFACT_ID, pluginClasses,
                       MockSource.class, MockTarget.class, MockErrorTarget.class, FailureTarget.class);
+    enableCapability("cdc");
+  }
+
+  protected static void removeArtifacts() throws Exception {
+    removeCapability("cdc");
   }
 }
