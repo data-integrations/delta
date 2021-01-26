@@ -62,7 +62,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
     @Override
     public void put(Sequenced<? extends ChangeEvent> event) throws InterruptedException {
-      final ReentrantLock lock = this.lock;
       lock.lockInterruptibly();
       try {
         int eventSize = computeSize(event);
@@ -78,7 +77,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
     @Override
     public boolean offer(Sequenced<? extends ChangeEvent> event) {
-      final ReentrantLock lock = this.lock;
       lock.lock();
       try {
         int eventSize = computeSize(event);
