@@ -36,6 +36,7 @@ public class DMLEvent extends ChangeEvent {
   private final String transactionId;
   private final long ingestTimestampMillis;
   private final String rowId;
+  private int sizeInBytes;
 
   private DMLEvent(Offset offset, DMLOperation operation, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
@@ -47,6 +48,7 @@ public class DMLEvent extends ChangeEvent {
     this.transactionId = transactionId;
     this.ingestTimestampMillis = ingestTimestampMillis;
     this.rowId = rowId;
+    this.sizeInBytes = -1;
   }
 
   public DMLOperation getOperation() {
@@ -76,6 +78,14 @@ public class DMLEvent extends ChangeEvent {
   @Nullable
   public String getRowId() {
     return rowId;
+  }
+
+  public int getSizeInBytes() {
+    if (sizeInBytes < 0) {
+      // the size of all other fields are fixed, only return the dynamic size of row and previousRow
+      sizeInBytes = operation.getSizeInBytes() + computeSizeInBytes(previousRow);
+    }
+    return sizeInBytes;
   }
 
   @Override
@@ -110,6 +120,52 @@ public class DMLEvent extends ChangeEvent {
 
   public static Builder builder() {
     return new Builder();
+  }
+
+  private static int computeSizeInBytes(StructuredRecord row) {
+    if (row == null) {
+      return 0;
+    }
+    List<Schema.Field> fields = row.getSchema().getFields();
+    if (fields == null) {
+      return 0;
+    }
+    int sizeInBytes = 0;
+    for (Schema.Field field : fields) {
+      Schema fieldSchema = field.getSchema();
+      fieldSchema = fieldSchema.isNullable() ? fieldSchema.getNonNullable() : fieldSchema;
+      Object value = row.get(field.getName());
+      if (value == null) {
+        continue;
+      }
+      switch (fieldSchema.getType()) {
+        case BOOLEAN:
+          sizeInBytes += 1;
+          break;
+        case INT:
+        case FLOAT:
+        case ENUM:
+          sizeInBytes += 4;
+          break;
+        case LONG:
+        case DOUBLE:
+          sizeInBytes += 8;
+          break;
+        case BYTES:
+          if (value instanceof ByteBuffer) {
+            sizeInBytes += Bytes.toBytes((ByteBuffer) value).length;
+          } else {
+            sizeInBytes += ((byte[]) value).length;
+          }
+          break;
+        case STRING:
+          sizeInBytes += ((String) value).getBytes(StandardCharsets.UTF_8).length;
+          break;
+        default:
+          break;
+      }
+    }
+    return sizeInBytes;
   }
 
   /**
@@ -197,47 +253,5 @@ public class DMLEvent extends ChangeEvent {
         previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
     }
 
-    private int computeSizeInBytes(StructuredRecord row) {
-      List<Schema.Field> fields = row.getSchema().getFields();
-      if (fields == null) {
-        return 0;
-      }
-      int sizeInBytes = 0;
-      for (Schema.Field field : fields) {
-        Schema fieldSchema = field.getSchema();
-        fieldSchema = fieldSchema.isNullable() ? fieldSchema.getNonNullable() : fieldSchema;
-        Object value = row.get(field.getName());
-        if (value == null) {
-          continue;
-        }
-        switch (fieldSchema.getType()) {
-          case BOOLEAN:
-            sizeInBytes += 1;
-            break;
-          case INT:
-          case FLOAT:
-          case ENUM:
-            sizeInBytes += 4;
-            break;
-          case LONG:
-          case DOUBLE:
-            sizeInBytes += 8;
-            break;
-          case BYTES:
-            if (value instanceof ByteBuffer) {
-              sizeInBytes += Bytes.toBytes((ByteBuffer) value).length;
-            } else {
-              sizeInBytes += ((byte[]) value).length;
-            }
-            break;
-          case STRING:
-            sizeInBytes += ((String) value).getBytes(StandardCharsets.UTF_8).length;
-            break;
-          default:
-            break;
-        }
-      }
-      return sizeInBytes;
-    }
   }
 }
