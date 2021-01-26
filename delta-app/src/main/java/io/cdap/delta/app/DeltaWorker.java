@@ -79,6 +79,7 @@ public class DeltaWorker extends AbstractWorker {
   private static final String GENERATION = "generation";
   private static final String TABLE_ASSIGNMENTS = "table.assignments";
   private static final String EVENT_QUEUE_SIZE = "event.queue.size";
+  private static final String EVENT_QUEUE_CAPACITY = "event.queue.capacity";
   private static final String SOURCE_PROPERTIES = "source.properties";
   private static final Type TABLE_ASSIGNMENTS_TYPE = new TypeToken<Map<Integer, Set<TableId>>>() { }.getType();
 
@@ -102,6 +103,7 @@ public class DeltaWorker extends AbstractWorker {
   private int maxRetrySeconds;
   private int retryDelaySeconds;
   private int eventQueueSize;
+  private long eventQueueCapacity;
 
   // no-arg constructor required to initialize the shouldStop variable, since CDAP calls the no-arg constructor
   // and sets fields through reflection.
@@ -204,9 +206,9 @@ public class DeltaWorker extends AbstractWorker {
                                                  config.getDmlBlacklist(),
                                                  config.getDdlBlacklist());
     // Use a small queue size by default since we want to prioritize reliability (avoid OOM)
-    // TODO: (CDAP-16755) block on event size instead of number of events.
     eventQueueSize = Integer.parseInt(context.getRuntimeArguments().getOrDefault(EVENT_QUEUE_SIZE, "10"));
-    eventQueue = new ArrayBlockingQueue<>(eventQueueSize);
+    eventQueueCapacity = Long.parseLong(context.getRuntimeArguments().getOrDefault(EVENT_QUEUE_CAPACITY, "10000000"));
+    eventQueue = new CapacityBoundedEventQueue(eventQueueSize, eventQueueCapacity);
   }
 
   @Override
@@ -423,7 +425,7 @@ public class DeltaWorker extends AbstractWorker {
     // reader as well as those from the new reader.
     // To protect against this, a new queue is created and the worker switches over completely to only read from
     // this new queue. The old misbehaving reader will just block forever when its queue is full.
-    eventQueue = new ArrayBlockingQueue<>(eventQueueSize);
+    eventQueue = new CapacityBoundedEventQueue(eventQueueSize, eventQueueCapacity);
     deltaContext.clearMetrics();
 
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
