@@ -83,7 +83,7 @@ public class DMLEvent extends ChangeEvent {
   public int getSizeInBytes() {
     if (sizeInBytes < 0) {
       // the size of all other fields are fixed, only return the dynamic size of row and previousRow
-     sizeInBytes = operation.getSizeInBytes() + computeSizeInBytes(previousRow);
+      sizeInBytes = operation.getSizeInBytes() + computeSizeInBytes(previousRow);
     }
     return sizeInBytes;
   }
