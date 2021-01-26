@@ -34,28 +34,22 @@ import java.util.concurrent.locks.ReentrantLock;
    */
   public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? extends ChangeEvent>> {
 
-    private final long capacityLimit;
-    private long capacity;
+    private final long capacity;
+    private long usage;
     /** Main lock guarding all access */
     private final ReentrantLock lock;
     /** Condition for waiting puts */
     private final Condition notFull;
 
-    public CapacityBoundedEventQueue(int queueSize, long capcityLimit) {
+    public CapacityBoundedEventQueue(int queueSize, long capacity) {
       super(queueSize);
-      this.capacityLimit = capcityLimit;
-      this.capacity = 0;
+      this.capacity = capacity;
+      this.usage = 0;
       this.lock = new ReentrantLock();
       this.notFull = lock.newCondition();
     }
 
-    private static void checkNotNull(Sequenced<? extends ChangeEvent> event) {
-      if (event == null) {
-        throw new NullPointerException();
-      }
-    }
-
-    private static int computeCapacity(Sequenced<? extends ChangeEvent> event) {
+    private static int computeSize(Sequenced<? extends ChangeEvent> event) {
       if (event == null) {
         return 0;
       }
@@ -68,16 +62,15 @@ import java.util.concurrent.locks.ReentrantLock;
 
     @Override
     public void put(Sequenced<? extends ChangeEvent> event) throws InterruptedException {
-      checkNotNull(event);
       final ReentrantLock lock = this.lock;
       lock.lockInterruptibly();
       try {
-        int eventCapacity = computeCapacity(event);
-        while (capacity + eventCapacity > capacityLimit) {
+        int eventSize = computeSize(event);
+        while (size() > 0 && usage + eventSize > capacity) {
           notFull.await();
         }
         super.put(event);
-        capacity += eventCapacity;
+        usage += eventSize;
       } finally {
         lock.unlock();
       }
@@ -85,16 +78,15 @@ import java.util.concurrent.locks.ReentrantLock;
 
     @Override
     public boolean offer(Sequenced<? extends ChangeEvent> event) {
-      checkNotNull(event);
       final ReentrantLock lock = this.lock;
       lock.lock();
       try {
-        int eventCapacity = computeCapacity(event);
-        if (capacity + eventCapacity > capacityLimit) {
+        int eventSize = computeSize(event);
+        if (size() > 0 && usage + eventSize > capacity) {
           return false;
         } else {
           boolean result = super.offer(event);
-          capacity += eventCapacity;
+          usage += eventSize;
           return result;
         }
       } finally {
@@ -105,20 +97,18 @@ import java.util.concurrent.locks.ReentrantLock;
     @Override
     public boolean offer(Sequenced<? extends ChangeEvent> event, long timeout, TimeUnit unit)
       throws InterruptedException {
-      checkNotNull(event);
       long nanos = unit.toNanos(timeout);
-      final ReentrantLock lock = this.lock;
       lock.lockInterruptibly();
       try {
-        int eventCapacity = computeCapacity(event);
-        while (capacity + eventCapacity > capacityLimit) {
+        int eventSize = computeSize(event);
+        while (size() > 0 && usage + eventSize > capacity) {
           if (nanos <= 0) {
             return false;
           }
           nanos = notFull.awaitNanos(nanos);
         }
         boolean result = super.offer(event, nanos, TimeUnit.NANOSECONDS);
-        capacity += eventCapacity;
+        usage += eventSize;
         return result;
       } finally {
         lock.unlock();
@@ -127,53 +117,51 @@ import java.util.concurrent.locks.ReentrantLock;
 
     @Override
     public Sequenced<? extends ChangeEvent> poll() {
-      final ReentrantLock lock = this.lock;
-      lock.lock();
-      try {
-        Sequenced<? extends ChangeEvent> event = super.poll();
-        int eventCapacity = computeCapacity(event);
-        if (eventCapacity > 0) {
-          capacity -= eventCapacity;
+      Sequenced<? extends ChangeEvent> event = super.poll();
+      int eventSize = computeSize(event);
+
+      if (eventSize > 0) {
+        lock.lock();
+        try {
+          usage -= eventSize;
           notFull.signal();
+        } finally {
+          lock.unlock();
         }
-        return event;
-      } finally {
-        lock.unlock();
       }
+      return event;
     }
 
     @Override
     public Sequenced<? extends ChangeEvent> take() throws InterruptedException {
-      final ReentrantLock lock = this.lock;
-      lock.lockInterruptibly();
-      try {
-        Sequenced<? extends ChangeEvent> event = super.take();
-        int eventCapacity = computeCapacity(event);
-        if (eventCapacity > 0) {
-          capacity -= eventCapacity;
+      Sequenced<? extends ChangeEvent> event = super.take();
+      int eventSize = computeSize(event);
+      if (eventSize > 0) {
+        lock.lockInterruptibly();
+        try {
+          usage -= eventSize;
           notFull.signal();
+        } finally {
+          lock.unlock();
         }
-        return event;
-      } finally {
-        lock.unlock();
       }
+      return event;
     }
 
     @Override
     public Sequenced<? extends ChangeEvent> poll(long timeout, TimeUnit unit) throws InterruptedException {
       long nanos = unit.toNanos(timeout);
-      final ReentrantLock lock = this.lock;
-      lock.lockInterruptibly();
-      try {
-        Sequenced<? extends ChangeEvent> event = super.poll(timeout, unit);
-        int eventCapacity = computeCapacity(event);
-        if (eventCapacity > 0) {
-          capacity -= eventCapacity;
+      Sequenced<? extends ChangeEvent> event = super.poll(timeout, unit);
+      int eventSize = computeSize(event);
+      if (eventSize > 0) {
+        lock.lockInterruptibly();
+        try {
+          usage -= eventSize;
           notFull.signal();
+        } finally {
+          lock.unlock();
         }
-        return event;
-      } finally {
-        lock.unlock();
       }
+      return event;
     }
   }

@@ -36,6 +36,7 @@ public class DMLEvent extends ChangeEvent {
   private final String transactionId;
   private final long ingestTimestampMillis;
   private final String rowId;
+  private int sizeInBytes;
 
   private DMLEvent(Offset offset, DMLOperation operation, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
@@ -47,6 +48,7 @@ public class DMLEvent extends ChangeEvent {
     this.transactionId = transactionId;
     this.ingestTimestampMillis = ingestTimestampMillis;
     this.rowId = rowId;
+    this.sizeInBytes = -1;
   }
 
   public DMLOperation getOperation() {
@@ -79,8 +81,11 @@ public class DMLEvent extends ChangeEvent {
   }
 
   public int getSizeInBytes() {
-    // the size of all other fields are fixed, only return the dynamic size of row and previousRow
-    return operation.getSizeInBytes() + computeSizeInBytes(previousRow);
+    if (sizeInBytes < 0) {
+      // the size of all other fields are fixed, only return the dynamic size of row and previousRow
+     sizeInBytes = operation.getSizeInBytes() + computeSizeInBytes(previousRow);
+    }
+    return sizeInBytes;
   }
 
   @Override
