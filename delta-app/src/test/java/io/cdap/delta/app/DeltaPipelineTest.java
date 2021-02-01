@@ -16,6 +16,7 @@
 
 package io.cdap.delta.app;
 
+import io.cdap.cdap.api.app.ApplicationUpdateResult;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.conf.Constants;
@@ -33,12 +34,16 @@ import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaPipelineId;
+import io.cdap.delta.api.DeltaSource;
+import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.ParallelismConfig;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
+import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.RetryConfig;
 import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableReplicationState;
@@ -47,6 +52,7 @@ import io.cdap.delta.store.StateStore;
 import io.cdap.delta.test.DeltaPipelineTestBase;
 import io.cdap.delta.test.mock.FailureTarget;
 import io.cdap.delta.test.mock.FileEventConsumer;
+import io.cdap.delta.test.mock.MockApplicationUpdateContext;
 import io.cdap.delta.test.mock.MockErrorTarget;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
@@ -608,6 +614,39 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     waitForMetric(appId, "dml.errors", 2);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
+  }
+
+  @Test
+  public void testApplicationUpgrade() throws Exception {
+    Artifact originalSource = new Artifact("mysql-connector", "0.3.0-SNAPSHOT", "SYSTEM");
+    Artifact originalTarget = new Artifact("bq-connector", "0.3.0-SNAPSHOT", "SYSTEM");
+
+    // Upgraded artifacts have version bumped
+    Artifact upgradedSource = new Artifact("mysql-connector", "0.3.1-SNAPSHOT", "SYSTEM");
+    Artifact upgradedTarget = new Artifact("bq-connector", "0.3.1-SNAPSHOT", "SYSTEM");
+    Stage source = new Stage("source", new Plugin("source", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(),
+                                                  originalSource));
+    Stage target = new Stage("target", new Plugin("target", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(),
+                                                  originalTarget));
+
+    DeltaConfig originalConfig = DeltaConfig.builder().setSource(source).setTarget(target).build();
+    MockApplicationUpdateContext updateContext = new MockApplicationUpdateContext(originalConfig, upgradedSource,
+                                                                                  upgradedTarget);
+    ApplicationUpdateResult<DeltaConfig> updatedDeltaConfig = new DeltaApp().updateConfig(updateContext);
+    List<Stage> stages = updatedDeltaConfig.getNewConfig().getStages();
+    Assert.assertEquals(2, stages.size());
+    for (Stage stage : stages) {
+      switch (stage.getPlugin().getType()) {
+        case DeltaSource.PLUGIN_TYPE:
+          Assert.assertEquals(upgradedSource, stage.getPlugin().getArtifact());
+          break;
+        case DeltaTarget.PLUGIN_TYPE:
+          Assert.assertEquals(upgradedTarget, stage.getPlugin().getArtifact());
+          break;
+        default:
+          Assert.fail("Unknown plugin type found!");
+      }
+    }
   }
 
   private void waitForMetric(ApplicationId appId, String metric, long loweBound, long upperBound)

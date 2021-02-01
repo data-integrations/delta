@@ -18,6 +18,8 @@ package io.cdap.delta.app;
 
 import io.cdap.cdap.api.annotation.Requirements;
 import io.cdap.cdap.api.app.AbstractApplication;
+import io.cdap.cdap.api.app.ApplicationUpdateContext;
+import io.cdap.cdap.api.app.ApplicationUpdateResult;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
@@ -71,4 +73,11 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
                      PluginProperties.builder().addAll(stageConf.getPlugin().getProperties()).build());
   }
 
+  @Override
+  public ApplicationUpdateResult<DeltaConfig> updateConfig(ApplicationUpdateContext updateContext)
+    throws Exception {
+    DeltaConfig currentConfig = updateContext.getConfig(DeltaConfig.class);
+    DeltaConfig updatedConfig = currentConfig.updateConfig(updateContext);
+    return new ApplicationUpdateResult<>(updatedConfig);
+  }
 }
