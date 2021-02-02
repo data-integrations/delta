@@ -18,6 +18,7 @@ package io.cdap.delta.proto;
 
 import io.cdap.cdap.api.Config;
 import io.cdap.cdap.api.Resources;
+import io.cdap.cdap.api.app.ApplicationUpdateContext;
 import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaSource;
@@ -209,6 +210,24 @@ public class DeltaConfig extends Config {
   public int hashCode() {
     return Objects.hash(description, stages, connections, resources, offsetBasePath, tables,
                         dmlBlacklist, ddlBlacklist, service);
+  }
+
+  /**
+   * Updates current DeltaConfig by running update actions provided in context such as upgrading plugin artifact
+   * versions.
+   *
+   * @param upgradeContext Context for performing update for current delta config.
+   * @return a new (updated) delta config after performing update operations.
+   */
+  public DeltaConfig updateConfig(ApplicationUpdateContext upgradeContext)
+    throws Exception {
+    List<Stage> upgradedStages = new ArrayList<>();
+    // Upgrade all stages.
+    for (Stage stage : getStages()) {
+      upgradedStages.add(stage.updateStage(upgradeContext));
+    }
+    return new DeltaConfig(description, upgradedStages, connections, resources, offsetBasePath,
+                           tables, dmlBlacklist, ddlBlacklist, retries, parallelism);
   }
 
   public static Builder builder() {
