@@ -26,9 +26,7 @@ import java.util.Map;
  * Evaluates macros in a map of properties.
  */
 public class SystemServicePropertyEvaluator implements PropertyEvaluator {
-  // only evaluate secure lookup macros
   private static final MacroParserOptions OPTIONS = MacroParserOptions.builder()
-    .disableLookups()
     .setFunctionWhitelist(DefaultMacroEvaluator.SECURE_FUNCTION_NAME)
     .setEscaping(false)
     .build();
