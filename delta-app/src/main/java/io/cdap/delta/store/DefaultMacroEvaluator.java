@@ -43,11 +43,10 @@ public class DefaultMacroEvaluator implements MacroEvaluator {
   @Override
   @Nullable
   public String lookup(String property) {
-    String val = runtimeArgs.get(property);
-    if (val == null) {
-      throw new InvalidMacroException(String.format("Argument '%s' is not defined.", property));
-    }
-    return val;
+    String msg = String.format("Macro cannot be resolved for property '%s' as macro resolution is not supported " +
+                                 "for replication pipelines. Only secure store macro functions are supported.",
+                               property);
+    throw new InvalidMacroException(msg);
   }
 
   @Override
