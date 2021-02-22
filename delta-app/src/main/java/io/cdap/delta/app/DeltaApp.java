@@ -74,6 +74,11 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
   }
 
   @Override
+  public boolean isUpdateSupported() {
+    return true;
+  }
+
+  @Override
   public ApplicationUpdateResult<DeltaConfig> updateConfig(ApplicationUpdateContext updateContext)
     throws Exception {
     DeltaConfig currentConfig = updateContext.getConfig(DeltaConfig.class);
