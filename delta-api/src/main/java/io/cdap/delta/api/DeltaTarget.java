@@ -33,6 +33,16 @@ public interface DeltaTarget extends TableAssessorSupplier<StandardizedTableDeta
   void configure(Configurer configurer);
 
   /**
+   * Initialize the Delta Target stage. This is called after the application is deployed, whenever
+   * the program is initialized.
+   *
+   * @param context {@link DeltaTargetContext}
+   * @throws Exception if there is any error during initialization
+   */
+  default void initialize(DeltaTargetContext context) throws Exception {
+  }
+
+  /**
    * Create an event consumer that applies change events to the target system.
    *
    * @param context target context that provides access to application information and offset persistence

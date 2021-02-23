@@ -62,7 +62,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -184,6 +183,7 @@ public class DeltaWorker extends AbstractWorker {
     source = context.newPluginInstance(sourceName, macroEvaluator);
     source.initialize(deltaContext);
     target = context.newPluginInstance(targetName, macroEvaluator);
+    target.initialize(deltaContext);
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
     offset = offsetAndSequence.getOffset();
 

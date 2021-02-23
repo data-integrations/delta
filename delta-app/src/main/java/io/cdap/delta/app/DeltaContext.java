@@ -67,6 +67,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final AtomicReference<Throwable> failure;
   private final SourceProperties sourceProperties;
   private final Set<SourceTable> tables;
+  private long sequenceNumber;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                PluginContext pluginContext, PipelineStateService stateService,
@@ -150,7 +151,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   OffsetAndSequence loadOffset() throws IOException {
     OffsetAndSequence offset = stateStore.readOffset(id);
-    return offset == null ? new OffsetAndSequence(new Offset(Collections.emptyMap()), 0L) : offset;
+    return offset == null ? new OffsetAndSequence(new Offset(Collections.emptyMap()), sequenceNumber) : offset;
   }
 
   @Override
@@ -238,6 +239,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void setOK() throws IOException {
     stateService.setSourceOK();
+  }
+
+  @Override
+  public void initializeSequenceNumber(long sequenceNumber) {
+    this.sequenceNumber = sequenceNumber;
   }
 
   @Override
