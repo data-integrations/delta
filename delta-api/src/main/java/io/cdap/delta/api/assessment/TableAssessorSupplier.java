@@ -17,6 +17,9 @@
 package io.cdap.delta.api.assessment;
 
 import io.cdap.delta.api.Configurer;
+import io.cdap.delta.api.SourceTable;
+
+import java.util.List;
 
 /**
  * Creates TableAssessors
@@ -33,4 +36,17 @@ public interface TableAssessorSupplier<T> {
    * @throws Exception if the table assessor could not be created
    */
   TableAssessor<T> createTableAssessor(Configurer configurer) throws Exception;
+
+  /**
+   * Create a table assessor that will check if there will be potential problems replicating tables.
+   *
+   * @param configurer configurer used to instantiate plugins
+   * @param tables tables to be replicated
+   * @return a table assessor
+   * @throws Exception if the table assessor could not be created
+   */
+  default TableAssessor<T> createTableAssessor(Configurer configurer, List<SourceTable> tables) throws Exception {
+    return createTableAssessor(configurer);
+  }
+
 }
