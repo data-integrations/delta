@@ -68,12 +68,12 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
   public void put(Sequenced<? extends ChangeEvent> event) throws InterruptedException {
     lock.lockInterruptibly();
     try {
-      int eventSize = computeSize(event);
-      while (size() > 0 && usage + eventSize > capacity) {
+      // Delegate the insertion to the offer method.
+      // offer method does not block indefinitely and returns boolean value based on the
+      // insert status. Not blocking indefinitely gives poller thread to continue.
+      while (!offer(event)) {
         notFull.await();
       }
-      super.put(event);
-      usage += eventSize;
     } finally {
       lock.unlock();
     }
@@ -86,11 +86,12 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
       int eventSize = computeSize(event);
       if (size() > 0 && usage + eventSize > capacity) {
         return false;
-      } else {
-        boolean result = super.offer(event);
-        usage += eventSize;
-        return result;
       }
+      if (super.offer(event)) {
+        usage += eventSize;
+        return true;
+      }
+      return false;
     } finally {
       lock.unlock();
     }
