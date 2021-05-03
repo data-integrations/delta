@@ -281,7 +281,7 @@ public class DeltaWorker extends AbstractWorker {
           // for event 50, there is no way for the consumer to rewind and write events 1-49 again.
           try {
             LOG.info("Stopping Event Reader...");
-            eventReader.stop();
+            eventReader.stop(EventReader.StopReason.RESTART_DUE_TO_ERROR);
             LOG.info("Stopped Event Reader.");
           } catch (InterruptedException ex) {
             // if stopping is interrupted, it means the worker is shutting down.
@@ -390,7 +390,7 @@ public class DeltaWorker extends AbstractWorker {
   public void stop() {
     shouldStop.set(true);
     try {
-      eventReader.stop();
+      eventReader.stop(EventReader.StopReason.REQUESTED_BY_CUSTOMER);
     } catch (Exception e) {
       // ignore and try to stop consumer
     } finally {
