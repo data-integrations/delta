@@ -25,7 +25,8 @@ public interface StopContext {
    * The origin of a stop request to the event reader
    */
   enum Origin {
-    UNKNOWN, ERROR, // stop initiated because error
+    UNKNOWN,
+    ERROR, // stop initiated because error
     USER // stop initiated by user
   }
 
