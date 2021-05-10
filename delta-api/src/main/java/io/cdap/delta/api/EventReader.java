@@ -32,21 +32,21 @@ public interface EventReader {
    * @throws InterruptedException if the reader was interrupted while stopping
    */
   default void stop() throws InterruptedException {
-    stop(StopReason.UNKNOWN);
+    stop(new StopContext() {
+      @Override
+      public Origin getOrigin() {
+        return Origin.UNKNOWN;
+      }
+    });
   }
 
   /**
    * Stop reading events.
-   * @param reason the reason why stop is requested.
+   * @param context the context of the stop request
    * @throws InterruptedException if the reader was interrupted while stopping
    */
-  default void stop(StopReason reason) throws InterruptedException {
+  default void stop(StopContext context) throws InterruptedException {
     // no-op
   }
 
-  public enum StopReason {
-    UNKNOWN,
-    RESTART_DUE_TO_ERROR,
-    REQUESTED_BY_CUSTOMER
-  }
 }

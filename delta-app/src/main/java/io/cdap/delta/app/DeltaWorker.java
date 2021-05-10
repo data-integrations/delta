@@ -42,6 +42,7 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.Sequenced;
 import io.cdap.delta.api.SourceProperties;
 import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.api.StopContext;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.InstanceConfig;
 import io.cdap.delta.proto.ParallelismConfig;
@@ -281,7 +282,12 @@ public class DeltaWorker extends AbstractWorker {
           // for event 50, there is no way for the consumer to rewind and write events 1-49 again.
           try {
             LOG.info("Stopping Event Reader...");
-            eventReader.stop(EventReader.StopReason.RESTART_DUE_TO_ERROR);
+            eventReader.stop(new StopContext() {
+              @Override
+              public Origin getOrigin() {
+                return Origin.ERROR;
+              }
+            });
             LOG.info("Stopped Event Reader.");
           } catch (InterruptedException ex) {
             // if stopping is interrupted, it means the worker is shutting down.
@@ -390,7 +396,12 @@ public class DeltaWorker extends AbstractWorker {
   public void stop() {
     shouldStop.set(true);
     try {
-      eventReader.stop(EventReader.StopReason.REQUESTED_BY_CUSTOMER);
+      eventReader.stop(new StopContext() {
+        @Override
+        public Origin getOrigin() {
+          return Origin.USER;
+        }
+      });
     } catch (Exception e) {
       // ignore and try to stop consumer
     } finally {
