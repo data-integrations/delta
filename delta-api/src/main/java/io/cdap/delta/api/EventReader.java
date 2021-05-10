@@ -32,6 +32,21 @@ public interface EventReader {
    * @throws InterruptedException if the reader was interrupted while stopping
    */
   default void stop() throws InterruptedException {
+    stop(new StopContext() {
+      @Override
+      public Origin getOrigin() {
+        return Origin.UNKNOWN;
+      }
+    });
+  }
+
+  /**
+   * Stop reading events.
+   * @param context the context of the stop request
+   * @throws InterruptedException if the reader was interrupted while stopping
+   */
+  default void stop(StopContext context) throws InterruptedException {
     // no-op
   }
+
 }
