@@ -28,6 +28,11 @@ public class Sequenced<T> {
   private final long sequenceNumber;
   private static final long UNSUPPORTED_SEQUENCE = -1;
 
+  /**
+   * Those events that don't support sequence number should use this constructor.
+   * e.g. DDL event
+   * @param event the event
+   */
   public Sequenced(T event) {
     this(event, UNSUPPORTED_SEQUENCE);
   }
@@ -36,9 +41,13 @@ public class Sequenced<T> {
     this.sequenceNumber = sequenceNumber;
   }
 
+  /**
+   * If the event doesn't support sequence number, an UnsupportedOperationException will be thrown.
+   * @return the sequence number of the event
+   */
   public long getSequenceNumber() {
     if (sequenceNumber == UNSUPPORTED_SEQUENCE) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("This event does not support sequence number.");
     }
     return sequenceNumber;
   }
