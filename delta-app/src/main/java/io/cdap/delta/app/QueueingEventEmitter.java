@@ -65,7 +65,7 @@ public class QueueingEventEmitter implements EventEmitter {
 
     try {
       // don't assign sequence number to DDL event
-      eventQueue.put(new Sequenced<>(event, -1));
+      eventQueue.put(new Sequenced<>(event));
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events

@@ -66,8 +66,8 @@ public class QueueingEventEmitterTest {
     emitter.emit(DDL);
     emitter.emit(DML);
 
-    Assert.assertEquals(new Sequenced<>(DDL, 1L), queue.poll());
-    Assert.assertEquals(new Sequenced<>(DML, 2L), queue.poll());
+    Assert.assertEquals(new Sequenced<>(DDL), queue.poll());
+    Assert.assertEquals(new Sequenced<>(DML, 1L), queue.poll());
   }
 
   @Test

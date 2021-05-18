@@ -170,7 +170,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     stateService.load();
 
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
-    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     TableReplicationState tableState = new TableReplicationState(DATABASE, TABLE, TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
@@ -217,7 +217,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     stateService.load();
 
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
-    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
+    Assert.assertEquals(0L, offsetAndSequence.getSequenceNumber());
 
     // should only have written out the first change
     List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
@@ -234,7 +234,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
     offsetAndSequence = stateStore.readOffset(workerId);
-    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     // second change should have been written
     actual = FileEventConsumer.readEvents(outputFolder, 0);
@@ -253,7 +253,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // configure the target to throw exceptions after the first event is applied
     // until the proceedFile is created
-    Stage target = new Stage("target", FailureTarget.failImmediately(1L));
+    Stage target = new Stage("target", FailureTarget.failImmediately(0L));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -335,7 +335,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // configure the target to throw exceptions after the first event is applied
     // until the proceedFile is created
-    Stage target = new Stage("target", FailureTarget.failAfter(1L, targetProceedFile));
+    Stage target = new Stage("target", FailureTarget.failAfter(0L, targetProceedFile));
     DeltaConfig config = DeltaConfig.builder()
       .setSource(source)
       .setTarget(target)
@@ -406,7 +406,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // verify that the sequence number was correctly being rolled back during errors and not incremented
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
-    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     // verify that metrics were not double counted during errors
     waitForMetric(appId, "ddl", 1);
@@ -480,7 +480,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     stateService.load();
 
     OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
-    Assert.assertEquals(2L, offsetAndSequence.getSequenceNumber());
+    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     TableReplicationState tableState = new TableReplicationState(DATABASE, TABLE, TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
@@ -494,7 +494,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     stateService.load();
 
     offsetAndSequence = stateStore.readOffset(workerId);
-    Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
+    Assert.assertEquals(0L, offsetAndSequence.getSequenceNumber());
 
     tableState = new TableReplicationState(DATABASE, TABLE2, TableState.REPLICATING, null);
     expectedState = new PipelineReplicationState(PipelineState.OK, Collections.singleton(tableState), null);
