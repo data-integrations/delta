@@ -84,6 +84,10 @@ public class DMLEvent extends ChangeEvent {
     if (sizeInBytes < 0) {
       // the size of all other fields are fixed, only return the dynamic size of row and previousRow
       sizeInBytes = operation.getSizeInBytes() + computeSizeInBytes(previousRow);
+      // delete event didn't count the size of row in the DMLOperation
+      if (operation.getType() == DMLOperation.Type.DELETE) {
+        sizeInBytes += computeSizeInBytes(row);
+      }
     }
     return sizeInBytes;
   }

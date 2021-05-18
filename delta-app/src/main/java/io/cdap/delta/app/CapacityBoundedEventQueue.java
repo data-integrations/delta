@@ -50,6 +50,8 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
     this.capacity = capacity;
     this.usage = 0;
     this.lock = new ReentrantLock();
+    // notFull indicates the condition when the event queue is full due to either the # of the events or the total size
+    // of the events
     this.notFull = lock.newCondition();
   }
 
@@ -72,6 +74,7 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
       // offer method does not block indefinitely and returns boolean value based on the
       // insert status. Not blocking indefinitely gives poller thread to continue.
       while (!offer(event)) {
+        // this could happen when the # of events or the size of events reaches the limit
         notFull.await();
       }
     } finally {
@@ -123,14 +126,12 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
     Sequenced<? extends ChangeEvent> event = super.poll();
     int eventSize = computeSize(event);
 
-    if (eventSize > 0) {
-      lock.lock();
-      try {
-        usage -= eventSize;
-        notFull.signal();
-      } finally {
-        lock.unlock();
-      }
+    lock.lock();
+    try {
+      usage -= eventSize;
+      notFull.signal();
+    } finally {
+      lock.unlock();
     }
     return event;
   }
@@ -139,14 +140,12 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
   public Sequenced<? extends ChangeEvent> take() throws InterruptedException {
     Sequenced<? extends ChangeEvent> event = super.take();
     int eventSize = computeSize(event);
-    if (eventSize > 0) {
-      lock.lockInterruptibly();
-      try {
-        usage -= eventSize;
-        notFull.signal();
-      } finally {
-        lock.unlock();
-      }
+    lock.lockInterruptibly();
+    try {
+      usage -= eventSize;
+      notFull.signal();
+    } finally {
+      lock.unlock();
     }
     return event;
   }
@@ -156,14 +155,12 @@ public class CapacityBoundedEventQueue extends ArrayBlockingQueue<Sequenced<? ex
     long nanos = unit.toNanos(timeout);
     Sequenced<? extends ChangeEvent> event = super.poll(timeout, unit);
     int eventSize = computeSize(event);
-    if (eventSize > 0) {
-      lock.lockInterruptibly();
-      try {
-        usage -= eventSize;
-        notFull.signal();
-      } finally {
-        lock.unlock();
-      }
+    lock.lockInterruptibly();
+    try {
+      usage -= eventSize;
+      notFull.signal();
+    } finally {
+      lock.unlock();
     }
     return event;
   }
