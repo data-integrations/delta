@@ -26,18 +26,35 @@ import java.util.Objects;
 public class Sequenced<T> {
   private final T event;
   private final long sequenceNumber;
+  private static final long UNSUPPORTED_SEQUENCE = -1;
 
+  /**
+   * Those events that don't support sequence number should use this constructor.
+   * e.g. DDL event
+   * @param event the event
+   */
+  public Sequenced(T event) {
+    this(event, UNSUPPORTED_SEQUENCE);
+  }
   public Sequenced(T event, long sequenceNumber) {
     this.event = event;
     this.sequenceNumber = sequenceNumber;
   }
 
-  public T getEvent() {
-    return event;
+  /**
+   * If the event doesn't support sequence number, an UnsupportedOperationException will be thrown.
+   * @return the sequence number of the event
+   */
+  public long getSequenceNumber() {
+    if (sequenceNumber == UNSUPPORTED_SEQUENCE) {
+      throw new UnsupportedOperationException("This event does not support sequence number.");
+    }
+    return sequenceNumber;
   }
 
-  public long getSequenceNumber() {
-    return sequenceNumber;
+
+  public T getEvent() {
+    return event;
   }
 
   @Override
@@ -57,4 +74,5 @@ public class Sequenced<T> {
   public int hashCode() {
     return Objects.hash(event, sequenceNumber);
   }
+
 }

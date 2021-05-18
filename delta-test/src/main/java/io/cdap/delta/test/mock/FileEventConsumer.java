@@ -53,12 +53,14 @@ public class FileEventConsumer implements EventConsumer {
   private final List<ChangeEvent> events;
   private final DeltaTargetContext context;
   private final boolean emitErrorForDML;
+  private long latestSequenceNum;
 
   FileEventConsumer(File file, DeltaTargetContext context, boolean emitErrorForDML) {
     this.file = file;
     this.events = new ArrayList<>();
     this.context = context;
     this.emitErrorForDML = emitErrorForDML;
+    this.latestSequenceNum = 0;
   }
 
   @Override
@@ -80,7 +82,7 @@ public class FileEventConsumer implements EventConsumer {
     events.add(event.getEvent());
     DDLOperation ddlOperation = event.getEvent().getOperation();
     context.incrementCount(ddlOperation);
-    context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
+    context.commitOffset(event.getEvent().getOffset(), latestSequenceNum);
     context.setTableReplicating(event.getEvent().getOperation().getDatabaseName(), ddlOperation.getTableName());
   }
 
@@ -92,7 +94,8 @@ public class FileEventConsumer implements EventConsumer {
       context.setTableError(event.getEvent().getOperation().getDatabaseName(),
         event.getEvent().getOperation().getTableName(), new ReplicationError(new Exception()));
     }
-    context.commitOffset(event.getEvent().getOffset(), event.getSequenceNumber());
+    latestSequenceNum = event.getSequenceNumber();
+    context.commitOffset(event.getEvent().getOffset(), latestSequenceNum);
   }
 
   /**
