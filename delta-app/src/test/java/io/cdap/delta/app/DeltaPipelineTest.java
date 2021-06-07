@@ -649,15 +649,19 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     }
   }
 
-  private void waitForMetric(ApplicationId appId, String metric, long loweBound, long upperBound)
+  private void waitForMetric(ApplicationId appId, String metric, long lowerBound, long upperBound)
     throws InterruptedException, ExecutionException, TimeoutException {
     Map<String, String> tags = createMetricTags(appId);
     Tasks.waitFor(true,
                   () -> {
                     long value = getMetricsManager().getTotalMetric(tags, "user." + metric);
-                    return value >= loweBound && value <= upperBound;
+
+                    String msg = String.format("Got value %s for metric %s, expected in between %s and %s",
+                                               value, metric, lowerBound, upperBound);
+                    System.out.println(msg);
+                    return value >= lowerBound && value <= upperBound;
                   },
-                  30, TimeUnit.SECONDS);
+                  60, TimeUnit.SECONDS);
   }
 
   private Map<String, String> createMetricTags(ApplicationId appId) {
