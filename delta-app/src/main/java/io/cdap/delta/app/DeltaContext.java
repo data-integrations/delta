@@ -21,8 +21,8 @@ import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.macro.InvalidMacroException;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
-import io.cdap.cdap.api.plugin.PluginContext;
 import io.cdap.cdap.api.plugin.PluginProperties;
+import io.cdap.cdap.api.worker.WorkerContext;
 import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaPipelineId;
@@ -59,7 +59,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final String runId;
   private final Metrics metrics;
   private final StateStore stateStore;
-  private final PluginContext pluginContext;
+  private final WorkerContext workerContext;
   private final Map<String, EventMetrics> tableEventMetrics;
   private final PipelineStateService stateService;
   private final int maxRetrySeconds;
@@ -70,14 +70,14 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private long sequenceNumber;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
-               PluginContext pluginContext, PipelineStateService stateService,
+               WorkerContext workerContext, PipelineStateService stateService,
                int maxRetrySeconds, Map<String, String> runtimeArguments,
                @Nullable SourceProperties sourceProperties, List<SourceTable> tables) {
     this.id = id;
     this.runId = runId;
     this.metrics = metrics;
     this.stateStore = stateStore;
-    this.pluginContext = pluginContext;
+    this.workerContext = workerContext;
     this.tableEventMetrics = new HashMap<>();
     this.stateService = stateService;
     this.maxRetrySeconds = maxRetrySeconds;
@@ -180,6 +180,11 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   @Override
+  public int getInstanceCount() {
+    return workerContext.getInstanceCount();
+  }
+
+  @Override
   public int getMaxRetrySeconds() {
     return maxRetrySeconds;
   }
@@ -207,28 +212,28 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   @Override
   public PluginProperties getPluginProperties(String pluginId) {
-    return pluginContext.getPluginProperties(pluginId);
+    return workerContext.getPluginProperties(pluginId);
   }
 
   @Override
   public PluginProperties getPluginProperties(String pluginId, MacroEvaluator evaluator) throws InvalidMacroException {
-    return pluginContext.getPluginProperties(pluginId, evaluator);
+    return workerContext.getPluginProperties(pluginId, evaluator);
   }
 
   @Override
   public <T> Class<T> loadPluginClass(String pluginId) {
-    return pluginContext.loadPluginClass(pluginId);
+    return workerContext.loadPluginClass(pluginId);
   }
 
   @Override
   public <T> T newPluginInstance(String pluginId) throws InstantiationException {
-    return pluginContext.newPluginInstance(pluginId);
+    return workerContext.newPluginInstance(pluginId);
   }
 
   @Override
   public <T> T newPluginInstance(String pluginId, MacroEvaluator evaluator)
     throws InstantiationException, InvalidMacroException {
-    return pluginContext.newPluginInstance(pluginId, evaluator);
+    return workerContext.newPluginInstance(pluginId, evaluator);
   }
 
   @Override
