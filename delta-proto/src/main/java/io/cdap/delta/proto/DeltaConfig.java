@@ -50,13 +50,14 @@ public class DeltaConfig extends Config {
   private final Set<DDLOperation.Type> ddlBlacklist;
   private final RetryConfig retries;
   private final ParallelismConfig parallelism;
+  private final String author;
   // should only be set by CDAP admin when creating the system service
   private final boolean service;
 
   private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
                       Resources resources, String offsetBasePath, List<SourceTable> tables,
                       Set<DMLOperation.Type> dmlBlacklist, Set<DDLOperation.Type> ddlBlacklist,
-                      RetryConfig retries, ParallelismConfig parallelism) {
+                      RetryConfig retries, ParallelismConfig parallelism, String author) {
     this.description = description;
     this.stages = new ArrayList<>(stages);
     this.connections = new ArrayList<>(connections);
@@ -68,6 +69,7 @@ public class DeltaConfig extends Config {
     this.ddlBlacklist = new HashSet<>(ddlBlacklist);
     this.retries = retries;
     this.parallelism = parallelism;
+    this.author = author;
   }
 
   @Nullable
@@ -116,6 +118,10 @@ public class DeltaConfig extends Config {
 
   public ParallelismConfig getParallelism() {
     return parallelism == null ? ParallelismConfig.DEFAULT : parallelism;
+  }
+
+  public String getAuthor() {
+    return author;
   }
 
   public boolean isService() {
@@ -203,7 +209,8 @@ public class DeltaConfig extends Config {
       Objects.equals(offsetBasePath, that.offsetBasePath) &&
       Objects.equals(tables, that.tables) &&
       Objects.equals(dmlBlacklist, that.dmlBlacklist) &&
-      Objects.equals(ddlBlacklist, that.ddlBlacklist);
+      Objects.equals(ddlBlacklist, that.ddlBlacklist) &&
+      Objects.equals(author, that.author);
   }
 
   @Override
@@ -228,7 +235,7 @@ public class DeltaConfig extends Config {
     }
     return new DeltaConfig(getDescription(), upgradedStages, getConnections(), getResources(),
                            getOffsetBasePath(), getTables(), getDmlBlacklist(), getDdlBlacklist(),
-                           getRetryConfig(), getParallelism());
+                           getRetryConfig(), getParallelism(), getAuthor());
   }
 
   public static Builder builder() {
@@ -249,6 +256,7 @@ public class DeltaConfig extends Config {
     private Set<DDLOperation.Type> ddlBlacklist;
     private RetryConfig retries;
     private ParallelismConfig parallelism;
+    private String author;
 
     private Builder() {
       description = "";
@@ -258,6 +266,7 @@ public class DeltaConfig extends Config {
       ddlBlacklist = new HashSet<>();
       retries = RetryConfig.DEFAULT;
       parallelism = ParallelismConfig.DEFAULT;
+      author = "";
     }
 
     public Builder setSource(Stage source) {
@@ -288,6 +297,11 @@ public class DeltaConfig extends Config {
     public Builder setTables(Collection<SourceTable> tables) {
       this.tables.clear();
       this.tables.addAll(tables);
+      return this;
+    }
+
+    public Builder setAuthor(String author) {
+      this.author = author;
       return this;
     }
 
@@ -326,7 +340,7 @@ public class DeltaConfig extends Config {
         connections.add(new Connection(source.getName(), target.getName()));
       }
       DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables,
-                                           dmlBlacklist, ddlBlacklist, retries, parallelism);
+                                           dmlBlacklist, ddlBlacklist, retries, parallelism, author);
       config.validate();
       return config;
     }

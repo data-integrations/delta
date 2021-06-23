@@ -97,6 +97,12 @@ public class AssessmentHandler extends AbstractSystemHttpServiceHandler {
   }
 
   @GET
+  @Path("v1/contexts/{context}/author")
+  public void getAuthor(HttpServiceRequest request, HttpServiceResponder responder) {
+    responder.sendString("Edwin");
+  }
+
+  @GET
   @Path("v1/contexts/{context}/drafts/{draft}")
   public void getDraft(HttpServiceRequest request, HttpServiceResponder responder,
                        @PathParam("context") String namespaceName,
