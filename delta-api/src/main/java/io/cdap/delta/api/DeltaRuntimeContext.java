@@ -55,6 +55,13 @@ public interface DeltaRuntimeContext extends PluginContext {
   int getInstanceId();
 
   /**
+   * @return the number of worker instances configured for this replication job
+   */
+  default int getInstanceCount() {
+    return 1;
+  }
+
+  /**
    * @return maximum amount of seconds to retry failures before failing the pipeline
    */
   int getMaxRetrySeconds();
