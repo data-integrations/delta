@@ -105,12 +105,16 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     .build();
 
   private static DMLEvent createDMLEvent() {
+    // set ingest timestamp for the event to be 2 seconds in the past so that there will always be
+    // non-zero latency metric "dml.latency.seconds" in processing this event. Without this delay its possible
+    // that event is processed within same second at target side causing latency 0
+    long ingestTimeStamp = System.currentTimeMillis() - 2000;
     return DMLEvent.builder()
       .setOffset(new Offset(Collections.singletonMap("order", "1")))
       .setOperationType(DMLOperation.Type.INSERT)
       .setDatabaseName("deebee")
       .setTableName(TABLE)
-      .setIngestTimestamp(System.currentTimeMillis())
+      .setIngestTimestamp(ingestTimeStamp)
       .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
       .build();
   }
@@ -659,8 +663,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
                     String msg = String.format("Got value %s for metric %s, expected in between %s and %s",
                                                value, metric, lowerBound, upperBound);
                     System.out.println(msg);
-                    // Always return 'true' for now. Corresponding JIRA is https://cdap.atlassian.net/browse/CDAP-18057
-                    return true;
+                    return value >= lowerBound && value <= upperBound;
                   },
                   60, TimeUnit.SECONDS);
   }
