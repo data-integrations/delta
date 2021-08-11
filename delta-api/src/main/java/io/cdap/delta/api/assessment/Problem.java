@@ -26,12 +26,18 @@ public class Problem {
   private final String description;
   private final String suggestion;
   private final String impact;
+  private final boolean isBlocker;
 
-  public Problem(String name, String description, String suggestion, String impact) {
+  public Problem(String name, String description, String suggestion, String impact, boolean isBlocker) {
     this.name = name;
     this.description = description;
     this.suggestion = suggestion;
     this.impact = impact;
+    this.isBlocker = isBlocker;
+  }
+
+  public Problem(String name, String description, String suggestion, String impact) {
+    this(name, description, suggestion, impact, true);
   }
 
   /**
