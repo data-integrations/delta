@@ -43,6 +43,7 @@ public class DeltaConfig extends Config {
   private final String description;
   private final List<Stage> stages;
   private final List<Connection> connections;
+  private final List<TableTransformation> tableTransformations;
   private final Resources resources;
   private final String offsetBasePath;
   private final List<SourceTable> tables;
@@ -54,12 +55,14 @@ public class DeltaConfig extends Config {
   private final boolean service;
 
   private DeltaConfig(String description, List<Stage> stages, List<Connection> connections,
-                      Resources resources, String offsetBasePath, List<SourceTable> tables,
+                      List<TableTransformation> tableTransformations, Resources resources,
+                      String offsetBasePath, List<SourceTable> tables,
                       Set<DMLOperation.Type> dmlBlacklist, Set<DDLOperation.Type> ddlBlacklist,
                       RetryConfig retries, ParallelismConfig parallelism) {
     this.description = description;
     this.stages = new ArrayList<>(stages);
     this.connections = new ArrayList<>(connections);
+    this.tableTransformations = new ArrayList<>(tableTransformations);
     this.resources = resources;
     this.offsetBasePath = offsetBasePath;
     this.tables = new ArrayList<>(tables);
@@ -94,6 +97,11 @@ public class DeltaConfig extends Config {
 
   public List<SourceTable> getTables() {
     return tables == null ? Collections.emptyList() : Collections.unmodifiableList(tables);
+  }
+
+  public List<TableTransformation> getTableLevelTransformations() {
+    return tableTransformations == null ? Collections.emptyList() :
+             Collections.unmodifiableList(tableTransformations);
   }
 
   public Set<DMLOperation.Type> getDmlBlacklist() {
@@ -226,7 +234,8 @@ public class DeltaConfig extends Config {
     for (Stage stage : getStages()) {
       upgradedStages.add(stage.updateStage(upgradeContext));
     }
-    return new DeltaConfig(getDescription(), upgradedStages, getConnections(), getResources(),
+    return new DeltaConfig(getDescription(), upgradedStages, getConnections(), tableTransformations,
+                           getResources(),
                            getOffsetBasePath(), getTables(), getDmlBlacklist(), getDdlBlacklist(),
                            getRetryConfig(), getParallelism());
   }
@@ -245,6 +254,7 @@ public class DeltaConfig extends Config {
     private String offsetBasePath;
     private Resources resources;
     private List<SourceTable> tables;
+    private List tableLevelTransformations;
     private Set<DMLOperation.Type> dmlBlacklist;
     private Set<DDLOperation.Type> ddlBlacklist;
     private RetryConfig retries;
@@ -254,6 +264,7 @@ public class DeltaConfig extends Config {
       description = "";
       resources = new Resources();
       tables = new ArrayList<>();
+      tableLevelTransformations = new ArrayList<>();
       dmlBlacklist = new HashSet<>();
       ddlBlacklist = new HashSet<>();
       retries = RetryConfig.DEFAULT;
@@ -291,6 +302,12 @@ public class DeltaConfig extends Config {
       return this;
     }
 
+    public Builder setTableLevelTransformations(Collection<TableTransformation> tableTransformations) {
+      this.tableLevelTransformations.clear();
+      this.tableLevelTransformations.addAll(tableTransformations);
+      return this;
+    }
+
     public Builder setDMLBlacklist(Collection<DMLOperation.Type> blacklist) {
       this.dmlBlacklist.clear();
       this.dmlBlacklist.addAll(blacklist);
@@ -325,8 +342,8 @@ public class DeltaConfig extends Config {
       if (source != null && target != null) {
         connections.add(new Connection(source.getName(), target.getName()));
       }
-      DeltaConfig config = new DeltaConfig(description, stages, connections, resources, offsetBasePath, tables,
-                                           dmlBlacklist, ddlBlacklist, retries, parallelism);
+      DeltaConfig config = new DeltaConfig(description, stages, connections, tableLevelTransformations, resources,
+                                           offsetBasePath, tables, dmlBlacklist, ddlBlacklist, retries, parallelism);
       config.validate();
       return config;
     }

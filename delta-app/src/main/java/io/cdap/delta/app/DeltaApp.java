@@ -26,8 +26,11 @@ import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.app.service.AssessmentService;
 import io.cdap.delta.app.service.DefaultSourceConfigurer;
+import io.cdap.delta.proto.ColumnTransformation;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.Stage;
+import io.cdap.transformation.TransformationUtil;
+import io.cdap.transformation.api.Transformation;
 
 /**
  * App for Delta pipelines.
@@ -55,6 +58,8 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     source.configure(sourceConfigurer);
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
+    conf.getTableLevelTransformations().forEach(t -> t.getColumnLevelTransformations()
+                                                       .forEach(this::registerTransformationPlugin));
 
     addWorker(new DeltaWorker(conf, sourceConfigurer.getSourceProperties()));
 
@@ -71,6 +76,10 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
                      stageConf.getPlugin().getName(),
                      stageConf.getName(),
                      PluginProperties.builder().addAll(stageConf.getPlugin().getProperties()).build());
+  }
+  private void registerTransformationPlugin(ColumnTransformation transformation) {
+    String directiveName = TransformationUtil.parseDirectiveName(transformation.getTransformation());
+    usePlugin(Transformation.PLUGIN_TYPE, directiveName, directiveName, PluginProperties.builder().build());
   }
 
   @Override
