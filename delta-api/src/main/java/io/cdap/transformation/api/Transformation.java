@@ -23,7 +23,7 @@ import io.cdap.cdap.api.data.schema.Schema;
  * Interface for Transformation plugin
  */
 public interface Transformation {
-  String PLUGIN_TYPE = "transformation";
+  String PLUGIN_TYPE = "transform";
 
   /**
    * Initialize the Transformation plugin.

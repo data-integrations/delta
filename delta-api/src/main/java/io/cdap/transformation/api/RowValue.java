@@ -45,7 +45,6 @@ public interface RowValue {
    *
    * @param originalName the original name of the column to be renamed.
    * @param newName      the new name of the column.
-   * @return the value of the removed column.
    */
-  Object renameColumn(String originalName, String newName);
+  void renameColumn(String originalName, String newName);
 }

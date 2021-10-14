@@ -56,14 +56,14 @@ public class DefaultRowValue implements RowValue {
   }
 
   @Override
-  public Object renameColumn(String originalName , String newName) {
+  public void renameColumn(String originalName , String newName) {
     if (!valuesMap.containsKey(originalName)) {
       throw new IllegalArgumentException(String.format("Original column name %s doesn't not exist.", originalName));
     }
     if (valuesMap.containsKey(newName)) {
       throw new IllegalArgumentException(String.format("New column name %s already exists.", newName));
     }
-    return valuesMap.put(newName, valuesMap.remove(originalName));
+    valuesMap.put(newName, valuesMap.remove(originalName));
   }
 
   public Map<String, Object> toValueMap() {

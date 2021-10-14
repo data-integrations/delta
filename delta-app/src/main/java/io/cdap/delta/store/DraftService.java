@@ -538,6 +538,7 @@ public class DraftService {
       .setSource(config.getSource())
       .setOffsetBasePath(config.getOffsetBasePath())
       .setTables(config.getTables())
+      .setTableTransformations(config.getTableLevelTransformations())
       .setSource(evaluateMacros(draftId.getNamespace().getName(), config.getSource()));
 
     Stage target = config.getTarget();

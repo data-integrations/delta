@@ -254,7 +254,7 @@ public class DeltaConfig extends Config {
     private String offsetBasePath;
     private Resources resources;
     private List<SourceTable> tables;
-    private List tableLevelTransformations;
+    private List tableTransformations;
     private Set<DMLOperation.Type> dmlBlacklist;
     private Set<DDLOperation.Type> ddlBlacklist;
     private RetryConfig retries;
@@ -264,7 +264,7 @@ public class DeltaConfig extends Config {
       description = "";
       resources = new Resources();
       tables = new ArrayList<>();
-      tableLevelTransformations = new ArrayList<>();
+      tableTransformations = new ArrayList<>();
       dmlBlacklist = new HashSet<>();
       ddlBlacklist = new HashSet<>();
       retries = RetryConfig.DEFAULT;
@@ -302,9 +302,9 @@ public class DeltaConfig extends Config {
       return this;
     }
 
-    public Builder setTableLevelTransformations(Collection<TableTransformation> tableTransformations) {
-      this.tableLevelTransformations.clear();
-      this.tableLevelTransformations.addAll(tableTransformations);
+    public Builder setTableTransformations(Collection<TableTransformation> tableTransformations) {
+      this.tableTransformations.clear();
+      this.tableTransformations.addAll(tableTransformations);
       return this;
     }
 
@@ -342,7 +342,7 @@ public class DeltaConfig extends Config {
       if (source != null && target != null) {
         connections.add(new Connection(source.getName(), target.getName()));
       }
-      DeltaConfig config = new DeltaConfig(description, stages, connections, tableLevelTransformations, resources,
+      DeltaConfig config = new DeltaConfig(description, stages, connections, tableTransformations, resources,
                                            offsetBasePath, tables, dmlBlacklist, ddlBlacklist, retries, parallelism);
       config.validate();
       return config;

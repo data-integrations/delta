@@ -20,6 +20,8 @@ import io.cdap.cdap.api.data.schema.Schema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Set;
+
 public class DefaultRowSchemaTest {
 
 
@@ -108,6 +110,36 @@ public class DefaultRowSchemaTest {
     Assert.assertEquals(strField1.getName(), field.getName());
     Assert.assertEquals(strField1.getSchema(), field.getSchema());
     Assert.assertEquals("strCol1", rowSchema.getRenameInfo().getNewName("strCol"));
+  }
+  @Test
+  public void testRenameTwice() {
+    Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
+    DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
+    rowSchema.setField("strCol", Schema.Field.of("newName", Schema.of(Schema.Type.STRING)));
+    Schema.Field expectedField = Schema.Field.of("newName1", Schema.of(Schema.Type.STRING));
+    rowSchema.setField("newName", expectedField);
+    Schema.Field newField = rowSchema.getField("newName1");
+    Assert.assertEquals(expectedField.getName(), newField.getName());
+    Assert.assertEquals(expectedField.getSchema(), newField.getSchema());
+    ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
+    Set<String> renamedColumns = renameInfo.getRenamedColumns();
+    Assert.assertEquals(1, renamedColumns.size());
+    Assert.assertTrue(renamedColumns.contains("strCol"));
+    Assert.assertEquals("newName1", renameInfo.getNewName("strCol"));
+  }
+
+  @Test
+  public void testRenameBack() {
+    Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
+    DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
+    rowSchema.setField("strCol", Schema.Field.of("newName", Schema.of(Schema.Type.STRING)));
+    rowSchema.setField("newName", strField);
+    Schema.Field newField = rowSchema.getField("strCol");
+    Assert.assertEquals(strField.getName(), newField.getName());
+    Assert.assertEquals(strField.getSchema(), newField.getSchema());
+    ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
+    Set<String> renamedColumns = renameInfo.getRenamedColumns();
+    Assert.assertTrue(renamedColumns.isEmpty());
   }
 
 }
