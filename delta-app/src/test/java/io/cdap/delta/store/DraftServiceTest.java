@@ -313,10 +313,12 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaTarget mockTarget = new MockTarget(tgtMockAssessor);
 
     // rename "name" to "renamed" and change the type to boolean
-    Map<String, Schema.Field> fieldsMap = new HashMap<>();
-    fieldsMap.put("name", Schema.Field.of("renamed", Schema.of(Schema.Type.BOOLEAN)));
+    Map<String, String> renameMap = new HashMap<>();
+    renameMap.put("name", "renamed");
+
     Map<String, Transformation> transformationsMap = new HashMap<>();
-    transformationsMap.put(MockTransformation.NAME, new MockTransformation(fieldsMap, null));
+    transformationsMap.put(MockTransformation.NAME, new MockTransformation(Collections.singletonList(Schema.Field.of(
+      "name", Schema.of(Schema.Type.BOOLEAN))), renameMap, null));
     Configurer mockConfigurer = new MockConfigurer(mockSource, mockTarget, transformationsMap);
 
     TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);

@@ -50,17 +50,38 @@ public class DefaultRowSchemaTest {
   }
 
   @Test(expected = NullPointerException.class)
-  public void testSetNullColumnName() {
+  public void testSetNullField() {
     DefaultRowSchema rowSchema = new DefaultRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
-    rowSchema.setField(null, Schema.Field.of("strCol", Schema.of(Schema.Type.STRING)));
+    rowSchema.setField(null);
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testSetNullFieldName() {
+    DefaultRowSchema rowSchema = new DefaultRowSchema(
+      Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
+    rowSchema.setField(Schema.Field.of(null, Schema.of(Schema.Type.STRING)));
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testRenameNullFieldName() {
+    DefaultRowSchema rowSchema = new DefaultRowSchema(
+      Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
+    rowSchema.renameField(null, "newName");
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testRenameToNullFieldName() {
+    DefaultRowSchema rowSchema = new DefaultRowSchema(
+      Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
+    rowSchema.renameField("strCol", null);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testAddInvalidFieldName() {
+  public void testRenameNonexistingFieldName() {
     DefaultRowSchema rowSchema = new DefaultRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
-    rowSchema.setField("strCol1", Schema.Field.of("strCol2", Schema.of(Schema.Type.STRING)));
+    rowSchema.renameField("non-existing", "newName");
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -69,14 +90,7 @@ public class DefaultRowSchemaTest {
       Schema.recordOf("record",
                       Schema.Field.of("strCol", Schema.of(Schema.Type.STRING)),
                       Schema.Field.of("intCol", Schema.of(Schema.Type.INT))));
-    rowSchema.setField("strCol", Schema.Field.of("intCol", Schema.of(Schema.Type.STRING)));
-  }
-
-  @Test(expected = NullPointerException.class)
-  public void testSetNullField() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
-      Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
-    rowSchema.setField("strCol", null);
+    rowSchema.renameField("strCol", "intCol");
   }
 
   @Test
@@ -84,7 +98,8 @@ public class DefaultRowSchemaTest {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
     Schema.Field intField = Schema.Field.of("intCol", Schema.of(Schema.Type.INT));
     Schema.Field boolField = Schema.Field.of("intCol", Schema.of(Schema.Type.BOOLEAN));
-    Schema.Field strField1 = Schema.Field.of("strCol1", Schema.of(Schema.Type.STRING));
+    Schema.Field newField = Schema.Field.of("newCol", Schema.of(Schema.Type.INT));
+
     DefaultRowSchema rowSchema = new DefaultRowSchema(
       Schema.recordOf("record",
                       strField,
@@ -99,28 +114,49 @@ public class DefaultRowSchemaTest {
     Assert.assertEquals(intField.getSchema(), field.getSchema());
 
     //change the type
-    rowSchema.setField("intCol", boolField);
+    rowSchema.setField(boolField);
     field = rowSchema.getField("intCol");
     Assert.assertEquals(boolField.getName(), field.getName());
     Assert.assertEquals(boolField.getSchema(), field.getSchema());
 
+    //add a field
+    rowSchema.setField(newField);
+    field = rowSchema.getField("newCol");
+    Assert.assertEquals(newField.getName(), field.getName());
+    Assert.assertEquals(newField.getSchema(), field.getSchema());
+
+
     //rename
-    rowSchema.setField("strCol", strField1);
+    rowSchema.renameField("strCol", "strCol1");
     field = rowSchema.getField("strCol1");
-    Assert.assertEquals(strField1.getName(), field.getName());
-    Assert.assertEquals(strField1.getSchema(), field.getSchema());
+    Assert.assertEquals("strCol1", field.getName());
+    Assert.assertEquals(strField.getSchema(), field.getSchema());
     Assert.assertEquals("strCol1", rowSchema.getRenameInfo().getNewName("strCol"));
   }
+
+  @Test
+  public void testRenameToSame() {
+    Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
+    DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
+    rowSchema.renameField("strCol", "strCol");
+    Schema.Field newField = rowSchema.getField("strCol");
+    Assert.assertEquals(strField.getName(), newField.getName());
+    Assert.assertEquals(strField.getSchema(), newField.getSchema());
+    ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
+    Set<String> renamedColumns = renameInfo.getRenamedColumns();
+    Assert.assertTrue(renamedColumns.isEmpty());
+  }
+
   @Test
   public void testRenameTwice() {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
     DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
-    rowSchema.setField("strCol", Schema.Field.of("newName", Schema.of(Schema.Type.STRING)));
-    Schema.Field expectedField = Schema.Field.of("newName1", Schema.of(Schema.Type.STRING));
-    rowSchema.setField("newName", expectedField);
+    rowSchema.renameField("strCol", "newName");
+    rowSchema.renameField("newName", "newName1");
+
     Schema.Field newField = rowSchema.getField("newName1");
-    Assert.assertEquals(expectedField.getName(), newField.getName());
-    Assert.assertEquals(expectedField.getSchema(), newField.getSchema());
+    Assert.assertEquals("newName1", newField.getName());
+    Assert.assertEquals(strField.getSchema(), newField.getSchema());
     ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
     Set<String> renamedColumns = renameInfo.getRenamedColumns();
     Assert.assertEquals(1, renamedColumns.size());
@@ -132,8 +168,8 @@ public class DefaultRowSchemaTest {
   public void testRenameBack() {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
     DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
-    rowSchema.setField("strCol", Schema.Field.of("newName", Schema.of(Schema.Type.STRING)));
-    rowSchema.setField("newName", strField);
+    rowSchema.renameField("strCol", "newName");
+    rowSchema.renameField("newName", "strCol");
     Schema.Field newField = rowSchema.getField("strCol");
     Assert.assertEquals(strField.getName(), newField.getName());
     Assert.assertEquals(strField.getSchema(), newField.getSchema());
@@ -141,5 +177,4 @@ public class DefaultRowSchemaTest {
     Set<String> renamedColumns = renameInfo.getRenamedColumns();
     Assert.assertTrue(renamedColumns.isEmpty());
   }
-
 }

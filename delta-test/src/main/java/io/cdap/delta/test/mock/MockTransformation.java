@@ -24,6 +24,7 @@ import io.cdap.transformation.api.Transformation;
 import io.cdap.transformation.api.TransformationContext;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,11 +35,13 @@ import java.util.Map;
 public class MockTransformation implements Transformation {
   public static final String NAME = "mock";
   private final Map<String, Object> valuesMap;
-  private final Map<String, Schema.Field> fieldsMap;
+  private final List<Schema.Field> fields;
+  private final Map<String, String> renameMap;
 
-  public MockTransformation(Map<String, Schema.Field> fieldsMap, Map<String, Object> valuesMap) {
+  public MockTransformation(List<Schema.Field> fields, Map<String, String> renameMap, Map<String, Object> valuesMap) {
     this.valuesMap = valuesMap == null ? Collections.emptyMap() : valuesMap;
-    this.fieldsMap = fieldsMap == null ? Collections.emptyMap() : fieldsMap;
+    this.fields = fields == null ? Collections.emptyList() : fields;
+    this.renameMap = renameMap;
   }
 
   @Override
@@ -50,12 +53,18 @@ public class MockTransformation implements Transformation {
     for (Map.Entry<String, Object> entry : valuesMap.entrySet()) {
       rowValue.setColumnValue(entry.getKey(), entry.getValue());
     }
+    for (Map.Entry<String, String> entry : renameMap.entrySet()) {
+      rowValue.renameColumn(entry.getKey(), entry.getValue());
+    }
   }
 
   @Override
   public void transformSchema(RowSchema rowSchema) throws Exception {
-    for (Map.Entry<String, Schema.Field> entry : fieldsMap.entrySet()) {
-      rowSchema.setField(entry.getKey(), entry.getValue());
+    for (Schema.Field field : fields) {
+      rowSchema.setField(field);
+    }
+    for (Map.Entry<String, String> entry : renameMap.entrySet()) {
+      rowSchema.renameField(entry.getKey(), entry.getValue());
     }
   }
 }

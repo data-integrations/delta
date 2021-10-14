@@ -32,14 +32,22 @@ public interface RowSchema {
   Schema.Field getField(String columnName);
 
   /**
-   * Set the {@link Schema.Field} of a column by its name. If {@link Schema.Field#getName()} has a
-   * different value than the given columnName, then the column is renamed. Once renamed, new name should be used to
-   * set the {@link Schema.Field} again. If the given column doesn't exist , a new column will be added.
+   * Set the {@link Schema.Field} of a column by its name in the {@link Schema.Field}. Once renamed, new name should be
+   * used to set the {@link Schema.Field} again. If the given name doesn't exist , a new field will be added.
    * A {@link NullPointerException} will be thrown if the given column name is null.
-   * @param columnName the original name of a column
    * @param field the new {@link Schema.Field} of the column
    */
-  void setField(String columnName, Schema.Field field);
+  void setField(Schema.Field field);
+
+  /**
+   * Rename a field.
+   * An {@link IllegalArgumentException) will be thrown if the original field name doesn't exist or the new field
+   * name already exists
+   *
+   * @param originalName the original name of the field to be renamed.
+   * @param newName      the new name of the field.
+   */
+  void renameField(String originalName, String newName);
 
   /**
    * @return the corresponding {@Schema} which is immutable

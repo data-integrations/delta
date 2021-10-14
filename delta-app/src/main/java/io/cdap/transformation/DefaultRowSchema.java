@@ -61,30 +61,51 @@ public class DefaultRowSchema implements RowSchema {
 
 
   @Override
-  public void setField(String columnName, Schema.Field field) {
-    if (columnName == null) {
-      throw new NullPointerException("Column name is null.");
-    }
+  public void setField(Schema.Field field) {
     if (field == null) {
       throw new NullPointerException("Field is null.");
     }
-    changed = true;
-    String newName = field.getName();
-    // handle the rename case
-    if (!columnName.equals(newName)) {
-      Set<String> names = fieldsMap.keySet();
-      if (!names.contains(columnName)) {
-        // it's adding a new column
-        throw new IllegalArgumentException(String.format("New column %s has a different field name: %s.", columnName,
-                                                         newName));
-      }
-      if (names.contains(newName)) {
-        throw new IllegalArgumentException(String.format("Column name %s already exists.", newName));
-      }
-      recordRename(columnName, newName);
-      fieldsMap.remove(columnName);
+
+    String name = field.getName();
+    if (name == null) {
+      throw new NullPointerException("Field name is null.");
     }
-    fieldsMap.put(newName, field);
+
+    Schema.Field originalField = fieldsMap.get(name);
+    if (originalField != null && originalField.getSchema().equals(field.getSchema())) {
+      return;
+    }
+    changed = true;
+    fieldsMap.put(name, field);
+  }
+
+  @Override
+  public void renameField(String originalName, String newName) {
+    Set<String> names = fieldsMap.keySet();
+    if (originalName == null) {
+      throw new NullPointerException("Original field name is null.");
+    }
+
+    if (newName == null) {
+      throw new NullPointerException("New field name is null.");
+    }
+
+    if (!names.contains(originalName)) {
+      throw new IllegalArgumentException(String.format("Original field name %s doesn't not exist.", originalName));
+    }
+
+    if (originalName.equals(newName)) {
+      return;
+    }
+
+    if (names.contains(newName)) {
+      throw new IllegalArgumentException(String.format("Field name %s already exists.", newName));
+    }
+
+    changed = true;
+    recordRename(originalName, newName);
+    Schema.Field originalField = fieldsMap.remove(originalName);
+    fieldsMap.put(newName, Schema.Field.of(newName, originalField.getSchema()));
   }
 
   private void recordRename(String originalName, String newName) {
