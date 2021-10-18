@@ -108,6 +108,7 @@ public class DeltaWorker extends AbstractWorker {
   private Offset offset;
   private BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
   private Map<Integer, Set<TableId>> tableAssignments;
+  // a map whose key is the table name and value is a list of transformation that will be applied on this table in order
   private Map<String, List<Transformation>> transformations;
   private int maxRetrySeconds;
   private int retryDelaySeconds;
@@ -201,8 +202,8 @@ public class DeltaWorker extends AbstractWorker {
     // targets will not behave properly if they don't get create table events
     ddlBlacklist.remove(DDLOperation.Type.CREATE_TABLE);
     Map<String, TableTransformation> tableTransformations =
-      config.getTableLevelTransformations().stream().collect(Collectors.toMap(TableTransformation::getTableName,
-                                                                              Function.identity()));
+      config.getTableTransformations().stream().collect(Collectors.toMap(TableTransformation::getTableName,
+                                                                         Function.identity()));
     transformations = new HashMap<>();
     Set<SourceTable> expandedTables = config.getTables().stream()
       .filter(t -> assignedTables.contains(new TableId(t.getDatabase(), t.getTable(), t.getSchema())))
@@ -235,7 +236,7 @@ public class DeltaWorker extends AbstractWorker {
     if (tableTransformation == null) {
       return;
     }
-    tableTransformation.getColumnLevelTransformations().forEach(t -> {
+    tableTransformation.getColumnTransformations().forEach(t -> {
       String directive = t.getTransformation();
       String directiveName = TransformationUtil.parseDirectiveName(directive);
         try {
@@ -428,8 +429,6 @@ public class DeltaWorker extends AbstractWorker {
     }
 
   }
-
-  
 
   @Override
   public void stop() {

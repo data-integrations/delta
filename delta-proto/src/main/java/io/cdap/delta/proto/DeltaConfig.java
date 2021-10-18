@@ -99,7 +99,7 @@ public class DeltaConfig extends Config {
     return tables == null ? Collections.emptyList() : Collections.unmodifiableList(tables);
   }
 
-  public List<TableTransformation> getTableLevelTransformations() {
+  public List<TableTransformation> getTableTransformations() {
     return tableTransformations == null ? Collections.emptyList() :
              Collections.unmodifiableList(tableTransformations);
   }

@@ -16,22 +16,21 @@
 
 package io.cdap.transformation;
 
-import java.util.HashMap;
-import java.util.Map;
+import io.cdap.transformation.api.Directive;
 
-/**
- * Default implementation of {@link ColumnRenameInfo}
+/***
+ * Default implementation of {@Directive}
  */
-public class DefaultRenameInfo implements ColumnRenameInfo {
-  private final Map<String, String> originalToNewNames;
+public class DefaultDirective implements Directive {
 
-  public DefaultRenameInfo(Map<String, String> originalToNewNames) {
-    this.originalToNewNames = new HashMap<>(originalToNewNames);
+  private final String wholeCommandLine;
+
+  public DefaultDirective(String wholeCommandLine) {
+    this.wholeCommandLine = wholeCommandLine;
+
   }
-
   @Override
-  public String getNewName(String originalName) {
-    String newName = originalToNewNames.get(originalName);
-    return newName == null ? originalName : newName;
+  public String getWholeCommandLine() {
+    return wholeCommandLine;
   }
 }

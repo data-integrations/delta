@@ -16,25 +16,26 @@
 
 package io.cdap.transformation;
 
+import io.cdap.transformation.api.NotFoundException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class DefaultRowValueTest {
+public class DefaultMutableRowValueTest {
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testNullValueMap() {
     new DefaultRowValue(null);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testGetNonexisting() {
+  @Test(expected = NotFoundException.class)
+  public void testGetNonexisting() throws Exception {
     new DefaultRowValue().getColumnValue("non");
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testSetNullColumnName() {
     new DefaultRowValue().setColumnValue(null, "value");
   }
@@ -53,7 +54,7 @@ public class DefaultRowValueTest {
   }
 
   @Test
-  public void testGetSetRename() {
+  public void testGetSetRename() throws Exception {
 
     Map<String, Object> valuesMap = new HashMap<>();
     valuesMap.put("col1", "value1");

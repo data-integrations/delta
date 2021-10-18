@@ -14,24 +14,14 @@
  * the License.
  */
 
-package io.cdap.transformation;
-
-import java.util.HashMap;
-import java.util.Map;
+package io.cdap.transformation.api;
 
 /**
- * Default implementation of {@link ColumnRenameInfo}
+ * A transformation directive
  */
-public class DefaultRenameInfo implements ColumnRenameInfo {
-  private final Map<String, String> originalToNewNames;
-
-  public DefaultRenameInfo(Map<String, String> originalToNewNames) {
-    this.originalToNewNames = new HashMap<>(originalToNewNames);
-  }
-
-  @Override
-  public String getNewName(String originalName) {
-    String newName = originalToNewNames.get(originalName);
-    return newName == null ? originalName : newName;
-  }
+public interface Directive {
+  /**
+   * @return the whole directive string
+   */
+  String getWholeCommandLine();
 }

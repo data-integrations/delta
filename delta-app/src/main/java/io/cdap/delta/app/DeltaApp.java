@@ -58,7 +58,7 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     source.configure(sourceConfigurer);
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
-    conf.getTableLevelTransformations().forEach(t -> t.getColumnLevelTransformations()
+    conf.getTableTransformations().forEach(t -> t.getColumnTransformations()
                                                        .forEach(this::registerTransformationPlugin));
 
     addWorker(new DeltaWorker(conf, sourceConfigurer.getSourceProperties()));

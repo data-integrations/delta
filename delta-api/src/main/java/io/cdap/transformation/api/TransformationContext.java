@@ -23,5 +23,5 @@ public interface TransformationContext {
   /**
    * @return transformation directive. Transformation are stored as directives.
    */
-  String getDirective();
+  Directive getDirective();
 }

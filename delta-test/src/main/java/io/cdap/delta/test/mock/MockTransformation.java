@@ -18,8 +18,8 @@ package io.cdap.delta.test.mock;
 
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.transformation.api.RowSchema;
-import io.cdap.transformation.api.RowValue;
+import io.cdap.transformation.api.MutableRowSchema;
+import io.cdap.transformation.api.MutableRowValue;
 import io.cdap.transformation.api.Transformation;
 import io.cdap.transformation.api.TransformationContext;
 
@@ -49,7 +49,7 @@ public class MockTransformation implements Transformation {
   }
 
   @Override
-  public void transformValue(RowValue rowValue) throws Exception {
+  public void transformValue(MutableRowValue rowValue) throws Exception {
     for (Map.Entry<String, Object> entry : valuesMap.entrySet()) {
       rowValue.setColumnValue(entry.getKey(), entry.getValue());
     }
@@ -59,7 +59,7 @@ public class MockTransformation implements Transformation {
   }
 
   @Override
-  public void transformSchema(RowSchema rowSchema) throws Exception {
+  public void transformSchema(MutableRowSchema rowSchema) throws Exception {
     for (Schema.Field field : fields) {
       rowSchema.setField(field);
     }

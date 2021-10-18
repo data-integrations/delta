@@ -16,22 +16,14 @@
 
 package io.cdap.transformation;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- * Default implementation of {@link ColumnRenameInfo}
- */
-public class DefaultRenameInfo implements ColumnRenameInfo {
-  private final Map<String, String> originalToNewNames;
+public class DefaultDirectiveTest {
 
-  public DefaultRenameInfo(Map<String, String> originalToNewNames) {
-    this.originalToNewNames = new HashMap<>(originalToNewNames);
-  }
-
-  @Override
-  public String getNewName(String originalName) {
-    String newName = originalToNewNames.get(originalName);
-    return newName == null ? originalName : newName;
+  @Test
+  public void testGetWholeCommandLine() {
+    DefaultDirective directive = new DefaultDirective("directive");
+    Assert.assertEquals("directive", directive.getWholeCommandLine());
   }
 }

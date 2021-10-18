@@ -17,34 +17,35 @@
 package io.cdap.transformation.api;
 
 /**
- * Value of a row.
+ * Mutable vale of a row where you can set or get column value of a row via the column name. Also you can rename a
+ * column.
  */
-public interface RowValue {
+public interface MutableRowValue {
   /**
    * Get the value of a column by its name.
    * if the column was once renamed , the new name should be used to get the value.
-   * An {@link IllegalArgumentException) will be thrown if the given column name doesn't exist.
-   * @param columnName the name of the column. Once column was renamed , new name should be used to get the value.
-   * @return the value of the corresponding column
+   * @param columnName the name of the column. Once column was renamed, new name should be used to get the value.
+   * @return the value of the corresponding column.
+   * @throws NotFoundException if the given column name doesn't exist.
    */
-  Object getColumnValue(String columnName);
+  Object getColumnValue(String columnName) throws NotFoundException;
 
   /**
    * Set the value of a column by its name. Once column was renamed, new name should be used to
    * set the value. If the given column doesn't exist , a new column will be added.
-   * A {@link NullPointerException} will be thrown if the given column name is null.
-   * @param columnName the latest name of a column
-   * @param value the value of the column
+   * @param columnName the latest name of a column.
+   * @param value the value of the column.
+   * @throws IllegalArgumentException  if the given column name is null.
    */
   void setColumnValue(String columnName, Object value);
 
   /**
    * Rename a column.
-   * An {@link IllegalArgumentException) will be thrown if the original column name doesn't exist or the new column
-   * name already exists
    *
    * @param originalName the original name of the column to be renamed.
    * @param newName      the new name of the column.
+   * @throws IllegalArgumentException will be thrown if the original column name doesn't exist or the new column name
+   * already exists.
    */
   void renameColumn(String originalName, String newName);
 }

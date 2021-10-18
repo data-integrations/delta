@@ -17,76 +17,75 @@
 package io.cdap.transformation;
 
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.transformation.api.NotFoundException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Set;
-
-public class DefaultRowSchemaTest {
+public class DefaultMutableRowSchemaTest {
 
 
   @Test(expected = NullPointerException.class)
   public void testNullSchema() {
-    new DefaultRowSchema(null);
+    new DefaultMutableRowSchema(null);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testIllegalSchema() {
-    new DefaultRowSchema(Schema.of(Schema.Type.STRING));
+    new DefaultMutableRowSchema(Schema.of(Schema.Type.STRING));
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testGetNonExistingField() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+  @Test(expected = NotFoundException.class)
+  public void testGetNonExistingField() throws Exception {
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.getField("nonExisting");
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testGetNullField() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+  @Test(expected = NotFoundException.class)
+  public void testGetNullField() throws Exception {
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.getField(null);
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testSetNullField() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.setField(null);
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testSetNullFieldName() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.setField(Schema.Field.of(null, Schema.of(Schema.Type.STRING)));
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testRenameNullFieldName() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.renameField(null, "newName");
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testRenameToNullFieldName() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.renameField("strCol", null);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testRenameNonexistingFieldName() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record", Schema.Field.of("strCol", Schema.of(Schema.Type.STRING))));
     rowSchema.renameField("non-existing", "newName");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testRenameToExisting() {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record",
                       Schema.Field.of("strCol", Schema.of(Schema.Type.STRING)),
                       Schema.Field.of("intCol", Schema.of(Schema.Type.INT))));
@@ -94,13 +93,13 @@ public class DefaultRowSchemaTest {
   }
 
   @Test
-  public void testValidSchema() {
+  public void testValidSchema() throws Exception {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
     Schema.Field intField = Schema.Field.of("intCol", Schema.of(Schema.Type.INT));
     Schema.Field boolField = Schema.Field.of("intCol", Schema.of(Schema.Type.BOOLEAN));
     Schema.Field newField = Schema.Field.of("newCol", Schema.of(Schema.Type.INT));
 
-    DefaultRowSchema rowSchema = new DefaultRowSchema(
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(
       Schema.recordOf("record",
                       strField,
                       intField));
@@ -135,22 +134,21 @@ public class DefaultRowSchemaTest {
   }
 
   @Test
-  public void testRenameToSame() {
+  public void testRenameToSame() throws Exception {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
-    DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(Schema.recordOf("record", strField));
     rowSchema.renameField("strCol", "strCol");
     Schema.Field newField = rowSchema.getField("strCol");
     Assert.assertEquals(strField.getName(), newField.getName());
     Assert.assertEquals(strField.getSchema(), newField.getSchema());
     ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
-    Set<String> renamedColumns = renameInfo.getRenamedColumns();
-    Assert.assertTrue(renamedColumns.isEmpty());
+    Assert.assertEquals("strCol", renameInfo.getNewName("strCol"));
   }
 
   @Test
-  public void testRenameTwice() {
+  public void testRenameTwice() throws Exception {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
-    DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(Schema.recordOf("record", strField));
     rowSchema.renameField("strCol", "newName");
     rowSchema.renameField("newName", "newName1");
 
@@ -158,23 +156,19 @@ public class DefaultRowSchemaTest {
     Assert.assertEquals("newName1", newField.getName());
     Assert.assertEquals(strField.getSchema(), newField.getSchema());
     ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
-    Set<String> renamedColumns = renameInfo.getRenamedColumns();
-    Assert.assertEquals(1, renamedColumns.size());
-    Assert.assertTrue(renamedColumns.contains("strCol"));
     Assert.assertEquals("newName1", renameInfo.getNewName("strCol"));
   }
 
   @Test
-  public void testRenameBack() {
+  public void testRenameBack() throws Exception {
     Schema.Field strField = Schema.Field.of("strCol", Schema.of(Schema.Type.STRING));
-    DefaultRowSchema rowSchema = new DefaultRowSchema(Schema.recordOf("record", strField));
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(Schema.recordOf("record", strField));
     rowSchema.renameField("strCol", "newName");
     rowSchema.renameField("newName", "strCol");
     Schema.Field newField = rowSchema.getField("strCol");
     Assert.assertEquals(strField.getName(), newField.getName());
     Assert.assertEquals(strField.getSchema(), newField.getSchema());
     ColumnRenameInfo renameInfo = rowSchema.getRenameInfo();
-    Set<String> renamedColumns = renameInfo.getRenamedColumns();
-    Assert.assertTrue(renamedColumns.isEmpty());
+    Assert.assertEquals("strCol", renameInfo.getNewName("strCol"));
   }
 }

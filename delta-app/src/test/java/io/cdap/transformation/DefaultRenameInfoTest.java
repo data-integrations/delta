@@ -39,16 +39,12 @@ public class DefaultRenameInfoTest {
     Assert.assertEquals("new", renameInfo.getNewName("old"));
     Assert.assertEquals("unknown", renameInfo.getNewName("unknown"));
     Set<String> renamedColumns = new HashSet<>(nameMapping.keySet());
-    Assert.assertEquals(renamedColumns, renameInfo.getRenamedColumns());
 
     //test immutability
     nameMapping.put("unkown", "unknown1");
     nameMapping.put("old", "new1");
     Assert.assertEquals("new", renameInfo.getNewName("old"));
     Assert.assertEquals("unknown", renameInfo.getNewName("unknown"));
-    Assert.assertEquals(renamedColumns, renameInfo.getRenamedColumns());
-
-
   }
 
 }

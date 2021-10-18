@@ -14,24 +14,19 @@
  * the License.
  */
 
-package io.cdap.transformation;
-
-import java.util.HashMap;
-import java.util.Map;
+package io.cdap.transformation.api;
 
 /**
- * Default implementation of {@link ColumnRenameInfo}
+ * Exception thrown when a Field or Column is not found
  */
-public class DefaultRenameInfo implements ColumnRenameInfo {
-  private final Map<String, String> originalToNewNames;
+public class NotFoundException extends Exception {
 
-  public DefaultRenameInfo(Map<String, String> originalToNewNames) {
-    this.originalToNewNames = new HashMap<>(originalToNewNames);
+  public NotFoundException() {
+    super();
   }
 
-  @Override
-  public String getNewName(String originalName) {
-    String newName = originalToNewNames.get(originalName);
-    return newName == null ? originalName : newName;
+  public NotFoundException(String errMsg) {
+    super(errMsg);
   }
+
 }

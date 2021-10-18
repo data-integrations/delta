@@ -39,7 +39,7 @@ public class TableTransformation {
   /**
    * @return an ordered list of column level transformations. Those transformations will be applied in returned order.
    */
-  public List<ColumnTransformation> getColumnLevelTransformations() {
+  public List<ColumnTransformation> getColumnTransformations() {
     return columnTransformations == null ? Collections.emptyList() :
              Collections.unmodifiableList(columnTransformations);
   }

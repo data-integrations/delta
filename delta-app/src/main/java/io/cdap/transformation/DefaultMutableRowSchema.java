@@ -17,7 +17,8 @@
 package io.cdap.transformation;
 
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.transformation.api.RowSchema;
+import io.cdap.transformation.api.MutableRowSchema;
+import io.cdap.transformation.api.NotFoundException;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
 /**
  * Default implementation of {@RowSchema}
  */
-public class DefaultRowSchema implements RowSchema {
+public class DefaultMutableRowSchema implements MutableRowSchema {
 
   private Schema schema;
   private Map<String, Schema.Field> fieldsMap;
@@ -37,7 +38,7 @@ public class DefaultRowSchema implements RowSchema {
   private Map<String, String> newToOriginalNames;
   private boolean changed;
 
-  public DefaultRowSchema(Schema schema) {
+  public DefaultMutableRowSchema(Schema schema) {
     if (schema == null) {
       throw new NullPointerException("Schema is null.");
     }
@@ -52,9 +53,9 @@ public class DefaultRowSchema implements RowSchema {
   }
 
   @Override
-  public Schema.Field getField(String columnName) {
+  public Schema.Field getField(String columnName) throws NotFoundException {
     if (!fieldsMap.containsKey(columnName)) {
-      throw new IllegalArgumentException("Column name %s doesn't not exist.");
+      throw new NotFoundException("Column name %s doesn't not exist.");
     }
     return fieldsMap.get(columnName);
   }
@@ -63,12 +64,12 @@ public class DefaultRowSchema implements RowSchema {
   @Override
   public void setField(Schema.Field field) {
     if (field == null) {
-      throw new NullPointerException("Field is null.");
+      throw new IllegalArgumentException("Field is null.");
     }
 
     String name = field.getName();
     if (name == null) {
-      throw new NullPointerException("Field name is null.");
+      throw new IllegalArgumentException("Field name is null.");
     }
 
     Schema.Field originalField = fieldsMap.get(name);
@@ -83,11 +84,11 @@ public class DefaultRowSchema implements RowSchema {
   public void renameField(String originalName, String newName) {
     Set<String> names = fieldsMap.keySet();
     if (originalName == null) {
-      throw new NullPointerException("Original field name is null.");
+      throw new IllegalArgumentException("Original field name is null.");
     }
 
     if (newName == null) {
-      throw new NullPointerException("New field name is null.");
+      throw new IllegalArgumentException("New field name is null.");
     }
 
     if (!names.contains(originalName)) {

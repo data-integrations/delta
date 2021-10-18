@@ -48,8 +48,8 @@ import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.proto.TableTransformation;
 import io.cdap.transformation.ColumnRenameInfo;
+import io.cdap.transformation.DefaultMutableRowSchema;
 import io.cdap.transformation.DefaultRenameInfo;
-import io.cdap.transformation.DefaultRowSchema;
 import io.cdap.transformation.TransformationUtil;
 import io.cdap.transformation.api.Transformation;
 
@@ -384,7 +384,8 @@ public class DraftService {
     ColumnRenameInfo columnRenameInfo;
     if (!transformations.isEmpty()) {
       try {
-       DefaultRowSchema rowSchema = TransformationUtil.transformSchema(standardizedDetail.getSchema(), transformations);
+        DefaultMutableRowSchema rowSchema = TransformationUtil.transformSchema(standardizedDetail.getSchema(),
+                                                                               transformations);
        standardizedDetail = new StandardizedTableDetail(standardizedDetail.getDatabase(),
                                                         standardizedDetail.getTable(),
                                                         standardizedDetail.getPrimaryKey(),
@@ -538,7 +539,7 @@ public class DraftService {
       .setSource(config.getSource())
       .setOffsetBasePath(config.getOffsetBasePath())
       .setTables(config.getTables())
-      .setTableTransformations(config.getTableLevelTransformations())
+      .setTableTransformations(config.getTableTransformations())
       .setSource(evaluateMacros(draftId.getNamespace().getName(), config.getSource()));
 
     Stage target = config.getTarget();

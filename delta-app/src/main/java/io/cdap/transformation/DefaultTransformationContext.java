@@ -16,20 +16,21 @@
 
 package io.cdap.transformation;
 
+import io.cdap.transformation.api.Directive;
 import io.cdap.transformation.api.TransformationContext;
 
 /**
  * Default implementation of {@link TransformationContext}
  */
 public class DefaultTransformationContext implements TransformationContext {
-  private String directive;
+  private DefaultDirective directive;
 
   public DefaultTransformationContext(String directive) {
-    this.directive = directive;
+    this.directive = new DefaultDirective(directive);
   }
 
   @Override
-  public String getDirective() {
+  public Directive getDirective() {
     return directive;
   }
 }

@@ -16,17 +16,10 @@
 
 package io.cdap.transformation;
 
-import java.util.Set;
-
 /**
  * Information about how Column was renamed.
  */
 public interface ColumnRenameInfo {
-  /**
-   * @return the original names of the columns that were renamed;
-   */
-  Set<String> getRenamedColumns();
-
   /**
    * Get the new name of the column, if column was not renamed, the same name will be returned.
    * @param originalName the original name of the column

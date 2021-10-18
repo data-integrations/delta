@@ -16,21 +16,22 @@
 
 package io.cdap.transformation;
 
-import io.cdap.transformation.api.RowValue;
+import io.cdap.transformation.api.MutableRowValue;
+import io.cdap.transformation.api.NotFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Default implementation of {@link RowValue}
+ * Default implementation of {@link MutableRowValue}
  */
-public class DefaultRowValue implements RowValue {
+public class DefaultRowValue implements MutableRowValue {
 
   private final Map<String, Object> valuesMap;
 
   public DefaultRowValue(Map<String, Object> valuesMap) {
     if (valuesMap == null) {
-      throw new NullPointerException("Values map should not be null");
+      throw new IllegalArgumentException("Values map is null");
     }
     this.valuesMap = valuesMap;
   }
@@ -40,9 +41,9 @@ public class DefaultRowValue implements RowValue {
   }
 
   @Override
-  public Object getColumnValue(String columnName) {
+  public Object getColumnValue(String columnName) throws NotFoundException {
     if (!valuesMap.containsKey(columnName)) {
-      throw new IllegalArgumentException("Column name %s doesn't not exist.");
+      throw new NotFoundException("Column name %s doesn't not exist.");
     }
     return valuesMap.get(columnName);
   }
@@ -50,7 +51,7 @@ public class DefaultRowValue implements RowValue {
   @Override
   public void setColumnValue(String columnName, Object value) {
     if (columnName == null) {
-      throw new NullPointerException("Column name is null.");
+      throw new IllegalArgumentException("Column name is null.");
     }
     valuesMap.put(columnName, value);
   }

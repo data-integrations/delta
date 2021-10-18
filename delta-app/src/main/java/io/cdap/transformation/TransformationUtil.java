@@ -70,8 +70,9 @@ public class TransformationUtil {
    * @param transformations the list of transformations to apply
    * @return the transformed mutable row schema.
    */
-  public static DefaultRowSchema transformSchema(Schema schema, List<Transformation> transformations) throws Exception {
-    DefaultRowSchema rowSchema = new DefaultRowSchema(schema);
+  public static DefaultMutableRowSchema transformSchema(Schema schema, List<Transformation> transformations)
+    throws Exception {
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(schema);
     for (Transformation transformation : transformations) {
       transformation.transformSchema(rowSchema);
     }
@@ -96,7 +97,7 @@ public class TransformationUtil {
     if (tableTransformation == null) {
       return Collections.emptyList();
     }
-    tableTransformation.getColumnLevelTransformations().forEach(t -> {
+    tableTransformation.getColumnTransformations().forEach(t -> {
       String directive = t.getTransformation();
       String directiveName = TransformationUtil.parseDirectiveName(directive);
       try {
@@ -119,7 +120,7 @@ public class TransformationUtil {
    * @return a map whose key is the table name and value is the table level transformation config defined for that table
    */
   public static Map<String, TableTransformation> getTableLevelTransformations(DeltaConfig deltaConfig) {
-    return deltaConfig.getTableLevelTransformations().stream().collect(
+    return deltaConfig.getTableTransformations().stream().collect(
         Collectors.toMap(TableTransformation::getTableName, Function.identity()));
   }
 }
