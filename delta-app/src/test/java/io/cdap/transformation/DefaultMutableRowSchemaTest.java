@@ -24,7 +24,7 @@ import org.junit.Test;
 public class DefaultMutableRowSchemaTest {
 
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testNullSchema() {
     new DefaultMutableRowSchema(null);
   }

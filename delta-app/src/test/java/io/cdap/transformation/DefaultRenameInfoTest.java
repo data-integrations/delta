@@ -23,9 +23,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 @RunWith(JUnit4.class)
 public class DefaultRenameInfoTest {
@@ -38,7 +36,6 @@ public class DefaultRenameInfoTest {
     DefaultRenameInfo renameInfo = new DefaultRenameInfo(nameMapping);
     Assert.assertEquals("new", renameInfo.getNewName("old"));
     Assert.assertEquals("unknown", renameInfo.getNewName("unknown"));
-    Set<String> renamedColumns = new HashSet<>(nameMapping.keySet());
 
     //test immutability
     nameMapping.put("unkown", "unknown1");

@@ -19,25 +19,20 @@ package io.cdap.transformation;
 import io.cdap.transformation.api.MutableRowValue;
 import io.cdap.transformation.api.NotFoundException;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Default implementation of {@link MutableRowValue}
  */
-public class DefaultRowValue implements MutableRowValue {
+public class DefaultMutalbeRowValue implements MutableRowValue {
 
   private final Map<String, Object> valuesMap;
 
-  public DefaultRowValue(Map<String, Object> valuesMap) {
+  public DefaultMutalbeRowValue(Map<String, Object> valuesMap) {
     if (valuesMap == null) {
       throw new IllegalArgumentException("Values map is null");
     }
     this.valuesMap = valuesMap;
-  }
-
-  public DefaultRowValue() {
-    this.valuesMap = new HashMap<>();
   }
 
   @Override

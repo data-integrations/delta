@@ -29,7 +29,7 @@ public class TableTransformation {
 
   public TableTransformation(String tableName, List<ColumnTransformation> columnTransformations) {
     this.tableName = tableName;
-    this.columnTransformations = new ArrayList<>(columnTransformations);
+    this.columnTransformations = Collections.unmodifiableList(new ArrayList<>(columnTransformations));
   }
 
   public String getTableName() {
@@ -40,7 +40,6 @@ public class TableTransformation {
    * @return an ordered list of column level transformations. Those transformations will be applied in returned order.
    */
   public List<ColumnTransformation> getColumnTransformations() {
-    return columnTransformations == null ? Collections.emptyList() :
-             Collections.unmodifiableList(columnTransformations);
+    return columnTransformations == null ? Collections.emptyList() : columnTransformations;
   }
 }

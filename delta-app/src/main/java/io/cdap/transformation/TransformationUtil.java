@@ -56,7 +56,7 @@ public class TransformationUtil {
    */
   public static Map<String, Object> transformValue(Map<String, Object> valuesMap, List<Transformation> transformations)
     throws Exception {
-    DefaultRowValue rowValue = new DefaultRowValue(valuesMap);
+    DefaultMutalbeRowValue rowValue = new DefaultMutalbeRowValue(valuesMap);
     for (Transformation transformation : transformations) {
       transformation.transformValue(rowValue);
     }

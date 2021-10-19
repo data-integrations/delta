@@ -27,27 +27,27 @@ public class DefaultMutableRowValueTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testNullValueMap() {
-    new DefaultRowValue(null);
+    new DefaultMutalbeRowValue(null);
   }
 
   @Test(expected = NotFoundException.class)
   public void testGetNonexisting() throws Exception {
-    new DefaultRowValue().getColumnValue("non");
+    new DefaultMutalbeRowValue(new HashMap<>()).getColumnValue("non");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testSetNullColumnName() {
-    new DefaultRowValue().setColumnValue(null, "value");
+    new DefaultMutalbeRowValue(new HashMap<>()).setColumnValue(null, "value");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testRenameNonexisting() {
-    new DefaultRowValue().renameColumn("non", "new");
+    new DefaultMutalbeRowValue(new HashMap<>()).renameColumn("non", "new");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testRenameToExisting() {
-    DefaultRowValue defaultRowValue = new DefaultRowValue();
+    DefaultMutalbeRowValue defaultRowValue = new DefaultMutalbeRowValue(new HashMap<>());
     defaultRowValue.setColumnValue("col1", "value1");
     defaultRowValue.setColumnValue("col2", "value2");
     defaultRowValue.renameColumn("col1", "col2");
@@ -59,7 +59,7 @@ public class DefaultMutableRowValueTest {
     Map<String, Object> valuesMap = new HashMap<>();
     valuesMap.put("col1", "value1");
     valuesMap.put("col2", true);
-    DefaultRowValue rowValue = new DefaultRowValue(valuesMap);
+    DefaultMutalbeRowValue rowValue = new DefaultMutalbeRowValue(valuesMap);
     //get
     Assert.assertEquals("value1", rowValue.getColumnValue("col1"));
     Assert.assertEquals(Boolean.TRUE, rowValue.getColumnValue("col2"));

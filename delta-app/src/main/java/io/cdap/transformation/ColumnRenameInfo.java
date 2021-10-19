@@ -26,5 +26,4 @@ public interface ColumnRenameInfo {
    * @return the new name of the column
    */
   String getNewName(String originalName);
-
 }

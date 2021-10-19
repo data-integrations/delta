@@ -254,7 +254,7 @@ public class DeltaConfig extends Config {
     private String offsetBasePath;
     private Resources resources;
     private List<SourceTable> tables;
-    private List tableTransformations;
+    private List<TableTransformation> tableTransformations;
     private Set<DMLOperation.Type> dmlBlacklist;
     private Set<DDLOperation.Type> ddlBlacklist;
     private RetryConfig retries;

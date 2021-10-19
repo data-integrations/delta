@@ -242,8 +242,6 @@ public class DraftService {
     }
   }
 
-
-
   /**
    * Assess the entire pipeline based on the tables the source will read and the capabilities of the target.
    * An instance of the target plugin will be instantiated in order to generate this list.

@@ -40,10 +40,11 @@ public class DefaultMutableRowSchema implements MutableRowSchema {
 
   public DefaultMutableRowSchema(Schema schema) {
     if (schema == null) {
-      throw new NullPointerException("Schema is null.");
+      throw new IllegalArgumentException("Schema is null.");
     }
     if (schema.getType() != Schema.Type.RECORD) {
-      throw new IllegalArgumentException("Schema type is not RECORD.");
+      throw new IllegalArgumentException(String.format("Expecting schema of type RECORD but got %s.",
+                                                       schema.getType()));
     }
     this.schema = schema;
     this.fieldsMap = schema.getFields().stream().collect(Collectors.toMap(Schema.Field::getName, Function.identity(),
