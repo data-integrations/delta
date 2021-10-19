@@ -21,7 +21,10 @@ import io.cdap.cdap.api.plugin.PluginSelector;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
+import io.cdap.transformation.api.Transformation;
 
+import java.util.Collections;
+import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
@@ -30,10 +33,16 @@ import javax.annotation.Nullable;
 public class MockConfigurer implements Configurer {
   private final DeltaSource source;
   private final DeltaTarget target;
+  private final Map<String, Transformation> transformations;
 
   public MockConfigurer(DeltaSource source, DeltaTarget target) {
+    this(source, target, null);
+  }
+
+  public MockConfigurer(DeltaSource source, DeltaTarget target, Map<String, Transformation> transformations) {
     this.source = source;
     this.target = target;
+    this.transformations = transformations == null ? Collections.emptyMap() : transformations;
   }
 
   @Nullable
@@ -42,9 +51,14 @@ public class MockConfigurer implements Configurer {
                          PluginSelector selector) {
     if (DeltaSource.PLUGIN_TYPE.equals(pluginType)) {
       return (T) source;
-    } else if (DeltaTarget.PLUGIN_TYPE.equals(pluginType)) {
+    }
+    if (DeltaTarget.PLUGIN_TYPE.equals(pluginType)) {
       return (T) target;
     }
+    if (Transformation.PLUGIN_TYPE.equals(pluginType)) {
+      return (T) transformations.get(pluginName);
+    }
+
     return null;
   }
 

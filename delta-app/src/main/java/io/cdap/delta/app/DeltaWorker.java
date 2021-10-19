@@ -21,6 +21,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.cdap.cdap.api.Resources;
 import io.cdap.cdap.api.app.ApplicationSpecification;
+import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.cdap.api.worker.AbstractWorker;
@@ -47,8 +49,12 @@ import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.InstanceConfig;
 import io.cdap.delta.proto.ParallelismConfig;
 import io.cdap.delta.proto.TableId;
+import io.cdap.delta.proto.TableTransformation;
 import io.cdap.delta.store.DefaultMacroEvaluator;
 import io.cdap.delta.store.StateStore;
+import io.cdap.transformation.DefaultTransformationContext;
+import io.cdap.transformation.TransformationUtil;
+import io.cdap.transformation.api.Transformation;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.hadoop.fs.Path;
@@ -58,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,6 +74,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -100,6 +108,8 @@ public class DeltaWorker extends AbstractWorker {
   private Offset offset;
   private BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
   private Map<Integer, Set<TableId>> tableAssignments;
+  // a map whose key is the table name and value is a list of transformation that will be applied on this table in order
+  private Map<String, List<Transformation>> transformations;
   private int maxRetrySeconds;
   private int retryDelaySeconds;
   private int eventQueueSize;
@@ -191,6 +201,10 @@ public class DeltaWorker extends AbstractWorker {
     Set<DDLOperation.Type> ddlBlacklist = new HashSet<>(config.getDdlBlacklist());
     // targets will not behave properly if they don't get create table events
     ddlBlacklist.remove(DDLOperation.Type.CREATE_TABLE);
+    Map<String, TableTransformation> tableTransformations =
+      config.getTableTransformations().stream().collect(Collectors.toMap(TableTransformation::getTableName,
+                                                                         Function.identity()));
+    transformations = new HashMap<>();
     Set<SourceTable> expandedTables = config.getTables().stream()
       .filter(t -> assignedTables.contains(new TableId(t.getDatabase(), t.getTable(), t.getSchema())))
       .map(t -> {
@@ -199,6 +213,7 @@ public class DeltaWorker extends AbstractWorker {
         Set<DDLOperation.Type> expandedDdlBlacklist = new HashSet<>(t.getDdlBlacklist());
         expandedDdlBlacklist.addAll(ddlBlacklist);
         expandedDdlBlacklist.remove(DDLOperation.Type.CREATE_TABLE);
+        loadTransformations(context, t, tableTransformations);
         return new SourceTable(t.getDatabase(), t.getTable(), t.getSchema(),
                                t.getColumns(), expandedDmlBlacklist, expandedDdlBlacklist);
       })
@@ -210,6 +225,29 @@ public class DeltaWorker extends AbstractWorker {
     eventQueueSize = Integer.parseInt(context.getRuntimeArguments().getOrDefault(EVENT_QUEUE_SIZE, "10"));
     eventQueueCapacity = Long.parseLong(context.getRuntimeArguments().getOrDefault(EVENT_QUEUE_CAPACITY, "10000000"));
     eventQueue = new CapacityBoundedEventQueue(eventQueueSize, eventQueueCapacity);
+  }
+
+  private void loadTransformations(WorkerContext context, SourceTable table,
+                                   Map<String, TableTransformation> tableTransformations) {
+    String tableName = table.getSchema() == null ? table.getTable() : table.getSchema() + "." + table.getTable();
+    List<Transformation> columnTransformations = new ArrayList<>();
+    transformations.put(tableName, columnTransformations);
+    TableTransformation tableTransformation = tableTransformations.get(tableName);
+    if (tableTransformation == null) {
+      return;
+    }
+    tableTransformation.getColumnTransformations().forEach(t -> {
+      String directive = t.getTransformation();
+      String directiveName = TransformationUtil.parseDirectiveName(directive);
+        try {
+          Transformation transformation = context.newPluginInstance(directiveName);
+          transformation.initialize(new DefaultTransformationContext(directive));
+          columnTransformations.add(transformation);
+        } catch (Exception e) {
+          throw new RuntimeException(String.format("Failed to load transformation plugin for directive : %s",
+                                                   directive), e);
+        }
+      });
   }
 
   @Override
@@ -378,7 +416,7 @@ public class DeltaWorker extends AbstractWorker {
         if (event == null) {
           return;
         }
-
+        event = transformEvent(event);
         applyEvent(event);
         error.set(null);
       });
@@ -427,6 +465,78 @@ public class DeltaWorker extends AbstractWorker {
         // this can only happen if there is a bug in the program
         LOG.error("Skipping unknown change type {}", event.getEvent().getChangeType());
     }
+  }
+
+  private Sequenced<? extends ChangeEvent> transformEvent(Sequenced<? extends ChangeEvent> event) throws Exception {
+    switch (event.getEvent().getChangeType()) {
+      case DDL:
+        return transformDDLEvent((Sequenced<DDLEvent>) event);
+      case DML:
+        return transformDMLEvent((Sequenced<DMLEvent>) event);
+      default:
+        // this can only happen if there is a bug in the program
+        throw new RuntimeException(String.format("Unknown change type {}", event.getEvent().getChangeType()));
+    }
+  }
+
+  private Sequenced<DMLEvent> transformDMLEvent(Sequenced<DMLEvent> event) throws Exception {
+    DMLEvent dmlEvent = event.getEvent();
+    DMLOperation operation = dmlEvent.getOperation();
+    String tableName = operation.getSchemaName() == null ? operation.getTableName() : operation.getSchemaName() + "."
+                                                                                        + operation.getTableName();
+    List<Transformation> columnTransformations = this.transformations.get(tableName);
+    if (columnTransformations == null || columnTransformations.isEmpty()) {
+      return event;
+    }
+
+    StructuredRecord row = dmlEvent.getRow();
+    Schema schema = TransformationUtil.transformSchema(row.getSchema(), columnTransformations).toSchema();
+    row = transform(row, columnTransformations, schema);
+    StructuredRecord previousRow = dmlEvent.getPreviousRow();
+    previousRow = transform(previousRow, columnTransformations, schema);
+
+    return new Sequenced<>(DMLEvent.builder(dmlEvent).setRow(row).setPreviousRow(previousRow).build(),
+                           event.getSequenceNumber());
+  }
+
+  private StructuredRecord transform(StructuredRecord row, List<Transformation> columnTransformations, Schema schema)
+    throws Exception {
+    if (row == null) {
+      return row;
+    }
+
+    //can not use Collectors.toMap because some value may be null due to the known bug:
+    //https://stackoverflow.com/questions/24630963/nullpointerexception-in-collectors-tomap-with-null-entry-values
+    Map<String, Object> valuesMap =
+      row.getSchema().getFields().stream().map(Schema.Field::getName)
+        .collect(HashMap::new, (m, n) -> m.put(n, row.get(n)), HashMap::putAll);
+    valuesMap = TransformationUtil.transformValue(valuesMap, columnTransformations);
+    StructuredRecord.Builder transformedRow = StructuredRecord.builder(schema);
+
+    valuesMap.entrySet().forEach(e -> transformedRow.set(e.getKey(), e.getValue()));
+    return transformedRow.build();
+  }
+
+
+  private Sequenced<DDLEvent> transformDDLEvent(Sequenced<DDLEvent> event) throws Exception {
+    DDLEvent ddlEvent = event.getEvent();
+    DDLOperation operation = ddlEvent.getOperation();
+    String tableName = operation.getSchemaName() == null ? operation.getTableName() : operation.getSchemaName() + "."
+                                                                                        + operation.getTableName();
+    if (tableName == null) {
+      //a database or schema level operation
+      return event;
+    }
+    List<Transformation> columnTransformations = this.transformations.get(tableName);
+    if (columnTransformations == null || columnTransformations.isEmpty()) {
+      return event;
+    }
+    Schema schema = ddlEvent.getSchema();
+    if (schema == null) {
+      return event;
+    }
+    return new Sequenced<>(DDLEvent.builder(ddlEvent).setSchema(
+      TransformationUtil.transformSchema(schema, columnTransformations).toSchema()).build());
   }
 
   private void startFromLastCommit() throws Exception {
