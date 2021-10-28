@@ -30,7 +30,7 @@ public class Problem {
 
 
   public Problem(String name, String description, String suggestion, String impact) {
-    this(name, description,suggestion, impact, Severity.ERROR);
+    this(name, description, suggestion, impact, Severity.ERROR);
   }
   public Problem(String name, String description, String suggestion, String impact, Severity severity) {
     this.name = name;
@@ -87,14 +87,18 @@ public class Problem {
     return Objects.equals(name, that.name) &&
       Objects.equals(description, that.description) &&
       Objects.equals(suggestion, that.suggestion) &&
-      Objects.equals(impact, that.impact);
+      Objects.equals(impact, that.impact) &&
+      Objects.equals(severity, that.severity);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, description, suggestion, impact);
+    return Objects.hash(name, description, suggestion, impact, severity);
   }
 
+  /**
+   * The severity of the problem
+   */
   public enum Severity {
     ERROR,
     WARNING
