@@ -19,6 +19,7 @@ package io.cdap.transformation;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
+import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.TableTransformation;
@@ -64,7 +65,7 @@ public class TransformationUtil {
   }
 
   /**
-   * Apply a list of transformation a row schema
+   * Apply a list of transformations on a row schema
    *
    * @param schema          the schema to apply transformation
    * @param transformations the list of transformations to apply
@@ -79,6 +80,24 @@ public class TransformationUtil {
     return rowSchema;
   }
 
+  /**
+   * Apply a list of transformations on a DDLEvent
+   * @param ddlEvent               the DDL event to apply transformations on
+   * @param columnTransformations  the list of transformations to apply
+   * @return the new DDL event that has applied the transformations specified
+   */
+  public static DDLEvent transformDDLEvent(DDLEvent ddlEvent, List<Transformation> columnTransformations)
+    throws Exception {
+    DefaultMutableRowSchema mutableRowSchema = TransformationUtil.transformSchema(
+      ddlEvent.getSchema(), columnTransformations);
+    ColumnRenameInfo renameInfo = mutableRowSchema.getRenameInfo();
+    List<String> primaryKeys = ddlEvent.getPrimaryKey();
+    List<String> changedKeys = new ArrayList<>(primaryKeys.size());
+    for (String primaryKey : primaryKeys) {
+      changedKeys.add(renameInfo.getNewName(primaryKey));
+    }
+    return DDLEvent.builder(ddlEvent).setSchema(mutableRowSchema.toSchema()).setPrimaryKey(changedKeys).build();
+  }
 
   /**
    * Load transformation plugins applied on a certain table
@@ -123,4 +142,5 @@ public class TransformationUtil {
     return deltaConfig.getTableTransformations().stream().collect(
         Collectors.toMap(TableTransformation::getTableName, Function.identity()));
   }
+
 }

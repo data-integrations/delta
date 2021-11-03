@@ -535,8 +535,7 @@ public class DeltaWorker extends AbstractWorker {
     if (schema == null) {
       return event;
     }
-    return new Sequenced<>(DDLEvent.builder(ddlEvent).setSchema(
-      TransformationUtil.transformSchema(schema, columnTransformations).toSchema()).build());
+    return new Sequenced<>(TransformationUtil.transformDDLEvent(ddlEvent, columnTransformations));
   }
 
   private void startFromLastCommit() throws Exception {
