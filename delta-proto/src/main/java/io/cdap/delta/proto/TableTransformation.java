@@ -42,4 +42,18 @@ public class TableTransformation {
   public List<ColumnTransformation> getColumnTransformations() {
     return columnTransformations == null ? Collections.emptyList() : columnTransformations;
   }
+
+  /**
+   * Validate whether table name is non-empty and column transformations are valid.
+   */
+  public void validate() {
+    if (tableName == null || tableName.isEmpty()) {
+      throw new IllegalArgumentException("Table name of a TableTransformation should not be null or empty");
+    }
+    if (columnTransformations != null) {
+      for (ColumnTransformation columnTransformation : columnTransformations) {
+        columnTransformation.validate();
+      }
+    }
+  }
 }

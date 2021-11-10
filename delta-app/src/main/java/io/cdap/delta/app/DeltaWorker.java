@@ -45,6 +45,7 @@ import io.cdap.delta.api.Sequenced;
 import io.cdap.delta.api.SourceProperties;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.api.StopContext;
+import io.cdap.delta.proto.ColumnTransformation;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.InstanceConfig;
 import io.cdap.delta.proto.ParallelismConfig;
@@ -236,18 +237,18 @@ public class DeltaWorker extends AbstractWorker {
     if (tableTransformation == null) {
       return;
     }
-    tableTransformation.getColumnTransformations().forEach(t -> {
-      String directive = t.getTransformation();
-      String directiveName = TransformationUtil.parseDirectiveName(directive);
+    int index = 0;
+    for (ColumnTransformation columnTransformation : tableTransformation.getColumnTransformations()) {
+      String directive = columnTransformation.getDirective();
         try {
-          Transformation transformation = context.newPluginInstance(directiveName);
+          Transformation transformation = context.newPluginInstance(tableName + index++);
           transformation.initialize(new DefaultTransformationContext(directive));
           columnTransformations.add(transformation);
         } catch (Exception e) {
           throw new RuntimeException(String.format("Failed to load transformation plugin for directive : %s",
                                                    directive), e);
         }
-      });
+      };
   }
 
   @Override

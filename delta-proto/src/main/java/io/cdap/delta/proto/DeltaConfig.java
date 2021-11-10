@@ -162,7 +162,8 @@ public class DeltaConfig extends Config {
   }
 
   /**
-   * Validate that the stages contain all required fields and that there is a source defined.
+   * Validate that the stages contain all required fields and that there is a source defined and
+   * transformations are valid.
    *
    * @return the target stage if it exists
    */
@@ -190,6 +191,13 @@ public class DeltaConfig extends Config {
     }
     if (sourceStage == null) {
       throw new IllegalArgumentException("No source found.");
+    }
+
+    if (tableTransformations != null) {
+      for (TableTransformation tableTransformation : tableTransformations) {
+        tableTransformation.validate();
+      }
+
     }
     return Optional.ofNullable(targetStage);
   }

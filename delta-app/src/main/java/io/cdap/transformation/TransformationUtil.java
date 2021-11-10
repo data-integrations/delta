@@ -117,7 +117,7 @@ public class TransformationUtil {
       return Collections.emptyList();
     }
     tableTransformation.getColumnTransformations().forEach(t -> {
-      String directive = t.getTransformation();
+      String directive = t.getDirective();
       String directiveName = TransformationUtil.parseDirectiveName(directive);
       try {
         Transformation transformation = configurer.usePlugin(Transformation.PLUGIN_TYPE, directiveName,

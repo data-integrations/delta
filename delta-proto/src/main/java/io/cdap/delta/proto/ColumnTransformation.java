@@ -32,7 +32,20 @@ public class ColumnTransformation {
     return columnName;
   }
 
-  public String getTransformation() {
+  public String getDirective() {
     return directive;
   }
+
+  /**
+   * Validate whether the columnName is non-empty and diretive is non-empty
+   */
+  public void validate() {
+    if (columnName == null || columnName.isEmpty()) {
+      throw new IllegalArgumentException("Column name of a column transformation should not be null or empty.");
+    }
+    if (directive == null || directive.isEmpty()) {
+      throw new IllegalArgumentException("Directive of a column transformation should not be null or empty.");
+    }
+  }
 }
+
