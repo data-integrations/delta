@@ -162,7 +162,8 @@ public class DeltaConfig extends Config {
   }
 
   /**
-   * Validate that the stages contain all required fields and that there is a source defined.
+   * Validate that the stages contain all required fields and that there is a source defined and
+   * transformations are valid.
    *
    * @return the target stage if it exists
    */
@@ -191,6 +192,12 @@ public class DeltaConfig extends Config {
     if (sourceStage == null) {
       throw new IllegalArgumentException("No source found.");
     }
+
+    if (tableTransformations != null) {
+      for (TableTransformation tableTransformation : tableTransformations) {
+        tableTransformation.validate();
+      }
+    }
     return Optional.ofNullable(targetStage);
   }
 
@@ -211,13 +218,14 @@ public class DeltaConfig extends Config {
       Objects.equals(offsetBasePath, that.offsetBasePath) &&
       Objects.equals(tables, that.tables) &&
       Objects.equals(dmlBlacklist, that.dmlBlacklist) &&
-      Objects.equals(ddlBlacklist, that.ddlBlacklist);
+      Objects.equals(ddlBlacklist, that.ddlBlacklist) &&
+      Objects.equals(tableTransformations, that.tableTransformations);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(description, stages, connections, resources, offsetBasePath, tables,
-                        dmlBlacklist, ddlBlacklist, service);
+                        dmlBlacklist, ddlBlacklist, service, tableTransformations);
   }
 
   /**

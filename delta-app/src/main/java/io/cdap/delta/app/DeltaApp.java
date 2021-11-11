@@ -58,8 +58,12 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
     source.configure(sourceConfigurer);
     DeltaTarget target = registerPlugin(targetConf);
     target.configure(configurer);
-    conf.getTableTransformations().forEach(t -> t.getColumnTransformations()
-                                                       .forEach(this::registerTransformationPlugin));
+    conf.getTableTransformations().forEach(t -> {
+      int index = 0;
+      for (ColumnTransformation columnTransformation : t.getColumnTransformations()) {
+        registerTransformationPlugin(columnTransformation, t.getTableName() + index++);
+      }
+    });
 
     addWorker(new DeltaWorker(conf, sourceConfigurer.getSourceProperties()));
 
@@ -77,9 +81,9 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
                      stageConf.getName(),
                      PluginProperties.builder().addAll(stageConf.getPlugin().getProperties()).build());
   }
-  private void registerTransformationPlugin(ColumnTransformation transformation) {
-    String directiveName = TransformationUtil.parseDirectiveName(transformation.getTransformation());
-    usePlugin(Transformation.PLUGIN_TYPE, directiveName, directiveName, PluginProperties.builder().build());
+  private void registerTransformationPlugin(ColumnTransformation transformation, String pluginId) {
+    String directiveName = TransformationUtil.parseDirectiveName(transformation.getDirective());
+    usePlugin(Transformation.PLUGIN_TYPE, directiveName, pluginId, PluginProperties.builder().build());
   }
 
   @Override
