@@ -19,6 +19,7 @@ package io.cdap.delta.proto;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Table level transformation which contains the information of transformations for a specific table
@@ -55,5 +56,23 @@ public class TableTransformation {
         columnTransformation.validate();
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TableTransformation that = (TableTransformation) o;
+    return Objects.equals(tableName, that.tableName) &&
+             Objects.equals(columnTransformations, that.columnTransformations);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tableName, columnTransformations);
   }
 }

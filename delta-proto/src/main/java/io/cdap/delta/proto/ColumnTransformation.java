@@ -16,6 +16,8 @@
 
 package io.cdap.delta.proto;
 
+import java.util.Objects;
+
 /**
  * Column level transformations
  */
@@ -46,6 +48,24 @@ public class ColumnTransformation {
     if (directive == null || directive.isEmpty()) {
       throw new IllegalArgumentException("Directive of a column transformation should not be null or empty.");
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ColumnTransformation that = (ColumnTransformation) o;
+    return Objects.equals(columnName, that.columnName) &&
+             Objects.equals(directive, that.directive);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(columnName, directive);
   }
 }
 

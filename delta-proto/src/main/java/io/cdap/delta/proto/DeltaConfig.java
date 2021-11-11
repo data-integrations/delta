@@ -197,7 +197,6 @@ public class DeltaConfig extends Config {
       for (TableTransformation tableTransformation : tableTransformations) {
         tableTransformation.validate();
       }
-
     }
     return Optional.ofNullable(targetStage);
   }
@@ -219,13 +218,14 @@ public class DeltaConfig extends Config {
       Objects.equals(offsetBasePath, that.offsetBasePath) &&
       Objects.equals(tables, that.tables) &&
       Objects.equals(dmlBlacklist, that.dmlBlacklist) &&
-      Objects.equals(ddlBlacklist, that.ddlBlacklist);
+      Objects.equals(ddlBlacklist, that.ddlBlacklist) &&
+      Objects.equals(tableTransformations, that.tableTransformations);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(description, stages, connections, resources, offsetBasePath, tables,
-                        dmlBlacklist, ddlBlacklist, service);
+                        dmlBlacklist, ddlBlacklist, service, tableTransformations);
   }
 
   /**
