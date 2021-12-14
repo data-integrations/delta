@@ -17,23 +17,23 @@
 package io.cdap.delta.app.service;
 
 import io.cdap.cdap.api.service.AbstractSystemService;
+import io.cdap.delta.store.DBReplicationOffsetStore;
+import io.cdap.delta.store.DBReplicationStateStore;
 import io.cdap.delta.store.DraftStore;
 
 /**
- * System service for storing drafts and performing assessments.
+ * System service for storing drafts, offsets, state store data and performing assessments.
  */
 public class AssessmentService extends AbstractSystemService {
-  static final String NAME = "assessor";
-  private final String offsetBasePath;
-
-  public AssessmentService(String offsetBasePath) {
-    this.offsetBasePath = offsetBasePath;
-  }
+  public static final String NAME = "assessor";
 
   @Override
   protected void configure() {
     setName(NAME);
-    addHandler(new AssessmentHandler(offsetBasePath));
+    addHandler(new AssessmentHandler());
+    addHandler(new OffsetStateHandler());
     createTable(DraftStore.TABLE_SPEC);
+    createTable(DBReplicationStateStore.TABLE_SPEC);
+    createTable(DBReplicationOffsetStore.TABLE_SPEC);
   }
 }

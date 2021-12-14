@@ -18,7 +18,12 @@ package io.cdap.delta.test;
 
 import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.api.plugin.PluginClass;
+import io.cdap.cdap.proto.ProgramRunStatus;
+import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
+import io.cdap.cdap.proto.id.NamespaceId;
+import io.cdap.cdap.test.ApplicationManager;
+import io.cdap.cdap.test.ServiceManager;
 import io.cdap.cdap.test.TestBase;
 import io.cdap.delta.api.ChangeEvent;
 import io.cdap.delta.api.assessment.TableDetail;
@@ -29,6 +34,7 @@ import io.cdap.delta.test.mock.MockTarget;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test base for delta pipelines.
@@ -37,6 +43,8 @@ public class DeltaPipelineTestBase extends TestBase {
   protected static final ArtifactId ARTIFACT_ID = new ArtifactId("default", "delta-app", "1.0.0");
   protected static final ArtifactSummary ARTIFACT_SUMMARY = new ArtifactSummary(ARTIFACT_ID.getArtifact(),
                                                                                 ARTIFACT_ID.getVersion());
+  private static int systemAppMajorVersion = 1;
+  private static ServiceManager serviceManager;
 
   protected static void setupArtifacts(Class<?> appClass) throws Exception {
     // add the app artifact
@@ -60,10 +68,21 @@ public class DeltaPipelineTestBase extends TestBase {
     pluginClasses.add(FailureTarget.PLUGIN_CLASS);
     addPluginArtifact(mocksArtifactId, ARTIFACT_ID, pluginClasses,
                       MockSource.class, MockTarget.class, MockErrorTarget.class, FailureTarget.class);
-    enableCapability("cdc");
   }
 
-  protected static void removeArtifacts() throws Exception {
-    removeCapability("cdc");
+  protected static void setUpSystemServices(Class<?> appClass, String capabilityFileName)
+    throws Exception {
+    addAppArtifact(NamespaceId.SYSTEM.artifact("delta-app", systemAppMajorVersion++ + ".0.0"), appClass);
+    enableCapability(capabilityFileName);
+
+    ApplicationId pipeline = NamespaceId.SYSTEM.app("delta");
+    ApplicationManager appManager = getApplicationManager(pipeline);
+    serviceManager = appManager.getServiceManager("assessor");
+    serviceManager.startAndWaitForGoodRun(ProgramRunStatus.RUNNING, 2, TimeUnit.MINUTES);
+  }
+
+  protected static void removeArtifacts(String capabilityFileName) throws Exception {
+    serviceManager.stop();
+    removeCapability(capabilityFileName);
   }
 }

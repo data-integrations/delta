@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Cask Data, Inc.
+ * Copyright © 2021 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,136 +16,27 @@
 
 package io.cdap.delta.store;
 
-import com.google.common.io.ByteStreams;
 import io.cdap.delta.api.DeltaPipelineId;
-import io.cdap.delta.api.Offset;
 import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.OffsetAndSequence;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import javax.annotation.Nullable;
 
 /**
- * Stores replicator state.
+ *  An interface for state store responsible to store and read the replicator state data.
  */
-public class StateStore {
-  private static final String OFFSET_KEY = "offset";
-  private final FileSystem fileSystem;
-  private final Path basePath;
+public interface StateStore {
 
-  private StateStore(FileSystem fileSystem, Path basePath) {
-    this.fileSystem = fileSystem;
-    this.basePath = basePath;
-  }
+  OffsetAndSequence readOffset(DeltaWorkerId id) throws IOException;
 
-  public static StateStore from(Path basePath) throws IOException {
-    return new StateStore(basePath.getFileSystem(new Configuration()), basePath);
-  }
+  void writeOffset(DeltaWorkerId id, OffsetAndSequence offset) throws IOException;
 
-  @Nullable
-  public OffsetAndSequence readOffset(DeltaWorkerId id) throws IOException {
-    Path path = getPath(id, OFFSET_KEY);
-    if (!fileSystem.exists(path)) {
-      return null;
-    }
-    try (FSDataInputStream inputStream = fileSystem.open(path)) {
-      Map<String, String> offset = new HashMap<>();
-      long sequenceNumber = inputStream.readLong();
-      int numKeys = inputStream.readInt();
-      for (int i = 0; i < numKeys; i++) {
-        String key = inputStream.readUTF();
-        String val = inputStream.readUTF();
-        offset.put(key, val);
-      }
-      return new OffsetAndSequence(new Offset(offset), sequenceNumber);
-    }
-  }
+  byte[] readState(DeltaWorkerId id, String key) throws IOException;
 
-  public void writeOffset(DeltaWorkerId id, OffsetAndSequence offset) throws IOException {
-    Path path = getPath(id, OFFSET_KEY);
-    try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
-      outputStream.writeLong(offset.getSequenceNumber());
-      outputStream.writeInt(offset.getOffset().get().size());
-      for (Map.Entry<String, String> entry : offset.getOffset().get().entrySet()) {
-        outputStream.writeUTF(entry.getKey());
-        outputStream.writeUTF(entry.getValue());
-      }
-    }
-  }
+  void writeState(DeltaWorkerId id, String key, byte[] val) throws IOException;
 
-  /**
-   * @return the most recent generation of the given pipeline
-   */
-  @Nullable
-  public Long getLatestGeneration(String namespace, String pipelineName) throws IOException {
-    Path path = new Path(basePath, String.format("%s/%s", namespace, pipelineName));
-    if (!fileSystem.exists(path)) {
-      return null;
-    }
-    long maxGeneration = -1L;
-    for (FileStatus file : fileSystem.listStatus(path)) {
-      long gen = Long.parseLong(file.getPath().getName());
-      maxGeneration = Math.max(gen, maxGeneration);
-    }
-    return maxGeneration > 0 ? maxGeneration : null;
-  }
+  Long getLatestGeneration(String namespace, String pipelineName) throws IOException;
 
-  public Collection<Integer> getWorkerInstances(DeltaPipelineId pipelineId) throws IOException {
-    Path path = new Path(basePath, String.format("%s/%s/%d", pipelineId.getNamespace(), pipelineId.getApp(),
-                                                 pipelineId.getGeneration()));
-    if (!fileSystem.exists(path)) {
-      return Collections.emptyList();
-    }
-    FileStatus[] files = fileSystem.listStatus(path);
-    List<Integer> workerInstances = new ArrayList<>(files.length);
-    for (FileStatus file : files) {
-      // everything in here should be directories corresponding to an instance id unless somebody manually
-      // modified it
-      if (file.isDirectory()) {
-        String fileName = file.getPath().getName();
-        try {
-          workerInstances.add(Integer.parseInt(fileName));
-        } catch (NumberFormatException e) {
-          // should not happen unless somebody manually modified the directories
-        }
-      }
-    }
-    return workerInstances;
-  }
-
-  @Nullable
-  public byte[] readState(DeltaWorkerId id, String key) throws IOException {
-    Path path = getPath(id, key);
-    if (!fileSystem.exists(path)) {
-      return null;
-    }
-    try (FSDataInputStream inputStream = fileSystem.open(path)) {
-      return ByteStreams.toByteArray(inputStream);
-    }
-  }
-
-  public void writeState(DeltaWorkerId id, String key, byte[] val) throws IOException {
-    Path path = getPath(id, key);
-    try (FSDataOutputStream outputStream = fileSystem.create(path, true)) {
-      outputStream.write(val);
-    }
-  }
-
-  private Path getPath(DeltaWorkerId id, String key) {
-    return new Path(basePath, String.format("%s/%s/%d/%d/%s",
-                                            id.getPipelineId().getNamespace(), id.getPipelineId().getApp(),
-                                            id.getPipelineId().getGeneration(), id.getInstanceId(), key));
-  }
+  Collection<Integer> getWorkerInstances(DeltaPipelineId pipelineId) throws IOException;
 }

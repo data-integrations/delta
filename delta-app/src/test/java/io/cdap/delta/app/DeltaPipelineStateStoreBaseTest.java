@@ -48,7 +48,6 @@ import io.cdap.delta.proto.RetryConfig;
 import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.proto.TableState;
-import io.cdap.delta.store.StateStore;
 import io.cdap.delta.test.DeltaPipelineTestBase;
 import io.cdap.delta.test.mock.FailureTarget;
 import io.cdap.delta.test.mock.FileEventConsumer;
@@ -56,18 +55,15 @@ import io.cdap.delta.test.mock.MockApplicationUpdateContext;
 import io.cdap.delta.test.mock.MockErrorTarget;
 import io.cdap.delta.test.mock.MockSource;
 import io.cdap.delta.test.mock.MockTarget;
-import org.apache.hadoop.fs.Path;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -79,7 +75,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Tests for delta pipelines
  */
-public class DeltaPipelineTest extends DeltaPipelineTestBase {
+public abstract class DeltaPipelineStateStoreBaseTest extends DeltaPipelineTestBase {
   private static final String DATABASE = "deebee";
   private static final String TABLE = "taybull";
   private static final String TABLE2 = "taybull2";
@@ -118,18 +114,17 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
       .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
       .build();
   }
+
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
 
-  @BeforeClass
-  public static void setupTest() throws Exception {
-    setupArtifacts(DeltaApp.class);
-  }
+  abstract Long getMaxGenerationNum(ApplicationId appId, String path) throws IOException;
 
-  @AfterClass
-  public static void teardown() throws Exception {
-    removeArtifacts();
-  }
+  abstract OffsetAndSequence getOffset(DeltaWorkerId id, String path) throws IOException;
+
+  abstract PipelineReplicationState getPipelineReplicationState(DeltaWorkerId id, String path) throws IOException;
+
+  abstract String getOffsetBasePath();
 
   @Test
   public void testOneRun() throws Exception {
@@ -139,7 +134,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(createDMLEvent());
 
-    String offsetBasePath = outputFolder.getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
     Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
     DeltaConfig config = DeltaConfig.builder()
@@ -165,21 +160,18 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     List<? extends ChangeEvent> actual = FileEventConsumer.readEvents(outputFolder, 0);
     Assert.assertEquals(events, actual);
 
-    Path path = new Path(offsetBasePath);
-    StateStore stateStore = StateStore.from(path);
-    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    Long generation = getMaxGenerationNum(appId, offsetBasePath);
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
-    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
-    stateService.load();
 
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
+
+    OffsetAndSequence offsetAndSequence = getOffset(workerId, offsetBasePath);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     TableReplicationState tableState = new TableReplicationState(DATABASE, TABLE, TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
                                                                           Collections.singleton(tableState), null);
-    PipelineReplicationState actualState = stateService.getState();
+    PipelineReplicationState actualState = getPipelineReplicationState(workerId, offsetBasePath);
     Assert.assertEquals(expectedState, actualState);
   }
 
@@ -191,7 +183,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(createDMLEvent());
 
-    String offsetBasePath = outputFolder.getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, 1));
     Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
     DeltaConfig config = DeltaConfig.builder()
@@ -212,15 +204,11 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
-    Path path = new Path(offsetBasePath);
-    StateStore stateStore = StateStore.from(path);
-    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    Long generation = getMaxGenerationNum(appId, offsetBasePath);
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
-    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
-    stateService.load();
 
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
+    OffsetAndSequence offsetAndSequence = getOffset(workerId, offsetBasePath);
     Assert.assertEquals(0L, offsetAndSequence.getSequenceNumber());
 
     // should only have written out the first change
@@ -237,7 +225,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
-    offsetAndSequence = stateStore.readOffset(workerId);
+    offsetAndSequence = getOffset(workerId, offsetBasePath);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     // second change should have been written
@@ -285,7 +273,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(createDMLEvent());
 
-    String offsetBasePath = TMP_FOLDER.newFolder("testStopWhenFailing").getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, sourceProceedFile));
 
     // configure the target to throw exceptions after the first event is applied
@@ -306,18 +294,13 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     // wait for the replication state for the source to be set to ERROR
-    Path path = new Path(offsetBasePath);
-    StateStore stateStore = StateStore.from(path);
-    Tasks.waitFor(true, () -> stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication()) != null,
+    Tasks.waitFor(true, () -> getMaxGenerationNum(appId, offsetBasePath) != null,
                   1, TimeUnit.MINUTES);
-    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    Long generation = getMaxGenerationNum(appId, offsetBasePath);
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
-    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
-    Tasks.waitFor(PipelineState.FAILING, () -> {
-      stateService.load();
-      return stateService.getState().getSourceState();
-    }, 30, TimeUnit.SECONDS);
+    Tasks.waitFor(PipelineState.FAILING, () ->
+      getPipelineReplicationState(workerId, offsetBasePath).getSourceState(), 30, TimeUnit.SECONDS);
 
     // stop the worker to make sure it aborts the retry loop
     manager.stop();
@@ -334,7 +317,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(EVENT1);
     events.add(createDMLEvent());
 
-    String offsetBasePath = TMP_FOLDER.newFolder("testFailureRetries").getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events, sourceProceedFile));
 
     // configure the target to throw exceptions after the first event is applied
@@ -355,18 +338,13 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.startAndWaitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     // wait for the replication state for the source to be set to ERROR
-    Path path = new Path(offsetBasePath);
-    StateStore stateStore = StateStore.from(path);
-    Tasks.waitFor(true, () -> stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication()) != null,
+    Tasks.waitFor(true, () -> getMaxGenerationNum(appId, offsetBasePath) != null,
                   1, TimeUnit.MINUTES);
-    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    Long generation = getMaxGenerationNum(appId, offsetBasePath);
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
-    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
-    Tasks.waitFor(PipelineState.FAILING, () -> {
-      stateService.load();
-      return stateService.getState().getSourceState();
-    }, 30, TimeUnit.SECONDS);
+    Tasks.waitFor(PipelineState.FAILING, () ->
+      getPipelineReplicationState(workerId, offsetBasePath).getSourceState(), 30, TimeUnit.SECONDS);
 
     // create the proceed file for the source, which will tell the source to stop throwing exceptions
     sourceProceedFile.createNewFile();
@@ -376,8 +354,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // wait for the replication state for the table to be set to ERROR.
     Tasks.waitFor(true, () -> {
-      stateService.load();
-      PipelineReplicationState pipelineState = stateService.getState();
+      PipelineReplicationState pipelineState = getPipelineReplicationState(workerId, offsetBasePath);
       if (pipelineState.getSourceState() != PipelineState.OK) {
         return false;
       }
@@ -395,8 +372,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     // wait for replication state for the table to update to REPLICATING
     Tasks.waitFor(true, () -> {
-      stateService.load();
-      for (TableReplicationState state : stateService.getState().getTables()) {
+      for (TableReplicationState state : getPipelineReplicationState(workerId, offsetBasePath).getTables()) {
         if (DATABASE.equals(state.getDatabase()) &&
           TABLE.equals(state.getTable()) && state.getState() == TableState.REPLICATING) {
           return true;
@@ -409,7 +385,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
     // verify that the sequence number was correctly being rolled back during errors and not incremented
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
+    OffsetAndSequence offsetAndSequence = getOffset(workerId, offsetBasePath);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     // verify that metrics were not double counted during errors
@@ -433,7 +409,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(dmlEvent);
     events.add(EVENT3);
 
-    String offsetBasePath = outputFolder.getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
     Stage target = new Stage("target", MockTarget.getPlugin(outputFolder));
     DeltaConfig config = DeltaConfig.builder()
@@ -469,41 +445,35 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     actual = FileEventConsumer.readEvents(outputFolder, 1);
     Assert.assertEquals(expected, actual);
 
-    Path path = new Path(offsetBasePath);
-    StateStore stateStore = StateStore.from(path);
-    Long generation = stateStore.getLatestGeneration(appId.getNamespace(), appId.getApplication());
+    Long generation = getMaxGenerationNum(appId, offsetBasePath);
     DeltaPipelineId pipelineId = new DeltaPipelineId(appId.getNamespace(), appId.getApplication(), generation);
-    Collection<Integer> instanceIds = stateStore.getWorkerInstances(pipelineId);
-    Assert.assertEquals(2, instanceIds.size());
-    Assert.assertTrue(instanceIds.contains(0));
-    Assert.assertTrue(instanceIds.contains(1));
 
     // check pipeline state for instance 0
     DeltaWorkerId workerId = new DeltaWorkerId(pipelineId, 0);
-    PipelineStateService stateService = new PipelineStateService(workerId, stateStore);
-    stateService.load();
 
-    OffsetAndSequence offsetAndSequence = stateStore.readOffset(workerId);
+    OffsetAndSequence offsetAndSequence = getOffset(workerId, offsetBasePath);
     Assert.assertEquals(1L, offsetAndSequence.getSequenceNumber());
 
     TableReplicationState tableState = new TableReplicationState(DATABASE, TABLE, TableState.REPLICATING, null);
     PipelineReplicationState expectedState = new PipelineReplicationState(PipelineState.OK,
                                                                           Collections.singleton(tableState), null);
-    PipelineReplicationState actualState = stateService.getState();
-    Assert.assertEquals(expectedState, actualState);
+    PipelineReplicationState actualState = getPipelineReplicationState(workerId, offsetBasePath);
+    Assert.assertEquals(expectedState.getSourceState(), actualState.getSourceState());
+    Assert.assertTrue(actualState.getTables().containsAll(expectedState.getTables()));
+    Assert.assertEquals(expectedState.getSourceError(), actualState.getSourceError());
 
     // check pipeline state for instance 1
     workerId = new DeltaWorkerId(pipelineId, 1);
-    stateService = new PipelineStateService(workerId, stateStore);
-    stateService.load();
 
-    offsetAndSequence = stateStore.readOffset(workerId);
+    offsetAndSequence = getOffset(workerId, offsetBasePath);
     Assert.assertEquals(0L, offsetAndSequence.getSequenceNumber());
 
     tableState = new TableReplicationState(DATABASE, TABLE2, TableState.REPLICATING, null);
     expectedState = new PipelineReplicationState(PipelineState.OK, Collections.singleton(tableState), null);
-    actualState = stateService.getState();
-    Assert.assertEquals(expectedState, actualState);
+    actualState = getPipelineReplicationState(workerId, offsetBasePath);
+    Assert.assertEquals(expectedState.getSourceState(), actualState.getSourceState());
+    Assert.assertTrue(actualState.getTables().containsAll(expectedState.getTables()));
+    Assert.assertEquals(expectedState.getSourceError(), actualState.getSourceError());
   }
 
   @Test
@@ -555,7 +525,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(ddlEvent);
     events.add(dmlEvent);
 
-    String offsetBasePath = outputFolder.getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
     Stage target = new Stage("target", MockTarget.getPlugin(outputFolder, true));
     DeltaConfig config = DeltaConfig.builder()
@@ -599,7 +569,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
     events.add(createDMLEvent());
     events.add(createDMLEvent());
 
-    String offsetBasePath = outputFolder.getAbsolutePath();
+    String offsetBasePath = getOffsetBasePath();
     Stage source = new Stage("src", MockSource.getPlugin(events));
     Stage target = new Stage("target", MockErrorTarget.getPlugin());
     DeltaConfig config = DeltaConfig.builder()
