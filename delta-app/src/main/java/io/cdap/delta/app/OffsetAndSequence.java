@@ -18,6 +18,8 @@ package io.cdap.delta.app;
 
 import io.cdap.delta.api.Offset;
 
+import java.util.Objects;
+
 /**
  * An offset and sequence number.
  */
@@ -36,5 +38,22 @@ public class OffsetAndSequence {
 
   public long getSequenceNumber() {
     return sequenceNumber;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof OffsetAndSequence)) {
+      return false;
+    }
+    OffsetAndSequence that = (OffsetAndSequence) o;
+    return sequenceNumber == that.sequenceNumber && Objects.equals(offset, that.offset);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(offset, sequenceNumber);
   }
 }

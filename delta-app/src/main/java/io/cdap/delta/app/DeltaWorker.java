@@ -52,13 +52,13 @@ import io.cdap.delta.proto.ParallelismConfig;
 import io.cdap.delta.proto.TableId;
 import io.cdap.delta.proto.TableTransformation;
 import io.cdap.delta.store.DefaultMacroEvaluator;
+import io.cdap.delta.store.RemoteStateStore;
 import io.cdap.delta.store.StateStore;
 import io.cdap.transformation.DefaultTransformationContext;
 import io.cdap.transformation.TransformationUtil;
 import io.cdap.transformation.api.Transformation;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -177,14 +177,12 @@ public class DeltaWorker extends AbstractWorker {
 
     String sourceName = config.getSource().getName();
     String targetName = config.getTarget().getName();
-    String offsetBasePath = config.getOffsetBasePath();
     maxRetrySeconds = config.getRetryConfig().getMaxDurationSeconds();
     retryDelaySeconds = config.getRetryConfig().getDelaySeconds();
     DeltaWorkerId id = new DeltaWorkerId(new DeltaPipelineId(context.getNamespace(), appSpec.getName(), generation),
                                          context.getInstanceId());
 
-    Path path = new Path(offsetBasePath);
-    StateStore stateStore = StateStore.from(path);
+    StateStore stateStore = new RemoteStateStore(context);
     PipelineStateService stateService = new PipelineStateService(id, stateStore);
     stateService.load();
     deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context,
