@@ -36,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import javax.annotation.Nullable;
+import javax.ws.rs.HttpMethod;
 
 /**
  * Class to handle Api calls to System Service
@@ -69,7 +70,7 @@ public class AssessmentServiceClient {
   private byte[] executeCall(HttpURLConnection urlConn, String method, @Nullable byte[] body) throws IOException {
     urlConn.setRequestMethod(method);
     //Set request body if body is not null
-    if (body != null && body.length != 0) {
+    if (!method.equals(HttpMethod.GET) && body != null) {
       urlConn.setDoOutput(true);
       try (OutputStream os = urlConn.getOutputStream()) {
         os.write(body);

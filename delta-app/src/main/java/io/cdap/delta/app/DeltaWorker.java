@@ -54,6 +54,7 @@ import io.cdap.delta.proto.TableTransformation;
 import io.cdap.delta.store.DefaultMacroEvaluator;
 import io.cdap.delta.store.RemoteStateStore;
 import io.cdap.delta.store.StateStore;
+import io.cdap.delta.store.StateStoreMigrator;
 import io.cdap.transformation.DefaultTransformationContext;
 import io.cdap.transformation.TransformationUtil;
 import io.cdap.transformation.api.Transformation;
@@ -159,9 +160,17 @@ public class DeltaWorker extends AbstractWorker {
   public void initialize(WorkerContext context) throws Exception {
     super.initialize(context);
     long generation = Long.parseLong(context.getSpecification().getProperty(GENERATION));
-
     ApplicationSpecification appSpec = context.getApplicationSpecification();
+    StateStore stateStore = new RemoteStateStore(context);
+    DeltaWorkerId id = new DeltaWorkerId(new DeltaPipelineId(context.getNamespace(), appSpec.getName(), generation),
+                                         context.getInstanceId());
     config = GSON.fromJson(appSpec.getConfiguration(), DeltaConfig.class);
+
+    StateStoreMigrator stateStoreMigrator = new StateStoreMigrator(config.getOffsetBasePath(), id, stateStore);
+    if (stateStoreMigrator.perform()) {
+      LOG.debug("State store migration was performed successfully for the instance {} from hcfs location {}",
+                id.getInstanceId(), config.getOffsetBasePath());
+    }
 
     int instanceId = context.getInstanceId();
     tableAssignments = GSON.fromJson(context.getSpecification().getProperty(TABLE_ASSIGNMENTS), TABLE_ASSIGNMENTS_TYPE);
@@ -179,10 +188,7 @@ public class DeltaWorker extends AbstractWorker {
     String targetName = config.getTarget().getName();
     maxRetrySeconds = config.getRetryConfig().getMaxDurationSeconds();
     retryDelaySeconds = config.getRetryConfig().getDelaySeconds();
-    DeltaWorkerId id = new DeltaWorkerId(new DeltaPipelineId(context.getNamespace(), appSpec.getName(), generation),
-                                         context.getInstanceId());
 
-    StateStore stateStore = new RemoteStateStore(context);
     PipelineStateService stateService = new PipelineStateService(id, stateStore);
     stateService.load();
     deltaContext = new DeltaContext(id, context.getRunId().getId(), metrics, stateStore, context,
