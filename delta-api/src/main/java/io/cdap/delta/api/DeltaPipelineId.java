@@ -16,6 +16,8 @@
 
 package io.cdap.delta.api;
 
+import java.util.Objects;
+
 /**
  * Uniquely identifies a delta pipeline.
  * The generation is used to distinguish between pipeline X that was created, then deleted, then created again.
@@ -43,4 +45,20 @@ public class DeltaPipelineId {
     return generation;
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof DeltaPipelineId)) {
+      return false;
+    }
+    DeltaPipelineId that = (DeltaPipelineId) o;
+    return generation == that.generation && Objects.equals(namespace, that.namespace) && Objects.equals(app, that.app);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(namespace, app, generation);
+  }
 }

@@ -32,7 +32,7 @@ import javax.ws.rs.HttpMethod;
 public class RemoteStateStore implements StateStore {
 
   private static final String BASE_PATH = "v1";
-  private static final String OFFSET_KEY = "offset";
+  protected static final String OFFSET_KEY = "offset";
 
   private AssessmentServiceClient assessmentServiceClient;
   private static final Gson GSON = new Gson();

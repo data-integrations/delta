@@ -242,7 +242,7 @@ public class DeltaConfig extends Config {
     for (Stage stage : getStages()) {
       upgradedStages.add(stage.updateStage(upgradeContext));
     }
-    return new DeltaConfig(getDescription(), upgradedStages, getConnections(), tableTransformations,
+    return new DeltaConfig(getDescription(), upgradedStages, getConnections(), getTableTransformations(),
                            getResources(),
                            getOffsetBasePath(), getTables(), getDmlBlacklist(), getDdlBlacklist(),
                            getRetryConfig(), getParallelism());
