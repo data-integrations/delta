@@ -26,12 +26,18 @@ public class Problem {
   private final String description;
   private final String suggestion;
   private final String impact;
+  private final Severity severity;
+
 
   public Problem(String name, String description, String suggestion, String impact) {
+    this(name, description, suggestion, impact, Severity.ERROR);
+  }
+  public Problem(String name, String description, String suggestion, String impact, Severity severity) {
     this.name = name;
     this.description = description;
     this.suggestion = suggestion;
     this.impact = impact;
+    this.severity = severity;
   }
 
   /**
@@ -62,6 +68,13 @@ public class Problem {
     return impact;
   }
 
+  /**
+   * @return severity of the potential problem
+   */
+  public Severity getSeverity() {
+    return severity;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -74,11 +87,20 @@ public class Problem {
     return Objects.equals(name, that.name) &&
       Objects.equals(description, that.description) &&
       Objects.equals(suggestion, that.suggestion) &&
-      Objects.equals(impact, that.impact);
+      Objects.equals(impact, that.impact) &&
+      Objects.equals(severity, that.severity);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, description, suggestion, impact);
+    return Objects.hash(name, description, suggestion, impact, severity);
+  }
+
+  /**
+   * The severity of the problem
+   */
+  public enum Severity {
+    ERROR,
+    WARNING
   }
 }

@@ -18,6 +18,7 @@ package io.cdap.delta.test.mock;
 
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableAssessor;
+import org.junit.Assert;
 
 /**
  * Mock assessor that just returns a pre-defined TableAssessment.
@@ -26,13 +27,22 @@ import io.cdap.delta.api.assessment.TableAssessor;
  */
 public class MockTableAssessor<T> implements TableAssessor<T> {
   private final TableAssessment assessment;
+  private final T expectedTableDescriptor;
 
   public MockTableAssessor(TableAssessment assessment) {
+    this(assessment, null);
+  }
+
+  public MockTableAssessor(TableAssessment assessment, T expectedTableDescriptor) {
+    this.expectedTableDescriptor = expectedTableDescriptor;
     this.assessment = assessment;
   }
 
   @Override
   public TableAssessment assess(T tableDescriptor) {
+    if (expectedTableDescriptor != null) {
+      Assert.assertEquals(expectedTableDescriptor, tableDescriptor);
+    }
     return assessment;
   }
 }
