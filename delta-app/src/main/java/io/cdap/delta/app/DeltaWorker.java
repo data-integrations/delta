@@ -20,7 +20,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.cdap.cdap.api.Resources;
+import io.cdap.cdap.api.app.ApplicationConfigurer;
 import io.cdap.cdap.api.app.ApplicationSpecification;
+import io.cdap.cdap.api.app.RuntimeConfigurer;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.macro.MacroEvaluator;
@@ -101,6 +103,7 @@ public class DeltaWorker extends AbstractWorker {
 
   private DeltaConfig config;
   private SourceProperties sourceProperties;
+  private ApplicationConfigurer applicationConfigurer;
   private DeltaContext deltaContext;
   private EventConsumer eventConsumer;
   private EventReader eventReader;
@@ -123,20 +126,29 @@ public class DeltaWorker extends AbstractWorker {
     this.shouldStop = new AtomicBoolean(false);
   }
 
-  DeltaWorker(DeltaConfig config, SourceProperties sourceProperties) {
+  DeltaWorker(DeltaConfig config, SourceProperties sourceProperties, ApplicationConfigurer applicationConfigurer) {
     this();
     this.config = config;
     this.sourceProperties = sourceProperties;
+    this.applicationConfigurer = applicationConfigurer;
   }
 
   @Override
   protected void configure() {
     setName(NAME);
+    RuntimeConfigurer runtimeConfigurer = applicationConfigurer.getRuntimeConfigurer();
     Map<String, String> props = new HashMap<>();
     // generation is used in cases where pipeline X is created, then deleted, then created again.
     // in those situations, we don't want to start from the offset that it had before it was deleted,
     // so we include the generation as part of the path when storing state.
     props.put(GENERATION, String.valueOf(System.currentTimeMillis()));
+
+    // if this is runtime deploy, add the generation time at initial deploy since the offset is dependent on
+    // this timestamp
+    if (runtimeConfigurer != null && runtimeConfigurer.getDeployedApplicationSpec() != null) {
+      WorkerSpecification workerSpec = runtimeConfigurer.getDeployedApplicationSpec().getWorkers().get(NAME);
+      props.put(GENERATION, workerSpec.getProperties().get(GENERATION));
+    }
 
     tableAssignments = assignTables(config);
     props.put(TABLE_ASSIGNMENTS, GSON.toJson(tableAssignments));

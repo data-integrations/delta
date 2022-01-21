@@ -65,7 +65,7 @@ public class DeltaApp extends AbstractApplication<DeltaConfig> {
       }
     });
 
-    addWorker(new DeltaWorker(conf, sourceConfigurer.getSourceProperties()));
+    addWorker(new DeltaWorker(conf, sourceConfigurer.getSourceProperties(), getConfigurer()));
 
     String description = conf.getDescription();
     if (description == null) {
