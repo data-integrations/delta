@@ -36,6 +36,11 @@
       <artifactId>cdap-api</artifactId>
       <version>${cdap.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.cdap.cdap</groupId>
+      <artifactId>cdap-api-common</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
   </dependencies>
 
 </project>

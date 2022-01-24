@@ -46,9 +46,16 @@ import io.cdap.delta.proto.FullColumnAssessment;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableAssessmentResponse;
+import io.cdap.delta.proto.TableTransformation;
+import io.cdap.transformation.ColumnRenameInfo;
+import io.cdap.transformation.DefaultMutableRowSchema;
+import io.cdap.transformation.DefaultRenameInfo;
+import io.cdap.transformation.TransformationUtil;
+import io.cdap.transformation.api.Transformation;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -219,12 +226,19 @@ public class DraftService {
       .orElseThrow(() -> new IllegalArgumentException(String
         .format("Table '%s' in database '%s' and schema '%s' is not a selected table in the draft", table, db,
           schema)));
+
+    Map<String, TableTransformation> tableLevelTransformations =
+      TransformationUtil.getTableLevelTransformations(deltaConfig);
+    List<Transformation> transformations = TransformationUtil.loadTransformations(configurer,
+                                                                                  tableLevelTransformations,
+                                                                                  selectedTable);
+
     try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
            deltaConfig.getTables());
          TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target,
            deltaConfig.getTables())) {
-      return assessTable(selectedTable, tableRegistry, sourceTableAssessor, targetTableAssessor);
+      return assessTable(selectedTable, tableRegistry, sourceTableAssessor, targetTableAssessor, transformations);
     }
   }
 
@@ -275,13 +289,18 @@ public class DraftService {
           .collect(Collectors.toList());
       }
 
+      Map<String, TableTransformation> tableLevelTransformations =
+        TransformationUtil.getTableLevelTransformations(deltaConfig);
       // go through all tables that the pipeline should read, fetching detail about each of the tables
       for (SourceTable sourceTable : tablesToAssess) {
         String db = sourceTable.getDatabase();
         String table = sourceTable.getTable();
         try {
+          List<Transformation> transformations = TransformationUtil.loadTransformations(configurer,
+                                                                                        tableLevelTransformations,
+                                                                                        sourceTable);
           TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
-                                                           targetTableAssessor);
+                                                           targetTableAssessor, transformations);
           missingFeatures.addAll(assessment.getFeatures());
           tableAssessments.add(summarize(db, sourceTable.getSchema(), sourceTable, assessment));
         } catch (TableNotFoundException e) {
@@ -305,7 +324,8 @@ public class DraftService {
 
   private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
                                               TableAssessor<TableDetail> sourceTableAssessor,
-                                              TableAssessor<StandardizedTableDetail> targetTableAssesor)
+                                              TableAssessor<StandardizedTableDetail> targetTableAssesor,
+                                              List<Transformation> transformations)
     throws IOException, TableNotFoundException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
@@ -358,16 +378,35 @@ public class DraftService {
     TableAssessment srcAssessment = sourceTableAssessor.assess(filteredDetail);
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);
+
+    ColumnRenameInfo columnRenameInfo;
+    if (!transformations.isEmpty()) {
+      try {
+        DefaultMutableRowSchema rowSchema = TransformationUtil.transformSchema(standardizedDetail.getSchema(),
+                                                                               transformations);
+       standardizedDetail = new StandardizedTableDetail(standardizedDetail.getDatabase(),
+                                                        standardizedDetail.getTable(),
+                                                        standardizedDetail.getPrimaryKey(),
+                                                        rowSchema.toSchema());
+       columnRenameInfo = rowSchema.getRenameInfo();
+      } catch (Exception e) {
+        throw new RuntimeException(String.format("Failed to apply transformations on the schema : %s",
+                                                 e.getMessage()), e);
+      }
+    } else {
+      columnRenameInfo = new DefaultRenameInfo(Collections.emptyMap());
+    }
     TableAssessment targetAssessment = targetTableAssesor.assess(standardizedDetail);
 
-    return merge(srcAssessment, targetAssessment);
+    return merge(srcAssessment, targetAssessment, columnRenameInfo);
   }
 
   /**
    * Merge the assessment from the source and target into a single assessment.
    * This amounts to merging the assessment for each column.
    */
-  private TableAssessmentResponse merge(TableAssessment srcAssessment, TableAssessment targetAssessment) {
+  private TableAssessmentResponse merge(TableAssessment srcAssessment, TableAssessment targetAssessment,
+                                        ColumnRenameInfo columnRenameInfo) {
     Map<String, ColumnAssessment> targetColumns = targetAssessment.getColumns().stream()
       .filter(c -> c.getSourceName() != null)
       .collect(Collectors.toMap(ColumnAssessment::getSourceName, c -> c));
@@ -376,7 +415,7 @@ public class DraftService {
     Set<String> addedColumns = new HashSet<>();
     // add columns from the source
     for (ColumnAssessment srcColumn : srcAssessment.getColumns()) {
-      String name = srcColumn.getName();
+      String name = columnRenameInfo.getNewName(srcColumn.getName());
       ColumnAssessment targetColumn = targetColumns.get(name);
       if (targetColumn != null) {
         fullColumns.add(merge(srcColumn, targetColumn));
@@ -498,6 +537,7 @@ public class DraftService {
       .setSource(config.getSource())
       .setOffsetBasePath(config.getOffsetBasePath())
       .setTables(config.getTables())
+      .setTableTransformations(config.getTableTransformations())
       .setSource(evaluateMacros(draftId.getNamespace().getName(), config.getSource()));
 
     Stage target = config.getTarget();

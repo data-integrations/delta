@@ -30,21 +30,26 @@ import io.cdap.delta.api.assessment.ColumnDetail;
 import io.cdap.delta.api.assessment.ColumnSuggestion;
 import io.cdap.delta.api.assessment.ColumnSupport;
 import io.cdap.delta.api.assessment.PipelineAssessment;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
 import io.cdap.delta.api.assessment.TableAssessment;
 import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.Artifact;
+import io.cdap.delta.proto.ColumnTransformation;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.FullColumnAssessment;
 import io.cdap.delta.proto.Plugin;
 import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableAssessmentResponse;
+import io.cdap.delta.proto.TableTransformation;
 import io.cdap.delta.test.mock.MockConfigurer;
 import io.cdap.delta.test.mock.MockTableAssessor;
 import io.cdap.delta.test.mock.MockTableRegistry;
+import io.cdap.delta.test.mock.MockTransformation;
+import io.cdap.transformation.api.Transformation;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -55,6 +60,7 @@ import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -179,12 +185,14 @@ public class DraftServiceTest extends SystemAppTestBase {
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable(
       "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"),
-            new SourceColumn("suppressed", true))));
+                                                       new SourceColumn("suppressed", true))));
     DeltaConfig config = DeltaConfig.builder()
-      .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
-      .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
-      .setTables(Collections.singletonList(sourceTable))
-      .build();
+                           .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE,
+                                                                  Collections.emptyMap(), Artifact.EMPTY)))
+                           .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE,
+                                                                Collections.emptyMap(), Artifact.EMPTY)))
+                           .setTables(Collections.singletonList(sourceTable))
+                           .build();
     service.saveDraft(draftId, new DraftRequest("label", config));
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
@@ -198,9 +206,9 @@ public class DraftServiceTest extends SystemAppTestBase {
       Schema.Field.of("id", Schema.of(Schema.Type.INT)),
       Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
     TableDetail expectedDetail = TableDetail.builder("deebee", "taybull", null)
-      .setPrimaryKey(Collections.singletonList("id"))
-      .setColumns(columns)
-      .build();
+                                   .setPrimaryKey(Collections.singletonList("id"))
+                                   .setColumns(columns)
+                                   .build();
 
     List<ColumnAssessment> columnAssessments = new ArrayList<>();
     columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
@@ -228,6 +236,99 @@ public class DraftServiceTest extends SystemAppTestBase {
     PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
     Assert.assertEquals(expected, actual);
   }
+
+  @Test
+  public void testAssessPipelineWithTransformations() throws Exception {
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
+    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
+    // configure the pipeline to read 2 out of the 3 columns from the table
+    SourceTable sourceTable = new SourceTable(
+      "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"),
+            new SourceColumn("suppressed", true))));
+
+    TableTransformation tableTransformation = new TableTransformation("taybull",
+      Collections.singletonList(new ColumnTransformation("id", MockTransformation.NAME)));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
+      .setTables(Collections.singletonList(sourceTable))
+      .setTableTransformations(Collections.singletonList(tableTransformation))
+      .build();
+    service.saveDraft(draftId, new DraftRequest("label", config));
+
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
+    List<ColumnDetail> columns = new ArrayList<>();
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true));
+    columns.add(new ColumnDetail("suppressed", JDBCType.INTEGER, true));
+    Schema srcSchema = Schema.recordOf(
+      "taybull",
+      Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
+    TableDetail expectedDetail = TableDetail.builder("deebee", "taybull", null)
+      .setPrimaryKey(Collections.singletonList("id"))
+      .setColumns(columns)
+      .build();
+    Schema tgtSchema =  Schema.recordOf(
+      "taybull",
+      Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("renamed", Schema.of(Schema.Type.BOOLEAN)));
+    StandardizedTableDetail expectedStandardizedTableDetail =
+      new StandardizedTableDetail(expectedDetail.getDatabase(), expectedDetail.getTable(),
+                                  expectedDetail.getPrimaryKey(), tgtSchema);
+    List<ColumnAssessment> columnAssessments = new ArrayList<>();
+    columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
+    columnAssessments.add(ColumnAssessment.builder("name", "varchar")
+                            .setSourceColumn("name")
+                            .setSupport(ColumnSupport.NO)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    columnAssessments.add(ColumnAssessment.builder("suppressed", "int")
+                            .setSourceColumn("suppressed")
+                            .setSupport(ColumnSupport.PARTIAL)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    TableAssessment expectedSrcTableAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
+
+    columnAssessments = new ArrayList<>();
+    columnAssessments.add(ColumnAssessment.builder("id", "INT").setSourceColumn("id").build());
+    columnAssessments.add(ColumnAssessment.builder("renamed", "STRING")
+                            .setSourceColumn("renamed")
+                            .setSupport(ColumnSupport.NO)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    columnAssessments.add(ColumnAssessment.builder("suppressed", "INT")
+                            .setSourceColumn("suppressed")
+                            .setSupport(ColumnSupport.PARTIAL)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    TableAssessment expectedTgtTableAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
+
+    MockTableAssessor srcMockAssessor = new MockTableAssessor(expectedSrcTableAssessment);
+    MockTableAssessor tgtMockAssessor = new MockTableAssessor(expectedTgtTableAssessment,
+                                                              expectedStandardizedTableDetail);
+    MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, srcSchema);
+    DeltaSource mockSource = new MockSource(mockTableRegistry, srcMockAssessor);
+    DeltaTarget mockTarget = new MockTarget(tgtMockAssessor);
+
+    // rename "name" to "renamed" and change the type to boolean
+    Map<String, String> renameMap = new HashMap<>();
+    renameMap.put("name", "renamed");
+
+    Map<String, Transformation> transformationsMap = new HashMap<>();
+    transformationsMap.put(MockTransformation.NAME, new MockTransformation(Collections.singletonList(Schema.Field.of(
+      "name", Schema.of(Schema.Type.BOOLEAN))), renameMap, null));
+    Configurer mockConfigurer = new MockConfigurer(mockSource, mockTarget, transformationsMap);
+
+    TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);
+    PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
+                                                         Collections.emptyList(), Collections.emptyList());
+    PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
+    Assert.assertEquals(expected, actual);
+  }
+
+  
 
   @Test
   public void testMacroEvaluation() throws Exception {
