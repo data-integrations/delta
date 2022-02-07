@@ -126,8 +126,8 @@ public class TransformationUtil {
         transformation.initialize(new DefaultTransformationContext(directive));
         columnTransformations.add(transformation);
       } catch (Exception e) {
-        throw new RuntimeException(String.format("Failed to load transformation plugin for directive : %s",
-                                                 directive), e);
+        throw new RuntimeException(String.format("Failed to load transformation plugin for directive : %s. Error : %s.",
+                                                 directive, e.getMessage()), e);
       }
     });
     return columnTransformations;
