@@ -43,10 +43,12 @@ public class ColumnTransformation {
    */
   public void validate() {
     if (columnName == null || columnName.isEmpty()) {
-      throw new IllegalArgumentException("Column name of a column transformation should not be null or empty.");
+      throw new IllegalArgumentException(String.format("Column name of a ColumnTransformation for directive %s is " +
+                                                         "null or empty.", directive));
     }
     if (directive == null || directive.isEmpty()) {
-      throw new IllegalArgumentException("Directive of a column transformation should not be null or empty.");
+      throw new IllegalArgumentException(String.format("Directive of a ColumnTransformation for column %s is be null " +
+                                                         "or empty.", columnName));
     }
   }
 
@@ -66,6 +68,11 @@ public class ColumnTransformation {
   @Override
   public int hashCode() {
     return Objects.hash(columnName, directive);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("ColumnTransformation(columnName : \"%s\", directive : \"%s\")", columnName, directive);
   }
 }
 
