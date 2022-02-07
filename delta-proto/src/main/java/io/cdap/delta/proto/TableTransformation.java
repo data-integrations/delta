@@ -49,13 +49,16 @@ public class TableTransformation {
    */
   public void validate() {
     if (tableName == null || tableName.isEmpty()) {
-      throw new IllegalArgumentException(String.format("Table name of a TableTransformation that contains below " +
-                                                         "ColumnTransformations : %s is null or empty.",
-                                                       columnTransformations));
+      throw new IllegalArgumentException("Table name of a TableTransformation is null or empty.");
     }
     if (columnTransformations != null) {
       for (ColumnTransformation columnTransformation : columnTransformations) {
-        columnTransformation.validate();
+        try {
+          columnTransformation.validate();
+        } catch (IllegalArgumentException e) {
+          throw new IllegalArgumentException(String.format("ColumnTransformations validation failed for table %s." +
+                                                             " Reason: %s.", tableName, e.getMessage()));
+        }
       }
     }
   }
