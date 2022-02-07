@@ -49,7 +49,9 @@ public class TableTransformation {
    */
   public void validate() {
     if (tableName == null || tableName.isEmpty()) {
-      throw new IllegalArgumentException("Table name of a TableTransformation should not be null or empty");
+      throw new IllegalArgumentException(String.format("Table name of a TableTransformation that contains below " +
+                                                         "ColumnTransformations : %s is null or empty.",
+                                                       columnTransformations));
     }
     if (columnTransformations != null) {
       for (ColumnTransformation columnTransformation : columnTransformations) {
