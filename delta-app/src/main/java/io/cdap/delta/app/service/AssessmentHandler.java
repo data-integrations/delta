@@ -30,6 +30,7 @@ import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.PipelineStateService;
 import io.cdap.delta.app.service.common.AbstractAssessorHandler;
 import io.cdap.delta.proto.DBTable;
+import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
@@ -162,6 +163,27 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       PipelineAssessment assessment =
         getDraftService().assessPipeline(draftId, new DefaultConfigurer(pluginConfigurer));
+      responder.sendString(GSON.toJson(assessment));
+    }));
+  }
+
+  @POST
+  @Path("v1/contexts/{context}/assessPipeline")
+  public void assessDeltaConfig(HttpServiceRequest request, HttpServiceResponder responder,
+                          @PathParam("context") String namespaceName) {
+    respond(namespaceName, responder, ((namespace) -> {
+      DeltaConfig deltaConfig;
+      try {
+        deltaConfig = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(), DeltaConfig.class);
+      } catch (JsonSyntaxException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Unable to decode request body , " +
+          "doesn't conform to deltaConfig: " + e.getMessage());
+        return;
+      }
+
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      PipelineAssessment assessment =
+        getDraftService().assessPipeline(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer));
       responder.sendString(GSON.toJson(assessment));
     }));
   }

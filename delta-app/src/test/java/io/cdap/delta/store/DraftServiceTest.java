@@ -238,6 +238,66 @@ public class DraftServiceTest extends SystemAppTestBase {
   }
 
   @Test
+  public void testAssessPipelineWithoutSaving() throws Exception {
+    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
+    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipelineInterim");
+    // configure the pipeline to read 2 out of the 3 columns from the table
+    SourceTable sourceTable = new SourceTable(
+      "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"),
+                                                       new SourceColumn("suppressed", true))));
+    DeltaConfig config = DeltaConfig.builder()
+      .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE,
+                                             Collections.emptyMap(), Artifact.EMPTY)))
+      .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE,
+                                           Collections.emptyMap(), Artifact.EMPTY)))
+      .setTables(Collections.singletonList(sourceTable))
+      .build();
+
+    Draft draft = new Draft("testAssessPipelineInterim", "label", config, 0, 0);
+
+    TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
+    List<ColumnDetail> columns = new ArrayList<>();
+    columns.add(new ColumnDetail("id", JDBCType.INTEGER, false));
+    columns.add(new ColumnDetail("name", JDBCType.VARCHAR, false));
+    columns.add(new ColumnDetail("age", JDBCType.INTEGER, true));
+    columns.add(new ColumnDetail("suppressed", JDBCType.INTEGER, true));
+    Schema schema = Schema.recordOf(
+      "taybull",
+      Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("name", Schema.of(Schema.Type.STRING)));
+    TableDetail expectedDetail = TableDetail.builder("deebee", "taybull", null)
+      .setPrimaryKey(Collections.singletonList("id"))
+      .setColumns(columns)
+      .build();
+
+    List<ColumnAssessment> columnAssessments = new ArrayList<>();
+    columnAssessments.add(ColumnAssessment.builder("id", "int").setSourceColumn("id").build());
+    columnAssessments.add(ColumnAssessment.builder("name", "varchar")
+                            .setSourceColumn("name")
+                            .setSupport(ColumnSupport.NO)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    columnAssessments.add(ColumnAssessment.builder("suppressed", "int")
+                            .setSourceColumn("suppressed")
+                            .setSupport(ColumnSupport.PARTIAL)
+                            .setSuggestion(new ColumnSuggestion("msg", Collections.emptyList()))
+                            .build());
+    TableAssessment expectedTableAssessment = new TableAssessment(columnAssessments, Collections.emptyList());
+
+    MockTableAssessor mockAssessor = new MockTableAssessor(expectedTableAssessment);
+    MockTableRegistry mockTableRegistry = new MockTableRegistry(expectedList, expectedDetail, schema);
+    DeltaSource mockSource = new MockSource(mockTableRegistry, mockAssessor);
+    DeltaTarget mockTarget = new MockTarget(mockAssessor);
+    Configurer mockConfigurer = new MockConfigurer(mockSource, mockTarget);
+
+    TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);
+    PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
+                                                         Collections.emptyList(), Collections.emptyList());
+    PipelineAssessment actual = service.assessPipeline(draftId.getNamespace(), draft.getConfig(), mockConfigurer);
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
   public void testAssessPipelineWithTransformations() throws Exception {
     DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
