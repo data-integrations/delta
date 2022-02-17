@@ -155,7 +155,7 @@ public class DraftService {
    */
   public TableList listDraftTables(DraftId draftId, Configurer configurer) throws Exception {
     Draft draft = getDraft(draftId);
-    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
+    try (TableRegistry tableRegistry = createTableRegistry(draftId.getNamespace(), draft.getConfig(), configurer)) {
       return tableRegistry.listTables();
     }
   }
@@ -182,7 +182,7 @@ public class DraftService {
   public TableDetail describeDraftTable(DraftId draftId, Configurer configurer, String database,
     @Nullable String schema, String table) throws Exception {
     Draft draft = getDraft(draftId);
-    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer)) {
+    try (TableRegistry tableRegistry = createTableRegistry(draftId.getNamespace(), draft.getConfig(), configurer)) {
       if (schema == null) {
         return tableRegistry.describeTable(database, table);
       } else {
@@ -215,7 +215,7 @@ public class DraftService {
     String table) throws Exception {
     Draft draft = getDraft(draftId);
     DeltaConfig deltaConfig = draft.getConfig();
-    deltaConfig = evaluateMacros(draftId, deltaConfig);
+    deltaConfig = evaluateMacros(draftId.getNamespace(), deltaConfig);
     Stage target = deltaConfig.getTarget();
     if (target == null) {
       throw new InvalidDraftException("Cannot assess a table without a configured target.");
@@ -233,7 +233,7 @@ public class DraftService {
                                                                                   tableLevelTransformations,
                                                                                   selectedTable);
 
-    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
+    try (TableRegistry tableRegistry = createTableRegistry(draftId.getNamespace(), deltaConfig, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
            deltaConfig.getTables());
          TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target,
@@ -244,13 +244,23 @@ public class DraftService {
 
   /**
    * Assess the entire pipeline based on the tables the source will read and the capabilities of the target.
+   * This will fetch draft from the store.
+   */
+  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) throws Exception {
+    Draft draft = getDraft(draftId);
+    return assessPipeline(draftId.getNamespace(), draft.getConfig(), configurer);
+  }
+
+  /**
+   * Assess the entire pipeline based on the tables the source will read and the capabilities of the target.
    * An instance of the target plugin will be instantiated in order to generate this list.
    * This is an expensive operation.
    *
    * If the plugin cannot be instantiated due to missing draft information,
    * an {@link InvalidDraftException} will be thrown.
    *
-   * @param draftId id of the draft
+   * @param namespace id of the draft
+   * @param deltaConfig : delta config object to assess
    * @param configurer configurer used to instantiate plugins
    * @return list of tables readable by the source in the draft
    * @throws DraftNotFoundException if the draft does not exist
@@ -258,13 +268,12 @@ public class DraftService {
    * @throws IOException if there was an IO error getting the list of source tables
    * @throws Exception if there was an error creating the table registry
    */
-  public PipelineAssessment assessPipeline(DraftId draftId, Configurer configurer) throws Exception {
-    Draft draft = getDraft(draftId);
-    DeltaConfig deltaConfig = draft.getConfig();
+  public PipelineAssessment assessPipeline(Namespace namespace, DeltaConfig deltaConfig, Configurer configurer)
+    throws Exception {
     deltaConfig.validatePipeline();
-    deltaConfig = evaluateMacros(draftId, deltaConfig);
+    deltaConfig = evaluateMacros(namespace, deltaConfig);
 
-    try (TableRegistry tableRegistry = createTableRegistry(draftId, draft, configurer);
+    try (TableRegistry tableRegistry = createTableRegistry(namespace, deltaConfig, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
            deltaConfig.getTables());
          TableAssessor<StandardizedTableDetail> targetTableAssessor =
@@ -461,9 +470,9 @@ public class DraftService {
                                     suggestion);
   }
 
-  private TableRegistry createTableRegistry(DraftId id, Draft draft, Configurer configurer) throws Exception {
-    DeltaConfig deltaConfig = draft.getConfig();
-    deltaConfig = evaluateMacros(id, deltaConfig);
+  private TableRegistry createTableRegistry(Namespace namespace, DeltaConfig deltaConfig, Configurer configurer)
+    throws Exception {
+    deltaConfig = evaluateMacros(namespace, deltaConfig);
     Stage stage = deltaConfig.getSource();
 
     Plugin pluginConfig = stage.getPlugin();
@@ -530,7 +539,7 @@ public class DraftService {
     return new TableSummaryAssessment(db, table.getTable(), numColumns, numUnsupported, numPartial, schema);
   }
 
-  private DeltaConfig evaluateMacros(DraftId draftId, DeltaConfig config) {
+  private DeltaConfig evaluateMacros(Namespace namespace, DeltaConfig config) {
     DeltaConfig.Builder builder = DeltaConfig.builder()
       .setDescription(config.getDescription())
       .setResources(config.getResources())
@@ -538,11 +547,11 @@ public class DraftService {
       .setOffsetBasePath(config.getOffsetBasePath())
       .setTables(config.getTables())
       .setTableTransformations(config.getTableTransformations())
-      .setSource(evaluateMacros(draftId.getNamespace().getName(), config.getSource()));
+      .setSource(evaluateMacros(namespace.getName(), config.getSource()));
 
     Stage target = config.getTarget();
     if (target != null) {
-      builder.setTarget(evaluateMacros(draftId.getNamespace().getName(), target));
+      builder.setTarget(evaluateMacros(namespace.getName(), target));
     }
 
     return builder.build();
