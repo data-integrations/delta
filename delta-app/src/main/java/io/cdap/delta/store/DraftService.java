@@ -50,12 +50,16 @@ import io.cdap.delta.proto.TableTransformation;
 import io.cdap.transformation.ColumnRenameInfo;
 import io.cdap.transformation.DefaultMutableRowSchema;
 import io.cdap.transformation.DefaultRenameInfo;
+import io.cdap.transformation.TransformationException;
 import io.cdap.transformation.TransformationUtil;
 import io.cdap.transformation.api.Transformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +73,7 @@ import javax.annotation.Nullable;
  * Handles logic around storage, retrieval, and assessment of drafts.
  */
 public class DraftService {
+  private static final Logger LOG = LoggerFactory.getLogger(DraftService.class);
   private final TransactionRunner txRunner;
   private final PropertyEvaluator propertyEvaluator;
 
@@ -229,16 +234,30 @@ public class DraftService {
 
     Map<String, TableTransformation> tableLevelTransformations =
       TransformationUtil.getTableLevelTransformations(deltaConfig);
-    List<Transformation> transformations = TransformationUtil.loadTransformations(configurer,
-                                                                                  tableLevelTransformations,
-                                                                                  selectedTable);
+    Map<String, List<Transformation>> transformations = new HashMap<>();
+    try {
+      transformations = TransformationUtil.loadTransformations(configurer, tableLevelTransformations, selectedTable);
+    } catch (TransformationException e) {
+      LOG.debug("Failed to apply transformation: ", e);
+      List<Problem> transformationErrors = new ArrayList<>();
+      transformationErrors.add(new Problem("Transformation Loading failed",
+                               String.format("Failed to load transformations for the table : %s and column : %s " +
+                               "with error : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+                               "Please ensure the applied transformation's plugin is uploaded'",
+                               ""));
+
+      return new TableAssessmentResponse(Collections.emptyList(), Collections.emptyList(), transformationErrors);
+    }
 
     try (TableRegistry tableRegistry = createTableRegistry(draftId.getNamespace(), deltaConfig, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
            deltaConfig.getTables());
          TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target,
            deltaConfig.getTables())) {
-      return assessTable(selectedTable, tableRegistry, sourceTableAssessor, targetTableAssessor, transformations);
+
+      TableAssessmentResponse assessment = assessTable(selectedTable, tableRegistry, sourceTableAssessor,
+                                                       targetTableAssessor, transformations);
+      return assessment;
     }
   }
 
@@ -281,6 +300,7 @@ public class DraftService {
 
       List<Problem> missingFeatures = new ArrayList<>();
       List<Problem> connectivityIssues = new ArrayList<>();
+      List<Problem> transformationIssues = new ArrayList<>();
       List<TableSummaryAssessment> tableAssessments = new ArrayList<>();
 
       Assessment sourceAssessment = sourceTableAssessor.assess();
@@ -305,13 +325,14 @@ public class DraftService {
         String db = sourceTable.getDatabase();
         String table = sourceTable.getTable();
         try {
-          List<Transformation> transformations = TransformationUtil.loadTransformations(configurer,
+          Map<String, List<Transformation>> transformations = TransformationUtil.loadTransformations(configurer,
                                                                                         tableLevelTransformations,
                                                                                         sourceTable);
           TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
                                                            targetTableAssessor, transformations);
           missingFeatures.addAll(assessment.getFeatures());
           tableAssessments.add(summarize(db, sourceTable.getSchema(), sourceTable, assessment));
+          transformationIssues.addAll(assessment.getTransformationIssues());
         } catch (TableNotFoundException e) {
           connectivityIssues.add(
             new Problem("Table Not Found",
@@ -325,16 +346,23 @@ public class DraftService {
                                       table, db, e.getMessage()),
                         "Check permissions and database connectivity",
                         null));
+        } catch (TransformationException e) {
+          LOG.debug("Failed to apply transformation: ", e);
+          transformationIssues.add(new Problem("Transformation Loading failed",
+                        String.format("Failed to load transformations for the table : %s and column : %s " +
+                                      "with : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+                                      "Please ensure the applied transformation's plugin is uploaded'",
+                                      ""));
         }
       }
-      return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues);
+      return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues, transformationIssues);
     }
   }
 
   private TableAssessmentResponse assessTable(SourceTable sourceTable, TableRegistry tableRegistry,
                                               TableAssessor<TableDetail> sourceTableAssessor,
                                               TableAssessor<StandardizedTableDetail> targetTableAssesor,
-                                              List<Transformation> transformations)
+                                              Map<String, List<Transformation>> transformations)
     throws IOException, TableNotFoundException {
     String db = sourceTable.getDatabase();
     String table = sourceTable.getTable();
@@ -388,26 +416,29 @@ public class DraftService {
 
     StandardizedTableDetail standardizedDetail = tableRegistry.standardize(filteredDetail);
 
-    ColumnRenameInfo columnRenameInfo;
+    ColumnRenameInfo columnRenameInfo = new DefaultRenameInfo(Collections.emptyMap());
+    List<Problem> transformationIssues = new ArrayList<>();
     if (!transformations.isEmpty()) {
       try {
-        DefaultMutableRowSchema rowSchema = TransformationUtil.transformSchema(standardizedDetail.getSchema(),
+        DefaultMutableRowSchema rowSchema = TransformationUtil.transformSchema(table, standardizedDetail.getSchema(),
                                                                                transformations);
        standardizedDetail = new StandardizedTableDetail(standardizedDetail.getDatabase(),
                                                         standardizedDetail.getTable(),
                                                         standardizedDetail.getPrimaryKey(),
                                                         rowSchema.toSchema());
        columnRenameInfo = rowSchema.getRenameInfo();
-      } catch (Exception e) {
-        throw new RuntimeException(String.format("Failed to apply transformations on the schema : %s",
-                                                 e.getMessage()), e);
+      } catch (TransformationException e) {
+        LOG.debug("Failed to apply transformation: ", e);
+        transformationIssues.add(new Problem("Transformation failed",
+                    String.format("Failed to apply transformations on the schema for the table : %s and column : %s " +
+                                    "with error : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+                    "Please ensure the applied transformation is valid",
+                    "The job cannot be deployed with invalid transformations"));
       }
-    } else {
-      columnRenameInfo = new DefaultRenameInfo(Collections.emptyMap());
     }
     TableAssessment targetAssessment = targetTableAssesor.assess(standardizedDetail);
 
-    return merge(srcAssessment, targetAssessment, columnRenameInfo);
+    return merge(srcAssessment, targetAssessment, columnRenameInfo, transformationIssues);
   }
 
   /**
@@ -415,7 +446,7 @@ public class DraftService {
    * This amounts to merging the assessment for each column.
    */
   private TableAssessmentResponse merge(TableAssessment srcAssessment, TableAssessment targetAssessment,
-                                        ColumnRenameInfo columnRenameInfo) {
+                                        ColumnRenameInfo columnRenameInfo, List<Problem> transformationIssues) {
     Map<String, ColumnAssessment> targetColumns = targetAssessment.getColumns().stream()
       .filter(c -> c.getSourceName() != null)
       .collect(Collectors.toMap(ColumnAssessment::getSourceName, c -> c));
@@ -442,7 +473,7 @@ public class DraftService {
 
     List<Problem> features = new ArrayList<>(srcAssessment.getFeatureProblems());
     features.addAll(targetAssessment.getFeatureProblems());
-    return new TableAssessmentResponse(fullColumns, features);
+    return new TableAssessmentResponse(fullColumns, features, transformationIssues);
   }
 
   /**

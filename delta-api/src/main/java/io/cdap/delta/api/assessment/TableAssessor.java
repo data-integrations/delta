@@ -43,7 +43,7 @@ public interface TableAssessor<T> extends Closeable {
    * @return an assessment of potential problems
    */
   default Assessment assess() {
-    return new Assessment(Collections.emptyList(), Collections.emptyList());
+    return new Assessment(Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
   }
 
   default void close() throws IOException {

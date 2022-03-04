@@ -27,10 +27,12 @@ import java.util.Objects;
 public class Assessment {
   private final List<Problem> features;
   private final List<Problem> connectivity;
+  private final List<Problem> transformationIssues;
 
-  public Assessment(List<Problem> features, List<Problem> connectivity) {
+  public Assessment(List<Problem> features, List<Problem> connectivity, List<Problem> transformationIssues) {
     this.features = Collections.unmodifiableList(new ArrayList<>(features));
     this.connectivity = Collections.unmodifiableList(new ArrayList<>(connectivity));
+    this.transformationIssues = Collections.unmodifiableList(new ArrayList<>(transformationIssues));
   }
 
   /**
@@ -47,6 +49,13 @@ public class Assessment {
     return connectivity;
   }
 
+  /**
+   * @return potential problems related to transformation
+   */
+  public List<Problem> getTransformationIssues() {
+    return transformationIssues;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -58,11 +67,12 @@ public class Assessment {
 
     Assessment that = (Assessment) o;
     return Objects.equals(features, that.features) &&
-      Objects.equals(connectivity, that.connectivity);
+      Objects.equals(connectivity, that.connectivity) &&
+      Objects.equals(transformationIssues, that.transformationIssues);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(features, connectivity);
+    return Objects.hash(features, connectivity, transformationIssues);
   }
 }

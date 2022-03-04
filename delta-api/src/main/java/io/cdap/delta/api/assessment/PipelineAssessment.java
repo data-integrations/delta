@@ -29,8 +29,9 @@ public class PipelineAssessment extends Assessment {
 
   public PipelineAssessment(List<TableSummaryAssessment> tables,
                             List<Problem> featureProblems,
-                            List<Problem> connectivityProblems) {
-    super(featureProblems, connectivityProblems);
+                            List<Problem> connectivityProblems,
+                            List<Problem> transformationIssues) {
+    super(featureProblems, connectivityProblems, transformationIssues);
     this.tables = Collections.unmodifiableList(new ArrayList<>(tables));
   }
 
