@@ -28,10 +28,13 @@ import java.util.Objects;
 public class TableAssessmentResponse {
   private final List<FullColumnAssessment> columns;
   private final List<Problem> features;
+  private final List<Problem> transformationIssues;
 
-  public TableAssessmentResponse(List<FullColumnAssessment> columns, List<Problem> features) {
+  public TableAssessmentResponse(List<FullColumnAssessment> columns, List<Problem> features,
+                                 List<Problem> transformationIssues) {
     this.columns = columns;
     this.features = features;
+    this.transformationIssues = transformationIssues;
   }
 
   public List<FullColumnAssessment> getColumns() {
@@ -40,6 +43,10 @@ public class TableAssessmentResponse {
 
   public List<Problem> getFeatures() {
     return features;
+  }
+
+  public List<Problem> getTransformationIssues() {
+    return transformationIssues;
   }
 
   @Override
@@ -52,11 +59,12 @@ public class TableAssessmentResponse {
     }
     TableAssessmentResponse that = (TableAssessmentResponse) o;
     return Objects.equals(columns, that.columns) &&
-      Objects.equals(features, that.features);
+      Objects.equals(features, that.features) &&
+      Objects.equals(transformationIssues, that.transformationIssues);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(columns, features);
+    return Objects.hash(columns, features, transformationIssues);
   }
 }

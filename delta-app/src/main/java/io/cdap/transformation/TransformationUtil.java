@@ -21,12 +21,15 @@ import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DDLEvent;
 import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.proto.ColumnTransformation;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.TableTransformation;
 import io.cdap.transformation.api.Transformation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -65,6 +68,30 @@ public class TransformationUtil {
   }
 
   /**
+   * A helper method to reuse transformSchema with column level detail which is to be called during pipeline assessment
+   * to track issues at a column level for better display of errors
+   *
+   * @param schema          the schema to apply transformation
+   * @param transformations the map of Column to list of transformations to apply
+   * @return the transformed mutable row schema.
+   * @throws TransformationException
+   */
+  public static DefaultMutableRowSchema transformSchema(String table,
+                                                        Schema schema,
+                                                        Map<String, List<Transformation>> transformations)
+    throws TransformationException {
+    DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(schema);
+    for (String columnName : transformations.keySet()) {
+      try {
+        rowSchema = transformSchema(rowSchema, transformations.get(columnName));
+      } catch (Exception e) {
+        throw new TransformationException(table, columnName, e.getMessage(), e);
+      }
+    }
+    return rowSchema;
+  }
+
+  /**
    * Apply a list of transformations on a row schema
    *
    * @param schema          the schema to apply transformation
@@ -74,6 +101,11 @@ public class TransformationUtil {
   public static DefaultMutableRowSchema transformSchema(Schema schema, List<Transformation> transformations)
     throws Exception {
     DefaultMutableRowSchema rowSchema = new DefaultMutableRowSchema(schema);
+    return transformSchema(rowSchema, transformations);
+  }
+
+  private static DefaultMutableRowSchema transformSchema(DefaultMutableRowSchema rowSchema,
+    List<Transformation> transformations) throws Exception {
     for (Transformation transformation : transformations) {
       transformation.transformSchema(rowSchema);
     }
@@ -107,16 +139,17 @@ public class TransformationUtil {
    * @param table the table that transformations are applied on
    * @return list of transformations applied on the specified table
    */
-  public static List<Transformation> loadTransformations(Configurer configurer,
+  public static Map<String, List<Transformation>> loadTransformations(Configurer configurer,
                                                          Map<String, TableTransformation> tableTransformations,
-                                                         SourceTable table) {
+                                                         SourceTable table) throws TransformationException {
     String tableName = table.getSchema() == null ? table.getTable() : table.getSchema() + "." + table.getTable();
-    List<Transformation> columnTransformations = new ArrayList<>();
+    Map<String, List<Transformation>> columnTransformations = new LinkedHashMap<>();
     TableTransformation tableTransformation = tableTransformations.get(tableName);
     if (tableTransformation == null) {
-      return Collections.emptyList();
+      return Collections.emptyMap();
     }
-    tableTransformation.getColumnTransformations().forEach(t -> {
+    for (ColumnTransformation t : tableTransformation.getColumnTransformations()) {
+      String columnName = t.getColumnName();
       String directive = t.getDirective();
       String directiveName = TransformationUtil.parseDirectiveName(directive);
       try {
@@ -124,12 +157,17 @@ public class TransformationUtil {
                                                              UUID.randomUUID().toString(),
                                                              PluginProperties.builder().build());
         transformation.initialize(new DefaultTransformationContext(directive));
-        columnTransformations.add(transformation);
+
+        if (columnTransformations.containsKey(columnName)) {
+          columnTransformations.getOrDefault(columnName, new ArrayList<>()).add(transformation);
+        } else {
+          columnTransformations.put(columnName, new ArrayList<>(Arrays.asList(transformation)));
+        }
       } catch (Exception e) {
-        throw new RuntimeException(String.format("Failed to load transformation plugin for directive : %s. Error : %s.",
-                                                 directive, e.getMessage()), e);
+        throw new TransformationException(tableName, columnName, String.format("Exception while loading plugin " +
+                                          "for directive : %s. Error : %s.", directive, e.getMessage()), e);
       }
-    });
+    }
     return columnTransformations;
   }
 

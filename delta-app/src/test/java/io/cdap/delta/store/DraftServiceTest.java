@@ -173,7 +173,8 @@ public class DraftServiceTest extends SystemAppTestBase {
       .map(c -> new FullColumnAssessment(c.getSupport(), c.getName(), c.getType(), c.getName(), c.getType(),
                                          c.getSuggestion()))
       .collect(Collectors.toList());
-    TableAssessmentResponse expected = new TableAssessmentResponse(fullColumns, Collections.emptyList());
+    TableAssessmentResponse expected = new TableAssessmentResponse(fullColumns, Collections.emptyList(),
+                                                                   Collections.emptyList());
     TableAssessmentResponse actual = service.assessTable(draftId, mockConfigurer, "deebee", null, "taybull");
     Assert.assertEquals(expected, actual);
   }
@@ -232,7 +233,8 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
-                                                         Collections.emptyList(), Collections.emptyList());
+                                                         Collections.emptyList(), Collections.emptyList(),
+                                                         Collections.emptyList());
     PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
     Assert.assertEquals(expected, actual);
   }
@@ -292,7 +294,8 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
-                                                         Collections.emptyList(), Collections.emptyList());
+                                                         Collections.emptyList(), Collections.emptyList(),
+                                                         Collections.emptyList());
     PipelineAssessment actual = service.assessPipeline(draftId.getNamespace(), draft.getConfig(), mockConfigurer);
     Assert.assertEquals(expected, actual);
   }
@@ -383,7 +386,8 @@ public class DraftServiceTest extends SystemAppTestBase {
 
     TableSummaryAssessment summaryAssessment = new TableSummaryAssessment("deebee", "taybull", 3, 1, 0, null);
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
-                                                         Collections.emptyList(), Collections.emptyList());
+                                                         Collections.emptyList(), Collections.emptyList(),
+                                                         Collections.emptyList());
     PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
     Assert.assertEquals(expected, actual);
   }
@@ -434,7 +438,8 @@ public class DraftServiceTest extends SystemAppTestBase {
       .map(c -> new FullColumnAssessment(c.getSupport(), c.getName(), c.getType(), c.getName(), c.getType(),
                                          c.getSuggestion()))
       .collect(Collectors.toList());
-    TableAssessmentResponse expectedAssessment = new TableAssessmentResponse(fullColumns, Collections.emptyList());
+    TableAssessmentResponse expectedAssessment = new TableAssessmentResponse(fullColumns, Collections.emptyList(),
+                                                                             Collections.emptyList());
     Configurer configurer = new PropertyBasedMockConfigurer();
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
     Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", null, "taybull"));
