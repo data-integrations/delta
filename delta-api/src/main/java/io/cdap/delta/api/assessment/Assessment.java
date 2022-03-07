@@ -29,6 +29,10 @@ public class Assessment {
   private final List<Problem> connectivity;
   private final List<Problem> transformationIssues;
 
+  public Assessment(List<Problem> features, List<Problem> connectivity) {
+    this(features, connectivity, Collections.emptyList());
+  }
+
   public Assessment(List<Problem> features, List<Problem> connectivity, List<Problem> transformationIssues) {
     this.features = Collections.unmodifiableList(new ArrayList<>(features));
     this.connectivity = Collections.unmodifiableList(new ArrayList<>(connectivity));
