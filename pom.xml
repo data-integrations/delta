@@ -19,7 +19,7 @@
 
   <groupId>io.cdap.delta</groupId>
   <artifactId>delta</artifactId>
-  <version>0.6.0-SNAPSHOT</version>
+  <version>0.7.0-SNAPSHOT</version>
   <name>Delta Pipelines</name>
   <packaging>pom</packaging>
   <description>CDAP Delta pipelines</description>
@@ -57,7 +57,7 @@
   <properties>
     <jee.version>7</jee.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>6.7.0-SNAPSHOT</cdap.version>
+    <cdap.version>6.8.0-SNAPSHOT</cdap.version>
     <failsafe.version>2.3.3</failsafe.version>
     <guava.version>13.0.1</guava.version>
     <junit.version>4.12</junit.version>
