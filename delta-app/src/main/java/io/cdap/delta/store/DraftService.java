@@ -16,6 +16,7 @@
 
 package io.cdap.delta.store;
 
+import com.google.gson.JsonObject;
 import io.cdap.cdap.api.plugin.InvalidPluginConfigException;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.cdap.spi.data.transaction.TransactionRunner;
@@ -240,9 +241,7 @@ public class DraftService {
     } catch (TransformationException e) {
       LOG.debug("Failed to apply transformation: ", e);
       List<Problem> transformationErrors = new ArrayList<>();
-      transformationErrors.add(new Problem("Transformation Loading failed",
-                               String.format("Failed to load transformations for the table : %s and column : %s " +
-                               "with error : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+      transformationErrors.add(new Problem("Transformation Loading failed", constructTransformationErrorDesc(e),
                                "Please ensure the applied transformation's plugin is uploaded'",
                                ""));
 
@@ -348,9 +347,7 @@ public class DraftService {
                         null));
         } catch (TransformationException e) {
           LOG.debug("Failed to apply transformation: ", e);
-          transformationIssues.add(new Problem("Transformation Loading failed",
-                        String.format("Failed to load transformations for the table : %s and column : %s " +
-                                      "with : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+          transformationIssues.add(new Problem("Transformation Loading failed", constructTransformationErrorDesc(e),
                                       "Please ensure the applied transformation's plugin is uploaded'",
                                       ""));
         }
@@ -429,9 +426,7 @@ public class DraftService {
        columnRenameInfo = rowSchema.getRenameInfo();
       } catch (TransformationException e) {
         LOG.debug("Failed to apply transformation: ", e);
-        transformationIssues.add(new Problem("Transformation failed",
-                    String.format("Failed to apply transformations on the schema for the table : %s and column : %s " +
-                                    "with error : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+        transformationIssues.add(new Problem("Transformation failed", constructTransformationErrorDesc(e),
                     "Please ensure the applied transformation is valid",
                     "The job cannot be deployed with invalid transformations"));
       }
@@ -593,5 +588,13 @@ public class DraftService {
     Map<String, String> evaluatedProperties = propertyEvaluator.evaluate(namespace, plugin.getProperties());
     Plugin evaluatedPlugin = new Plugin(plugin.getName(), plugin.getType(), evaluatedProperties, plugin.getArtifact());
     return new Stage(stage.getName(), evaluatedPlugin);
+  }
+
+  private String constructTransformationErrorDesc(TransformationException e) {
+    JsonObject json = new JsonObject();
+    json.addProperty("tableName", e.getTableName());
+    json.addProperty("columnName", e.getColumnName());
+    json.addProperty("errorMessage", e.getMessage());
+    return json.toString();
   }
 }
