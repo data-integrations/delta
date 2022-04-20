@@ -240,11 +240,9 @@ public class DraftService {
     } catch (TransformationException e) {
       LOG.debug("Failed to apply transformation: ", e);
       List<Problem> transformationErrors = new ArrayList<>();
-      transformationErrors.add(new Problem("Transformation Loading failed",
-                               String.format("Failed to load transformations for the table : %s and column : %s " +
-                               "with error : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+      transformationErrors.add(new Problem("Transformation Loading failed", e.getMessage(),
                                "Please ensure the applied transformation's plugin is uploaded'",
-                               ""));
+                               "", Problem.Severity.ERROR, e.getTableName(), e.getColumnName()));
 
       return new TableAssessmentResponse(Collections.emptyList(), Collections.emptyList(), transformationErrors);
     }
@@ -348,11 +346,9 @@ public class DraftService {
                         null));
         } catch (TransformationException e) {
           LOG.debug("Failed to apply transformation: ", e);
-          transformationIssues.add(new Problem("Transformation Loading failed",
-                        String.format("Failed to load transformations for the table : %s and column : %s " +
-                                      "with : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+          transformationIssues.add(new Problem("Transformation Loading failed", e.getMessage(),
                                       "Please ensure the applied transformation's plugin is uploaded'",
-                                      ""));
+                                      "", Problem.Severity.ERROR, e.getTableName(), e.getColumnName()));
         }
       }
       return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues, transformationIssues);
@@ -429,11 +425,10 @@ public class DraftService {
        columnRenameInfo = rowSchema.getRenameInfo();
       } catch (TransformationException e) {
         LOG.debug("Failed to apply transformation: ", e);
-        transformationIssues.add(new Problem("Transformation failed",
-                    String.format("Failed to apply transformations on the schema for the table : %s and column : %s " +
-                                    "with error : %s", e.getTableName(), e.getColumnName(), e.getMessage()),
+        transformationIssues.add(new Problem("Transformation failed", e.getMessage(),
                     "Please ensure the applied transformation is valid",
-                    "The job cannot be deployed with invalid transformations"));
+                    "The job cannot be deployed with invalid transformations", Problem.Severity.ERROR,
+                     e.getTableName(), e.getColumnName()));
       }
     }
     TableAssessment targetAssessment = targetTableAssesor.assess(standardizedDetail);
