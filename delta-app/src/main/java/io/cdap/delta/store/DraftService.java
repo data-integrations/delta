@@ -16,7 +16,6 @@
 
 package io.cdap.delta.store;
 
-import com.google.gson.JsonObject;
 import io.cdap.cdap.api.plugin.InvalidPluginConfigException;
 import io.cdap.cdap.api.plugin.PluginProperties;
 import io.cdap.cdap.spi.data.transaction.TransactionRunner;
@@ -241,9 +240,9 @@ public class DraftService {
     } catch (TransformationException e) {
       LOG.debug("Failed to apply transformation: ", e);
       List<Problem> transformationErrors = new ArrayList<>();
-      transformationErrors.add(new Problem("Transformation Loading failed", constructTransformationErrorDesc(e),
+      transformationErrors.add(new Problem("Transformation Loading failed", e.getMessage(),
                                "Please ensure the applied transformation's plugin is uploaded'",
-                               ""));
+                               "", Problem.Severity.ERROR, e.getTableName(), e.getColumnName()));
 
       return new TableAssessmentResponse(Collections.emptyList(), Collections.emptyList(), transformationErrors);
     }
@@ -347,9 +346,9 @@ public class DraftService {
                         null));
         } catch (TransformationException e) {
           LOG.debug("Failed to apply transformation: ", e);
-          transformationIssues.add(new Problem("Transformation Loading failed", constructTransformationErrorDesc(e),
+          transformationIssues.add(new Problem("Transformation Loading failed", e.getMessage(),
                                       "Please ensure the applied transformation's plugin is uploaded'",
-                                      ""));
+                                      "", Problem.Severity.ERROR, e.getTableName(), e.getColumnName()));
         }
       }
       return new PipelineAssessment(tableAssessments, missingFeatures, connectivityIssues, transformationIssues);
@@ -426,9 +425,10 @@ public class DraftService {
        columnRenameInfo = rowSchema.getRenameInfo();
       } catch (TransformationException e) {
         LOG.debug("Failed to apply transformation: ", e);
-        transformationIssues.add(new Problem("Transformation failed", constructTransformationErrorDesc(e),
+        transformationIssues.add(new Problem("Transformation failed", e.getMessage(),
                     "Please ensure the applied transformation is valid",
-                    "The job cannot be deployed with invalid transformations"));
+                    "The job cannot be deployed with invalid transformations", Problem.Severity.ERROR,
+                     e.getTableName(), e.getColumnName()));
       }
     }
     TableAssessment targetAssessment = targetTableAssesor.assess(standardizedDetail);
@@ -588,13 +588,5 @@ public class DraftService {
     Map<String, String> evaluatedProperties = propertyEvaluator.evaluate(namespace, plugin.getProperties());
     Plugin evaluatedPlugin = new Plugin(plugin.getName(), plugin.getType(), evaluatedProperties, plugin.getArtifact());
     return new Stage(stage.getName(), evaluatedPlugin);
-  }
-
-  private String constructTransformationErrorDesc(TransformationException e) {
-    JsonObject json = new JsonObject();
-    json.addProperty("tableName", e.getTableName());
-    json.addProperty("columnName", e.getColumnName());
-    json.addProperty("errorMessage", e.getMessage());
-    return json.toString();
   }
 }
