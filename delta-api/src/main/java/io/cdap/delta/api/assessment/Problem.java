@@ -27,18 +27,28 @@ public class Problem {
   private final String suggestion;
   private final String impact;
   private final Severity severity;
+  private final String table;
+  private final String column;
 
 
   public Problem(String name, String description, String suggestion, String impact) {
     this(name, description, suggestion, impact, Severity.ERROR);
   }
   public Problem(String name, String description, String suggestion, String impact, Severity severity) {
+    this(name, description, suggestion, impact, severity, null, null);
+  }
+
+  public Problem(String name, String description, String suggestion, String impact, Severity severity, String table,
+                 String column) {
     this.name = name;
     this.description = description;
     this.suggestion = suggestion;
     this.impact = impact;
     this.severity = severity;
+    this.table = table;
+    this.column = column;
   }
+
 
   /**
    * @return name of the entity that is being assessed
@@ -75,6 +85,20 @@ public class Problem {
     return severity;
   }
 
+  /**
+   * @return the table name if the error is at a table level
+   */
+  public String getTable() {
+    return table;
+  }
+
+  /**
+   * @return the column name if the error is at a table + column level
+   */
+  public String getColumn() {
+    return column;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -88,12 +112,14 @@ public class Problem {
       Objects.equals(description, that.description) &&
       Objects.equals(suggestion, that.suggestion) &&
       Objects.equals(impact, that.impact) &&
-      Objects.equals(severity, that.severity);
+      Objects.equals(severity, that.severity) &&
+      Objects.equals(table, that.table) &&
+      Objects.equals(column, that.column);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, description, suggestion, impact, severity);
+    return Objects.hash(name, description, suggestion, impact, severity, table, column);
   }
 
   /**
