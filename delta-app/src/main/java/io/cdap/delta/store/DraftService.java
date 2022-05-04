@@ -40,6 +40,7 @@ import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.api.assessment.TableRegistry;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
+import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.FullColumnAssessment;
@@ -204,10 +205,8 @@ public class DraftService {
    * an {@link InvalidDraftException} will be thrown.
    *
    * @param draftId id of the draft
+   * @param dbTable the database, the schema, the table to be assessed
    * @param configurer configurer used to instantiate plugins
-   * @param db the database the table lives in
-   * @param schema the schema of the table to assess, it's only required for some databases such as Oracle
-   * @param table the table to assess
    * @return list of tables readable by the source in the draft
    * @throws DraftNotFoundException if the draft does not exist
    * @throws InvalidDraftException if the table list cannot be fetched because the draft is invalid
@@ -216,21 +215,39 @@ public class DraftService {
    * @throws Exception if there was an error creating the table registry
    * @throws IllegalArgumentException if the table is not selected in the draft
    */
-  public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, String db, @Nullable String schema,
-    String table) throws Exception {
+  public TableAssessmentResponse assessTable(DraftId draftId, Configurer configurer, DBTable dbTable) throws Exception {
     Draft draft = getDraft(draftId);
-    DeltaConfig deltaConfig = draft.getConfig();
-    deltaConfig = evaluateMacros(draftId.getNamespace(), deltaConfig);
+    return assessTable(draftId.getNamespace(), draft.getConfig(), configurer, dbTable);
+  }
+
+  /**
+   * Assess the given table detail using the plugins from the given Delta Config. Plugins will be
+   * instantiated in order to generate this assessment. This is an expensive operation.
+   *
+   * @param namespace namespace to look for macros
+   * @param deltaConfig : delta config to assess
+   * @param dbTable : the selected table to assess
+   * @param configurer configurer used to instantiate plugins
+   * @return list of tables readable by the source in the draft
+   * @throws IOException if the table detail could not be read
+   * @throws Exception if there was an error creating the table registry
+   * @throws IllegalArgumentException if the number of tables is not equal to one.
+   */
+  public TableAssessmentResponse assessTable(Namespace namespace, DeltaConfig deltaConfig, Configurer configurer,
+                                              DBTable dbTable) throws Exception {
+    deltaConfig = evaluateMacros(namespace, deltaConfig);
+    SourceTable selectedTable = deltaConfig.getTables().stream().filter(
+      streamTable -> dbTable.getDatabase().equals(streamTable.getDatabase()) &&
+        dbTable.getTable().equals(streamTable.getTable()) &&
+        (dbTable.getSchema() == streamTable.getSchema() || dbTable.getSchema() != null
+          && dbTable.getSchema().equals(streamTable.getSchema()))).findAny()
+      .orElseThrow(() -> new IllegalArgumentException(String
+        .format("Table '%s' in database '%s' and schema '%s' is not a selected table in the draft", dbTable.getTable(),
+                dbTable.getDatabase(), dbTable.getSchema())));
     Stage target = deltaConfig.getTarget();
     if (target == null) {
       throw new InvalidDraftException("Cannot assess a table without a configured target.");
     }
-    SourceTable selectedTable = deltaConfig.getTables().stream().filter(
-      streamTable -> db.equals(streamTable.getDatabase()) && table.equals(streamTable.getTable()) &&
-        (schema == streamTable.getSchema() || schema != null && schema.equals(streamTable.getSchema()))).findAny()
-      .orElseThrow(() -> new IllegalArgumentException(String
-        .format("Table '%s' in database '%s' and schema '%s' is not a selected table in the draft", table, db,
-          schema)));
 
     Map<String, TableTransformation> tableLevelTransformations =
       TransformationUtil.getTableLevelTransformations(deltaConfig);
@@ -247,7 +264,7 @@ public class DraftService {
       return new TableAssessmentResponse(Collections.emptyList(), Collections.emptyList(), transformationErrors);
     }
 
-    try (TableRegistry tableRegistry = createTableRegistry(draftId.getNamespace(), deltaConfig, configurer);
+    try (TableRegistry tableRegistry = createTableRegistry(namespace, deltaConfig, configurer);
          TableAssessor<TableDetail> sourceTableAssessor = createTableAssessor(configurer, deltaConfig.getSource(),
            deltaConfig.getTables());
          TableAssessor<StandardizedTableDetail> targetTableAssessor = createTableAssessor(configurer, target,
