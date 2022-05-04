@@ -35,6 +35,7 @@ import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.PipelineReplicationState;
 import io.cdap.delta.proto.PipelineState;
 import io.cdap.delta.proto.StateRequest;
+import io.cdap.delta.proto.TableAssessmentRequest;
 import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.proto.TableReplicationState;
 import io.cdap.delta.store.Draft;
@@ -209,8 +210,30 @@ public class AssessmentHandler extends AbstractAssessorHandler {
 
       PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
       TableAssessmentResponse assessment = getDraftService()
-        .assessTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable.getDatabase(), dbTable.getSchema(),
-          dbTable.getTable());
+        .assessTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable);
+      responder.sendString(GSON.toJson(assessment));
+    }));
+  }
+
+  @POST
+  @Path("v1/contexts/{context}/assessTable")
+  public void assessTableWithDeltaConfig(HttpServiceRequest request, HttpServiceResponder responder,
+                          @PathParam("context") String namespaceName) {
+    respond(namespaceName, responder, ((namespace) -> {
+      TableAssessmentRequest tableAssessmentRequest;
+      try {
+        tableAssessmentRequest = GSON.fromJson(StandardCharsets.UTF_8.decode(request.getContent()).toString(),
+                                               TableAssessmentRequest.class);
+      } catch (JsonSyntaxException e) {
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, "Unable to decode request body , " +
+          "doesn't conform to TableAssessmentRequest: " + e.getMessage());
+        return;
+      }
+
+      PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
+      TableAssessmentResponse assessment = getDraftService()
+        .assessTable(namespace, tableAssessmentRequest.getDeltaConfig(), new DefaultConfigurer(pluginConfigurer),
+                     tableAssessmentRequest.getDBTable());
       responder.sendString(GSON.toJson(assessment));
     }));
   }
