@@ -38,6 +38,7 @@ import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.ColumnTransformation;
+import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
 import io.cdap.delta.proto.FullColumnAssessment;
@@ -175,8 +176,14 @@ public class DraftServiceTest extends SystemAppTestBase {
       .collect(Collectors.toList());
     TableAssessmentResponse expected = new TableAssessmentResponse(fullColumns, Collections.emptyList(),
                                                                    Collections.emptyList());
-    TableAssessmentResponse actual = service.assessTable(draftId, mockConfigurer, "deebee", null, "taybull");
-    Assert.assertEquals(expected, actual);
+    DBTable dbTable = new DBTable("deebee", "taybull");
+    // assessTable using DRAFT
+    TableAssessmentResponse actualWithDraft = service.assessTable(draftId, mockConfigurer, dbTable);
+    Assert.assertEquals(expected, actualWithDraft);
+    // assessTable on the fly - with delta config
+    TableAssessmentResponse actualOntheFly = service.assessTable(new Namespace("ns", 0L), config,
+                                                                 mockConfigurer, dbTable);
+    Assert.assertEquals(expected, actualOntheFly);
   }
 
   @Test
@@ -443,6 +450,6 @@ public class DraftServiceTest extends SystemAppTestBase {
     Configurer configurer = new PropertyBasedMockConfigurer();
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
     Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", null, "taybull"));
-    Assert.assertEquals(expectedAssessment, service.assessTable(draftId, configurer, "deebee", null, "taybull"));
+    Assert.assertEquals(expectedAssessment, service.assessTable(draftId, configurer, new DBTable("deebee", "taybull")));
   }
 }
