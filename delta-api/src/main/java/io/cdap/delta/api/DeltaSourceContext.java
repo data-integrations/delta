@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.io.IOException;
+import java.util.Collections;
 
 /**
  * Context for a CDC Source.
@@ -39,4 +40,17 @@ public interface DeltaSourceContext extends DeltaRuntimeContext, FailureNotifier
    *   a change in state.
    */
   void setOK() throws IOException;
+
+  /**
+   * @return the offset that is committed back by the Target Plugin after a successful load operation by target
+   *
+   * This is intended to be used by source side to commit the true offset back to the Replication server
+   *
+   * For the scenario when no offset information is found : This method returns an Empty Offset object (i.e empty Map )
+   *  Meaning the source has the handle the case of empty offset .
+   *  Example : if (offset.get().isEmpty()) { Do some handling }
+   */
+  default Offset getCommittedOffset() throws IOException {
+    return new Offset(Collections.emptyMap());
+  }
 }
