@@ -68,6 +68,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final SourceProperties sourceProperties;
   private final Set<SourceTable> tables;
   private long sequenceNumber;
+  private final AtomicReference<Offset> committedOffset;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                WorkerContext workerContext, PipelineStateService stateService,
@@ -85,6 +86,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.failure = new AtomicReference<>(null);
     this.sourceProperties = sourceProperties;
     this.tables = Collections.unmodifiableSet(new HashSet<>(tables));
+    this.committedOffset = new AtomicReference<>(null);
   }
 
   @Override
@@ -105,6 +107,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void commitOffset(Offset offset, long sequenceNumber) throws IOException {
     stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber));
+    committedOffset.set(offset);
     for (EventMetrics eventMetrics : tableEventMetrics.values()) {
       eventMetrics.emitMetrics();
     }
@@ -244,6 +247,14 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   @Override
   public void setOK() throws IOException {
     stateService.setSourceOK();
+  }
+
+  @Override
+  public Offset getCommittedOffset() throws IOException {
+    if (committedOffset.get() == null) {
+      committedOffset.set(loadOffset().getOffset());
+    }
+    return committedOffset.get();
   }
 
   @Override
