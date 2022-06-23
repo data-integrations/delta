@@ -100,7 +100,7 @@ public class DefaultMutableRowSchema implements MutableRowSchema {
       return;
     }
 
-    if (names.contains(newName)) {
+    if (names.stream().anyMatch(newName::equalsIgnoreCase)) {
       throw new IllegalArgumentException(String.format("Field name %s already exists.", newName));
     }
 
