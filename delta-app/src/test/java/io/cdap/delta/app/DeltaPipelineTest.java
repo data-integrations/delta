@@ -233,7 +233,7 @@ public class DeltaPipelineTest extends DeltaPipelineTestBase {
 
     waitForMetric(appId, "dml.inserts", 1);
     // Latency should be somewhere between 1 seconds and 30 seconds
-    waitForMetric(appId, "dml.latency.seconds", 1, 30);
+    waitForMetric(appId, "dml.latency.seconds", 1, 40);
     manager.stop();
     manager.waitForStopped(60, TimeUnit.SECONDS);
 
