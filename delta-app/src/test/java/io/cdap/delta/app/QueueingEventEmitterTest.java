@@ -26,10 +26,12 @@ import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.EventReaderDefinition;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.Sequenced;
+import io.cdap.delta.api.SortKey;
 import io.cdap.delta.api.SourceTable;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -55,6 +57,7 @@ public class QueueingEventEmitterTest {
     .setTableName("taybull")
     .setIngestTimestamp(1000L)
     .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
+    .setSortKeys(Arrays.asList(new SortKey(Schema.Type.LONG, System.currentTimeMillis())))
     .build();
 
   @Test

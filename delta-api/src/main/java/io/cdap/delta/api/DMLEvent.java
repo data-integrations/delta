@@ -37,10 +37,12 @@ public class DMLEvent extends ChangeEvent {
   private final long ingestTimestampMillis;
   private final String rowId;
   private int sizeInBytes;
+  private List<SortKey> sortKeys;
 
   private DMLEvent(Offset offset, DMLOperation operation, StructuredRecord row,
                    @Nullable StructuredRecord previousRow, @Nullable String transactionId, long ingestTimestampMillis,
-                   @Nullable Long sourceTimestampMillis, boolean isSnapshot, @Nullable String rowId) {
+                   @Nullable Long sourceTimestampMillis, boolean isSnapshot, @Nullable String rowId,
+                   @Nullable List<SortKey> sortKeys) {
     super(offset, isSnapshot, ChangeType.DML, sourceTimestampMillis);
     this.operation = operation;
     this.row = row;
@@ -49,6 +51,7 @@ public class DMLEvent extends ChangeEvent {
     this.ingestTimestampMillis = ingestTimestampMillis;
     this.rowId = rowId;
     this.sizeInBytes = -1;
+    this.sortKeys = sortKeys;
   }
 
   public DMLOperation getOperation() {
@@ -80,6 +83,11 @@ public class DMLEvent extends ChangeEvent {
     return rowId;
   }
 
+  @Nullable
+  public List<SortKey> getSortKeys() {
+    return sortKeys;
+  }
+
   public int getSizeInBytes() {
     if (sizeInBytes < 0) {
       // the size of all other fields are fixed, only return the dynamic size of row and previousRow
@@ -109,13 +117,14 @@ public class DMLEvent extends ChangeEvent {
       Objects.equals(operation, dmlEvent.operation) &&
       Objects.equals(row, dmlEvent.row) &&
       Objects.equals(previousRow, dmlEvent.previousRow) &&
-      Objects.equals(transactionId, dmlEvent.transactionId);
+      Objects.equals(transactionId, dmlEvent.transactionId) &&
+      Objects.equals(sortKeys, dmlEvent.sortKeys);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), operation, row, previousRow, transactionId, ingestTimestampMillis,
-                        rowId);
+                        rowId, sortKeys);
   }
 
   public static Builder builder(DMLEvent event) {
@@ -185,6 +194,7 @@ public class DMLEvent extends ChangeEvent {
     private String transactionId;
     private long ingestTimestampMillis;
     private String rowId;
+    private List<SortKey> sortKeys;
 
     private Builder() { }
 
@@ -201,6 +211,7 @@ public class DMLEvent extends ChangeEvent {
       this.isSnapshot = event.isSnapshot();
       this.sourceTimestampMillis = event.getSourceTimestampMillis();
       this.rowId = event.getRowId();
+      this.sortKeys = event.getSortKeys();
     }
 
     public Builder setOperationType(DMLOperation.Type operationType) {
@@ -248,13 +259,18 @@ public class DMLEvent extends ChangeEvent {
       return this;
     }
 
+    public Builder setSortKeys(List<SortKey> sortKeys) {
+      this.sortKeys = sortKeys;
+      return this;
+    }
+
     public DMLEvent build() {
       int sizeInBytes = (operationType == DMLOperation.Type.INSERT ||
         operationType == DMLOperation.Type.UPDATE) ? computeSizeInBytes(row) : 0;
 
       return new DMLEvent(offset,
         new DMLOperation(databaseName, schemaName, tableName, operationType, ingestTimestampMillis, sizeInBytes), row,
-        previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId);
+        previousRow, transactionId, ingestTimestampMillis, sourceTimestampMillis, isSnapshot, rowId, sortKeys);
     }
 
   }
