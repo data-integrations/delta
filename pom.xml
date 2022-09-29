@@ -19,7 +19,7 @@
 
   <groupId>io.cdap.delta</groupId>
   <artifactId>delta</artifactId>
-  <version>0.6.2-SNAPSHOT</version>
+  <version>0.6.2</version>
   <name>Delta Pipelines</name>
   <packaging>pom</packaging>
   <description>CDAP Delta pipelines</description>
