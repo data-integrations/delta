@@ -36,6 +36,7 @@ import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLEvent;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaFailureException;
+import io.cdap.delta.api.DeltaFailureRuntimeException;
 import io.cdap.delta.api.DeltaPipelineId;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
@@ -318,8 +319,8 @@ public class DeltaWorker extends AbstractWorker {
         .onFailedAttempt(failureContext -> {
           Throwable failure = failureContext.getLastFailure();
           error.set(failure);
-          if (failure instanceof DeltaFailureException) {
-            LOG.warn("Encountered an error that cannot be retried. Failing the pipeline...", failure);
+          if (failure instanceof DeltaFailureException || failure instanceof DeltaFailureRuntimeException) {
+            LOG.error("Encountered an error that cannot be retried. Failing the pipeline...", failure);
             shouldStop.set(true);
           }
 
