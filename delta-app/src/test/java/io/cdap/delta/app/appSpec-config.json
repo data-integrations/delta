@@ -1,0 +1,68 @@
+{
+  "description": "",
+  "connections": [
+    {
+      "from": "Microsoft SQLServer",
+      "to": "BigQuery"
+    }
+  ],
+  "stages": [
+    {
+      "name": "Microsoft SQLServer",
+      "plugin": {
+        "name": "sqlserver",
+        "type": "cdcSource",
+        "artifact": {
+          "name": "sqlserver-delta-plugins",
+          "version": "0.8.0-SNAPSHOT",
+          "scope": "SYSTEM"
+        },
+        "properties": {
+          "port": "1433",
+          "serverTimezone": "UTC",
+          "replicateExistingData": "true",
+          "host": "34.82.29.3",
+          "jdbcPluginName": "sqlserver42",
+          "database": "testreplication",
+          "user": "rep_user",
+          "password": "test@123"
+        }
+      }
+    },
+    {
+      "name": "BigQuery",
+      "plugin": {
+        "name": "bigquery",
+        "type": "cdcTarget",
+        "artifact": {
+          "name": "bigquery-delta-plugins",
+          "version": "0.7.0-SNAPSHOT",
+          "scope": "SYSTEM"
+        },
+        "properties": {
+          "project": "auto-detect",
+          "serviceAccountKey": "auto-detect",
+          "stagingBucketLocation": "us",
+          "loadInterval": "90",
+          "stagingTablePrefix": "_staging_",
+          "requireManualDrops": "false",
+          "softDeletes": "false"
+        }
+      }
+    }
+  ],
+  "tables": [
+    {
+      "database": "testreplication",
+      "table": "npe",
+      "schema": "dbo"
+    }
+  ],
+  "offsetBasePath": "checkpoints/delta",
+  "parallelism": {
+    "numInstances": 1.0
+  },
+  "tableTransformations": [
+
+  ]
+}
