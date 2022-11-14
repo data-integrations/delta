@@ -17,20 +17,16 @@
 package io.cdap.delta.app;
 
 import io.cdap.cdap.api.app.ApplicationSpecification;
-import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.worker.WorkerConfigurer;
 import io.cdap.cdap.api.worker.WorkerContext;
 import io.cdap.cdap.api.worker.WorkerSpecification;
 import io.cdap.cdap.app.DefaultAppConfigurer;
 import io.cdap.cdap.internal.app.DefaultApplicationSpecification;
-import io.cdap.delta.api.DDLEvent;
-import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DeltaFailureRuntimeException;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.DeltaTarget;
 import io.cdap.delta.api.EventConsumer;
 import io.cdap.delta.api.EventReader;
-import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DeltaConfig;
@@ -41,8 +37,6 @@ import io.cdap.delta.proto.Stage;
 import io.cdap.delta.proto.TableId;
 import io.cdap.delta.store.RemoteStateStore;
 import io.cdap.delta.store.StateStoreMigrator;
-import io.cdap.delta.test.mock.MockSource;
-import io.cdap.delta.test.mock.MockTarget;
 import org.apache.twill.api.RunId;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -56,7 +50,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -140,15 +133,9 @@ public class DeltaWorkerTest {
 
   @Test
   public void testDeltaFailureRuntimeException() throws Exception {
-    //Define DeltaConfig which is used as param in DeltaWorker constructor
-    String DATABASE = "testreplication";
-    String TABLE = "npe";
-    Schema SCHEMA = Schema.recordOf(TABLE, Schema.Field.of("id", Schema.of(Schema.Type.INT)));
-    DDLEvent EVENT1 = DDLEvent.builder().setOffset(new Offset(Collections.singletonMap("order", "0"))).setOperation(DDLOperation.Type.CREATE_TABLE).setDatabaseName(DATABASE).setTableName(TABLE).setPrimaryKey(Collections.singletonList("id")).setSchema(SCHEMA).build();
-    Stage source = new Stage("src", MockSource.getPlugin(Arrays.asList(EVENT1)));
-    Stage target = new Stage("target", MockTarget.getPlugin(new File("./")));
-    DeltaConfig config = DeltaConfig.builder().setSource(source).setTarget(target).setOffsetBasePath(null).build();
-
+    //Mock delta config
+    DeltaConfig config = mock(DeltaConfig.class);
+    when(config.getParallelism()).thenReturn(mock(ParallelismConfig.class));
     //Mock worker context,application specification,event reader and event consumer for initialize method
     WorkerContext workerContext = mock(WorkerContext.class);
     when(workerContext.getNamespace()).thenReturn("default");
@@ -167,12 +154,14 @@ public class DeltaWorkerTest {
     ApplicationSpecification appSpec = PowerMockito.mock(DefaultApplicationSpecification.class);
     when(appSpec.getName()).thenReturn("DeltaWorker");
     when(workerContext.getApplicationSpecification()).thenReturn(appSpec);
-    when(appSpec.getConfiguration()).thenReturn(new String(Files.readAllBytes(Paths.get("./src/test/java/io/cdap/delta/app/appSpec-config.json"))));
+    when(appSpec.getConfiguration()).thenReturn(
+      new String(Files.readAllBytes(Paths.get("./src/test/java/io/cdap/delta/app/appSpec-config.json"))));
 
     WorkerSpecification spec = PowerMockito.mock(WorkerSpecification.class);
     PowerMockito.when(workerContext.getSpecification()).thenReturn(spec);
     PowerMockito.when(spec.getProperty("generation")).thenReturn("0");
-    PowerMockito.when(spec.getProperty("table.assignments")).thenReturn("{\"0\":[{\"database\":\"testreplication\",\"table\":\"npe\",\"schema\":\"dbo\"}]}");
+    PowerMockito.when(spec.getProperty("table.assignments"))
+      .thenReturn("{\"0\":[{\"database\":\"testreplication\",\"table\":\"npe\",\"schema\":\"dbo\"}]}");
 
     RemoteStateStore remoteStateStore = PowerMockito.mock(RemoteStateStore.class);
     PowerMockito.whenNew(RemoteStateStore.class).withArguments(workerContext).thenReturn(remoteStateStore);
@@ -189,11 +178,7 @@ public class DeltaWorkerTest {
 
     DeltaWorker deltaWorker = new DeltaWorker(config, null, mock(DefaultAppConfigurer.class));
     deltaWorker.configure(mock(WorkerConfigurer.class));
-    try {
-      deltaWorker.initialize(workerContext);
-    } catch (Exception e) {
-      throw e;
-    }
+    deltaWorker.initialize(workerContext);
     exception.expect(DeltaFailureRuntimeException.class);
     deltaWorker.run();
   }
