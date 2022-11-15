@@ -1,0 +1,35 @@
+{
+  "description": "",
+  "connections": [
+    {
+      "from": "Microsoft SQLServer",
+      "to": "BigQuery"
+    }
+  ],
+  "stages": [
+    {
+      "name": "Microsoft SQLServer",
+      "plugin": {
+        "name": "sqlserver",
+        "type": "cdcSource",
+        "artifact": {
+          "name": "sqlserver-delta-plugins",
+          "version": "",
+          "scope": "SYSTEM"
+        }
+      }
+    },
+    {
+      "name": "BigQuery",
+      "plugin": {
+        "name": "bigquery",
+        "type": "cdcTarget",
+        "artifact": {
+          "name": "bigquery-delta-plugins",
+          "version": "",
+          "scope": "SYSTEM"
+        }
+      }
+    }
+  ]
+}
