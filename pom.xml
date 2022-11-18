@@ -64,6 +64,15 @@
     <slf4j.version>1.7.25</slf4j.version>
     <jacoco.version>0.8.8</jacoco.version>
 
+    <sonar.organization>data-integrations</sonar.organization>
+    <sonar.projectKey>data-integrations_${project.artifactId}</sonar.projectKey>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.coverage.jacoco.xmlReportPaths>
+      ${maven.multiModuleProjectDirectory}/delta-coverage/target/site/jacoco-aggregate/jacoco.xml
+    </sonar.coverage.jacoco.xmlReportPaths>
+    <!-- We need next line to ensure generated classes are analyzed -->
+    <sonar.scm.exclusions.disabled>true</sonar.scm.exclusions.disabled>
+
     <!-- Need default value when coverage is not collected -->
     <argLine />
   </properties>
