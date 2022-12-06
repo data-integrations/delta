@@ -16,12 +16,10 @@
 
 package io.cdap.delta.app.service.remote;
 
-import com.google.gson.Gson;
 import io.cdap.cdap.api.service.worker.RunnableTask;
 import io.cdap.cdap.api.service.worker.SystemAppTaskContext;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.assessment.TableDetail;
-import io.cdap.delta.app.service.Assessor;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
 
@@ -29,7 +27,6 @@ import io.cdap.delta.proto.DeltaConfig;
  * {@link RunnableTask} for describing table remotely
  */
 public class RemoteDescribeTableTask extends RemoteAssessmentTaskBase {
-  private static final Gson GSON = new Gson();
 
   @Override
   public String execute(SystemAppTaskContext systemAppContext,
@@ -37,11 +34,9 @@ public class RemoteDescribeTableTask extends RemoteAssessmentTaskBase {
     String namespace = request.getNamespace();
     DeltaConfig deltaConfig = request.getConfig();
     DBTable dbTable = GSON.fromJson(request.getRequest(), DBTable.class);
-
     Configurer configurer = getConfigurer(systemAppContext, namespace);
-    Assessor pluginAssesor = new Assessor();
 
-    TableDetail tableDetail = pluginAssesor.describeTable(namespace, deltaConfig,  configurer, dbTable);
+    TableDetail tableDetail = getAssessor().describeTable(namespace, deltaConfig, configurer, dbTable);
     return GSON.toJson(tableDetail);
   }
 }

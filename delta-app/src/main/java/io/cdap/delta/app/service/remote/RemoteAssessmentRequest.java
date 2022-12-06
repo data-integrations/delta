@@ -21,30 +21,30 @@ import io.cdap.delta.proto.DeltaConfig;
 import javax.annotation.Nullable;
 
 /**
- * Request class remote connection tasks
+ * Request class for remote assessment tasks
  */
 public class RemoteAssessmentRequest {
 
   private String namespace;
-  private String request;
   private DeltaConfig config;
+  private String request;
 
-  public RemoteAssessmentRequest(String namespace, String request, @Nullable DeltaConfig config) {
+  public RemoteAssessmentRequest(String namespace, DeltaConfig config, @Nullable String request) {
     this.namespace = namespace;
-    this.request = request;
     this.config = config;
+    this.request = request;
   }
 
   public String getNamespace() {
     return namespace;
   }
 
-  public String getRequest() {
-    return request;
+  public DeltaConfig getConfig() {
+    return config;
   }
 
   @Nullable
-  public DeltaConfig getConfig() {
-    return config;
+  public String getRequest() {
+    return request;
   }
 }

@@ -22,6 +22,9 @@ import io.cdap.delta.store.Namespace;
 
 import java.util.Map;
 
+/**
+ * Evaluates macros in delta config
+ */
 public class MacroEvaluator {
  private final PropertyEvaluator propertyEvaluator;
 

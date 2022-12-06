@@ -32,7 +32,12 @@ import io.cdap.delta.app.DefaultConfigurer;
 import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.PipelineStateService;
 import io.cdap.delta.app.service.common.AbstractAssessorHandler;
-import io.cdap.delta.app.service.remote.*;
+import io.cdap.delta.app.service.remote.RemoteAssessPipelineTask;
+import io.cdap.delta.app.service.remote.RemoteAssessTableTask;
+import io.cdap.delta.app.service.remote.RemoteAssessmentRequest;
+import io.cdap.delta.app.service.remote.RemoteAssessmentTaskBase;
+import io.cdap.delta.app.service.remote.RemoteDescribeTableTask;
+import io.cdap.delta.app.service.remote.RemoteListTablesTask;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
@@ -42,7 +47,10 @@ import io.cdap.delta.proto.StateRequest;
 import io.cdap.delta.proto.TableAssessmentRequest;
 import io.cdap.delta.proto.TableAssessmentResponse;
 import io.cdap.delta.proto.TableReplicationState;
-import io.cdap.delta.store.*;
+import io.cdap.delta.store.Draft;
+import io.cdap.delta.store.DraftId;
+import io.cdap.delta.store.Namespace;
+import io.cdap.delta.store.StateStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +72,7 @@ import javax.ws.rs.PathParam;
  * Handler for storing drafts and performing assessments.
  */
 public class AssessmentHandler extends AbstractAssessorHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(AssessmentHandler.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(AssessmentHandler.class);
 
   @GET
   @Path("v1/contexts/{context}/drafts")
@@ -131,9 +139,8 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       DraftId draftId = new DraftId(namespace, draftName);
       Draft draft = getDraftService().getDraft(draftId);
 
-      LOG.warn("isRemoteTaskEnabled: "+getContext().isRemoteTaskEnabled());
       if (getContext().isRemoteTaskEnabled()) {
-        executeRemotely(namespace, null, draft.getConfig(), RemoteListTablesTask.class, responder);
+        executeRemotely(namespace, draft.getConfig(), null, RemoteListTablesTask.class, responder);
       } else {
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableList tableList = getDraftService().listDraftTables(draftId, draft,
@@ -168,11 +175,11 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       Draft draft = getDraftService().getDraft(draftId);
 
       if (getContext().isRemoteTaskEnabled()) {
-        executeRemotely(namespace, requestContent, draft.getConfig(), RemoteDescribeTableTask.class, responder);
+        executeRemotely(namespace, draft.getConfig(), requestContent, RemoteDescribeTableTask.class, responder);
       } else {
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableDetail tableDetail = getDraftService()
-                .describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable);
+          .describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable);
         responder.sendString(GSON.toJson(tableDetail));
       }
     });
@@ -190,11 +197,11 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       draft.getConfig().validatePipeline();
 
       if (getContext().isRemoteTaskEnabled()) {
-        executeRemotely(namespace, null, draft.getConfig(), RemoteAssessPipelineTask.class, responder);
+        executeRemotely(namespace, draft.getConfig(), null, RemoteAssessPipelineTask.class, responder);
       } else {
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         PipelineAssessment assessment =
-                getDraftService().assessPipeline(namespace, draft, new DefaultConfigurer(pluginConfigurer));
+          getDraftService().assessPipeline(namespace, draft, new DefaultConfigurer(pluginConfigurer));
         responder.sendString(GSON.toJson(assessment));
       }
     }));
@@ -217,11 +224,11 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       deltaConfig.validatePipeline();
 
       if (getContext().isRemoteTaskEnabled()) {
-        executeRemotely(namespace, null, deltaConfig, RemoteAssessPipelineTask.class, responder);
+        executeRemotely(namespace, deltaConfig, null, RemoteAssessPipelineTask.class, responder);
       } else {
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         PipelineAssessment assessment =
-                getDraftService().assessPipeline(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer));
+          getDraftService().assessPipeline(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer));
         responder.sendString(GSON.toJson(assessment));
       }
     }));
@@ -252,7 +259,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       Draft draft = getDraftService().getDraft(draftId);
 
       if (getContext().isRemoteTaskEnabled()) {
-        executeRemotely(namespace, requestContent, draft.getConfig(), RemoteAssessTableTask.class, responder);
+        executeRemotely(namespace, draft.getConfig(), requestContent, RemoteAssessTableTask.class, responder);
       } else {
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableAssessmentResponse assessment = getDraftService()
@@ -282,12 +289,12 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       DBTable dbTable = tableAssessmentRequest.getDBTable();
 
       if (getContext().isRemoteTaskEnabled()) {
-        executeRemotely(namespace, GSON.toJson(dbTable), deltaConfig, RemoteAssessTableTask.class, responder);
+        executeRemotely(namespace, deltaConfig, GSON.toJson(dbTable), RemoteAssessTableTask.class, responder);
       } else {
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableAssessmentResponse assessment = getDraftService()
-                .assessTable(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer),
-                        tableAssessmentRequest.getDBTable());
+          .assessTable(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer),
+                       tableAssessmentRequest.getDBTable());
         responder.sendString(GSON.toJson(assessment));
       }
     }));
@@ -358,18 +365,19 @@ public class AssessmentHandler extends AbstractAssessorHandler {
   /**
    * Common method for all remote executions.
    * Remote request is created, executed and response is added to {@link HttpServiceResponder}
-   * @param namespace namespace string
-   * @param request Serialized request string
-   * @param config {@link Draft} details if present
+   *
+   * @param namespace                namespace string
+   * @param config                   {@link DeltaConfig}
+   * @param request                  Serialized request string if present
    * @param remoteExecutionTaskClass Remote execution task class
-   * @param responder {@link HttpServiceResponder} for the http request.
+   * @param responder                {@link HttpServiceResponder} for the http request.
    */
-  private void executeRemotely(Namespace namespace, String request, @Nullable DeltaConfig config,
+  private void executeRemotely(Namespace namespace, DeltaConfig config, @Nullable String request,
                                Class<? extends RemoteAssessmentTaskBase> remoteExecutionTaskClass,
-                               HttpServiceResponder responder)  {
+                               HttpServiceResponder responder) {
 
     DeltaConfig deltaConfig = getMacroEvaluator().evaluateMacros(namespace, config);
-    RemoteAssessmentRequest remoteRequest = new RemoteAssessmentRequest(namespace.getName(), request, deltaConfig);
+    RemoteAssessmentRequest remoteRequest = new RemoteAssessmentRequest(namespace.getName(), deltaConfig, request);
     RunnableTaskRequest runnableTaskRequest =
       RunnableTaskRequest.getBuilder(remoteExecutionTaskClass.getName()).
         withParam(GSON.toJson(remoteRequest)).
@@ -378,12 +386,12 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       byte[] bytes = getContext().runTask(runnableTaskRequest);
       responder.sendString(new String(bytes, StandardCharsets.UTF_8));
     } catch (RemoteExecutionException e) {
-      LOG.error("Error in executing remote task "+remoteExecutionTaskClass, e);
+      LOG.error("Error in executing remote task " + remoteExecutionTaskClass, e);
       RemoteTaskException remoteTaskException = e.getCause();
       responder.sendError(
         getExceptionCode(remoteTaskException.getRemoteExceptionClassName()), remoteTaskException.getMessage());
     } catch (Exception e) {
-      LOG.error("Error in executing remote task "+remoteExecutionTaskClass, e);
+      LOG.error("Error in executing remote task " + remoteExecutionTaskClass, e);
       responder.sendError(HttpURLConnection.HTTP_INTERNAL_ERROR, e.getMessage());
     }
   }

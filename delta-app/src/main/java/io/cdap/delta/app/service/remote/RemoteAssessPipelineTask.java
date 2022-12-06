@@ -16,30 +16,25 @@
 
 package io.cdap.delta.app.service.remote;
 
-import com.google.gson.Gson;
 import io.cdap.cdap.api.service.worker.RunnableTask;
 import io.cdap.cdap.api.service.worker.SystemAppTaskContext;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.assessment.PipelineAssessment;
-import io.cdap.delta.app.service.Assessor;
 import io.cdap.delta.proto.DeltaConfig;
 
 /**
- * {@link RunnableTask} for assessing table remotely
+ * {@link RunnableTask} for assessing pipeline remotely
  */
 public class RemoteAssessPipelineTask extends RemoteAssessmentTaskBase {
-  private static final Gson GSON = new Gson();
 
   @Override
   public String execute(SystemAppTaskContext systemAppContext,
                         RemoteAssessmentRequest request) throws Exception {
     String namespace = request.getNamespace();
     DeltaConfig deltaConfig = request.getConfig();
-
     Configurer configurer = getConfigurer(systemAppContext, namespace);
-    Assessor assessor = new Assessor();
 
-    PipelineAssessment tableDetail = assessor.assessPipeline(namespace, deltaConfig, configurer);
+    PipelineAssessment tableDetail = getAssessor().assessPipeline(namespace, deltaConfig, configurer);
     return GSON.toJson(tableDetail);
   }
 }

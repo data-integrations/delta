@@ -462,6 +462,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
     DBTable dbTable = new DBTable("deebee", null, "taybull");
     Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, dbTable));
-    Assert.assertEquals(expectedAssessment, service.assessTable(namespace, config, configurer, new DBTable("deebee", "taybull")));
+    Assert.assertEquals(expectedAssessment, service.assessTable(namespace, config, configurer,
+                                                                new DBTable("deebee", "taybull")));
   }
 }

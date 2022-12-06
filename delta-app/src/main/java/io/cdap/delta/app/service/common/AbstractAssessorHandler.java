@@ -94,12 +94,12 @@ public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
     return new DraftService(context, getMacroEvaluator(context));
   }
 
-  protected MacroEvaluator getMacroEvaluator(){
+  protected MacroEvaluator getMacroEvaluator() {
     SystemHttpServiceContext context = getContext();
     return getMacroEvaluator(context);
   }
 
-  protected MacroEvaluator getMacroEvaluator(SystemHttpServiceContext context){
+  protected MacroEvaluator getMacroEvaluator(SystemHttpServiceContext context) {
     return new MacroEvaluator(new SystemServicePropertyEvaluator(context));
   }
 

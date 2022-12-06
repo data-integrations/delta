@@ -22,29 +22,100 @@ import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.DeltaSource;
 import io.cdap.delta.api.SourceColumn;
 import io.cdap.delta.api.SourceTable;
-import io.cdap.delta.api.assessment.*;
-import io.cdap.delta.proto.*;
-import io.cdap.delta.store.*;
-import io.cdap.transformation.*;
+import io.cdap.delta.api.assessment.Assessment;
+import io.cdap.delta.api.assessment.ColumnAssessment;
+import io.cdap.delta.api.assessment.ColumnDetail;
+import io.cdap.delta.api.assessment.ColumnSuggestion;
+import io.cdap.delta.api.assessment.ColumnSupport;
+import io.cdap.delta.api.assessment.PipelineAssessment;
+import io.cdap.delta.api.assessment.Problem;
+import io.cdap.delta.api.assessment.StandardizedTableDetail;
+import io.cdap.delta.api.assessment.TableAssessment;
+import io.cdap.delta.api.assessment.TableAssessor;
+import io.cdap.delta.api.assessment.TableAssessorSupplier;
+import io.cdap.delta.api.assessment.TableDetail;
+import io.cdap.delta.api.assessment.TableList;
+import io.cdap.delta.api.assessment.TableNotFoundException;
+import io.cdap.delta.api.assessment.TableRegistry;
+import io.cdap.delta.api.assessment.TableSummaryAssessment;
+import io.cdap.delta.proto.DBTable;
+import io.cdap.delta.proto.DeltaConfig;
+import io.cdap.delta.proto.FullColumnAssessment;
+import io.cdap.delta.proto.Plugin;
+import io.cdap.delta.proto.Stage;
+import io.cdap.delta.proto.TableAssessmentResponse;
+import io.cdap.delta.proto.TableTransformation;
+import io.cdap.delta.store.DraftNotFoundException;
+import io.cdap.delta.store.InvalidDraftException;
+import io.cdap.transformation.ColumnRenameInfo;
+import io.cdap.transformation.DefaultMutableRowSchema;
+import io.cdap.transformation.DefaultRenameInfo;
+import io.cdap.transformation.TransformationException;
+import io.cdap.transformation.TransformationUtil;
 import io.cdap.transformation.api.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 
+/**
+ * Handles logic around assessment of delta config.
+ */
 public class Assessor {
   private static final Logger LOG = LoggerFactory.getLogger(Assessor.class);
 
+  /**
+   * List the database tables readable by the source in the given delta config. An instance of the plugin will be
+   * instantiated in order to generate this list. This is an expensive operation.
+   * <p>
+   * If the plugin cannot be instantiated, or if the table list cannot be generated due to missing information in
+   * the draft, an {@link InvalidDraftException} will be thrown.
+   *
+   * @param namespace  namespace
+   * @param config     {@link DeltaConfig}
+   * @param configurer configurer used to instantiate plugins
+   * @return list of tables readable by the source in the draft
+   * @throws DraftNotFoundException if the draft does not exist
+   * @throws InvalidDraftException  if the table list cannot be fetched because the delta config is invalid
+   * @throws IOException            if the was an IO error fetching the table list
+   * @throws Exception              if there was an error creating the table registry
+   */
   public TableList listTables(String namespace, DeltaConfig config, Configurer configurer) throws Exception {
     try (TableRegistry tableRegistry = createTableRegistry(namespace, config, configurer)) {
       return tableRegistry.listTables();
     }
   }
 
-  public TableDetail describeTable(String namespace, DeltaConfig config, Configurer configurer, DBTable dbTable) throws Exception {
+  /**
+   * Describe the given database table using the source from the given delta config. An instance of the plugin will be
+   * instantiated in order to generate this list. This is an expensive operation.
+   * <p>
+   * If the plugin cannot be instantiated, or if the table cannot be described to missing information in
+   * the draft, an {@link InvalidDraftException} will be thrown.
+   *
+   * @param namespace  namespace
+   * @param config     {@link DeltaConfig}
+   * @param configurer configurer used to instantiate plugins
+   * @param dbTable    the dbTable
+   * @return list of tables readable by the source in the draft
+   * @throws DraftNotFoundException if the draft does not exist
+   * @throws InvalidDraftException  if the table list cannot be fetched because the deltaconfig is invalid
+   * @throws TableNotFoundException if the table does not exist
+   * @throws IOException            if the was an IO error fetching the table detail
+   * @throws Exception              if there was an error creating the table registry
+   */
+  public TableDetail describeTable(String namespace, DeltaConfig config, Configurer configurer, DBTable dbTable)
+    throws Exception {
     try (TableRegistry tableRegistry = createTableRegistry(namespace, config, configurer)) {
       if (dbTable.getSchema() == null) {
         return tableRegistry.describeTable(dbTable.getDatabase(), dbTable.getTable());
@@ -115,7 +186,7 @@ public class Assessor {
    * An instance of the target plugin will be instantiated in order to generate this list.
    * This is an expensive operation.
    * <p>
-   * If the plugin cannot be instantiated due to missing draft information,
+   * If the plugin cannot be instantiated due to missing properties in delta config,
    * an {@link InvalidDraftException} will be thrown.
    *
    * @param namespace   id of the draft
@@ -163,10 +234,9 @@ public class Assessor {
         String table = sourceTable.getTable();
         try {
           Map<String, List<Transformation>> transformations = TransformationUtil.loadTransformations(configurer,
-                                                                                                     tableLevelTransformations,
-                                                                                                     sourceTable);
+            tableLevelTransformations, sourceTable);
           TableAssessmentResponse assessment = assessTable(sourceTable, tableRegistry, sourceTableAssessor,
-                                                           targetTableAssessor, transformations);
+            targetTableAssessor, transformations);
           missingFeatures.addAll(assessment.getFeatures());
           tableAssessments.add(summarize(db, sourceTable.getSchema(), sourceTable, assessment));
           transformationIssues.addAll(assessment.getTransformationIssues());

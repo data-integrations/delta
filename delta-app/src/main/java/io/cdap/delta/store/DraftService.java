@@ -43,12 +43,12 @@ public class DraftService {
   private static final Logger LOG = LoggerFactory.getLogger(DraftService.class);
   private final TransactionRunner txRunner;
   private final MacroEvaluator macroEvaluator;
-  private final Assessor pluginAssesor;
+  private final Assessor assessor;
 
   public DraftService(TransactionRunner transactionRunner, MacroEvaluator macroEvaluator) {
     this.txRunner = transactionRunner;
     this.macroEvaluator = macroEvaluator;
-    this.pluginAssesor = new Assessor();
+    this.assessor = new Assessor();
   }
 
   /**
@@ -152,7 +152,7 @@ public class DraftService {
     DeltaConfig config = draft.getConfig();
     Namespace namespace = draftId.getNamespace();
     config = macroEvaluator.evaluateMacros(namespace, config);
-    return pluginAssesor.listTables(namespace.getName(), config, configurer);
+    return assessor.listTables(namespace.getName(), config, configurer);
   }
 
   /**
@@ -178,7 +178,7 @@ public class DraftService {
     Namespace namespace = draftId.getNamespace();
     config = macroEvaluator.evaluateMacros(namespace, config);
 
-    return pluginAssesor.describeTable(draftId.getNamespace().getName(), config, configurer, dbTable);
+    return assessor.describeTable(draftId.getNamespace().getName(), config, configurer, dbTable);
   }
 
   /**
@@ -199,7 +199,8 @@ public class DraftService {
    * @throws Exception if there was an error creating the table registry
    * @throws IllegalArgumentException if the table is not selected in the draft
    */
-  public TableAssessmentResponse assessTable(Namespace namespace, Draft draft, Configurer configurer, DBTable dbTable) throws Exception {
+  public TableAssessmentResponse assessTable(Namespace namespace, Draft draft, Configurer configurer, DBTable dbTable)
+    throws Exception {
     DeltaConfig config = draft.getConfig();
     return assessTable(namespace, config, configurer, dbTable);
   }
@@ -220,7 +221,7 @@ public class DraftService {
   public TableAssessmentResponse assessTable(Namespace namespace, DeltaConfig deltaConfig, Configurer configurer,
                                               DBTable dbTable) throws Exception {
     deltaConfig = macroEvaluator.evaluateMacros(namespace, deltaConfig);
-    return pluginAssesor.assessTable(namespace.getName(), deltaConfig, configurer, dbTable);
+    return assessor.assessTable(namespace.getName(), deltaConfig, configurer, dbTable);
   }
 
   /**
@@ -251,6 +252,6 @@ public class DraftService {
   public PipelineAssessment assessPipeline(Namespace namespace, DeltaConfig deltaConfig, Configurer configurer)
     throws Exception {
     deltaConfig = macroEvaluator.evaluateMacros(namespace, deltaConfig);
-    return pluginAssesor.assessPipeline(namespace.getName(), deltaConfig, configurer);
+    return assessor.assessPipeline(namespace.getName(), deltaConfig, configurer);
   }
 }

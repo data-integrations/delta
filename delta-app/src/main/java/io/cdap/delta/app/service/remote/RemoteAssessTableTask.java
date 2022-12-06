@@ -16,11 +16,9 @@
 
 package io.cdap.delta.app.service.remote;
 
-import com.google.gson.Gson;
 import io.cdap.cdap.api.service.worker.RunnableTask;
 import io.cdap.cdap.api.service.worker.SystemAppTaskContext;
 import io.cdap.delta.api.Configurer;
-import io.cdap.delta.app.service.Assessor;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.TableAssessmentResponse;
@@ -29,7 +27,6 @@ import io.cdap.delta.proto.TableAssessmentResponse;
  * {@link RunnableTask} for assessing table remotely
  */
 public class RemoteAssessTableTask extends RemoteAssessmentTaskBase {
-  private static final Gson GSON = new Gson();
 
   @Override
   public String execute(SystemAppTaskContext systemAppContext,
@@ -37,11 +34,9 @@ public class RemoteAssessTableTask extends RemoteAssessmentTaskBase {
     String namespace = request.getNamespace();
     DeltaConfig deltaConfig = request.getConfig();
     DBTable dbTable = GSON.fromJson(request.getRequest(), DBTable.class);
-
     Configurer configurer = getConfigurer(systemAppContext, namespace);
-    Assessor pluginAssesor = new Assessor();
 
-    TableAssessmentResponse tableDetail = pluginAssesor.assessTable(namespace, deltaConfig, configurer, dbTable);
+    TableAssessmentResponse tableDetail = getAssessor().assessTable(namespace, deltaConfig, configurer, dbTable);
     return GSON.toJson(tableDetail);
   }
 }

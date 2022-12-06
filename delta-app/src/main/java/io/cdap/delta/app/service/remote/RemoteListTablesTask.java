@@ -16,30 +16,25 @@
 
 package io.cdap.delta.app.service.remote;
 
-import com.google.gson.Gson;
 import io.cdap.cdap.api.service.worker.RunnableTask;
 import io.cdap.cdap.api.service.worker.SystemAppTaskContext;
 import io.cdap.delta.api.Configurer;
 import io.cdap.delta.api.assessment.TableList;
-import io.cdap.delta.app.service.Assessor;
 import io.cdap.delta.proto.DeltaConfig;
 
 /**
  * {@link RunnableTask} for executing list tables remotely
  */
 public class RemoteListTablesTask extends RemoteAssessmentTaskBase {
-    private static final Gson GSON = new Gson();
 
-    @Override
-    public String execute(SystemAppTaskContext systemAppContext,
-                          RemoteAssessmentRequest request) throws Exception {
-        String namespace = request.getNamespace();
-        DeltaConfig deltaConfig = request.getConfig();
+  @Override
+  public String execute(SystemAppTaskContext systemAppContext,
+                        RemoteAssessmentRequest request) throws Exception {
+    String namespace = request.getNamespace();
+    DeltaConfig deltaConfig = request.getConfig();
+    Configurer configurer = getConfigurer(systemAppContext, namespace);
 
-        Configurer configurer = getConfigurer(systemAppContext, namespace);
-        Assessor pluginAssesor = new Assessor();
-
-        TableList tableList = pluginAssesor.listTables(namespace, deltaConfig, configurer);
-        return GSON.toJson(tableList);
-    }
+    TableList tableList = getAssessor().listTables(namespace, deltaConfig, configurer);
+    return GSON.toJson(tableList);
+  }
 }
