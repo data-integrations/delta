@@ -36,6 +36,8 @@ import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
+import io.cdap.delta.macros.MacroEvaluator;
+import io.cdap.delta.macros.PropertyEvaluator;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.ColumnTransformation;
 import io.cdap.delta.proto.DBTable;
@@ -72,6 +74,8 @@ import java.util.stream.Collectors;
  */
 public class DraftServiceTest extends SystemAppTestBase {
 
+  private static final MacroEvaluator MACRO_EVALUATOR = new MacroEvaluator(NoOpPropertyEvaluator.INSTANCE);
+
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
 
@@ -87,13 +91,13 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   @Test(expected = DraftNotFoundException.class)
   public void testDraftNotFound() {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
     service.getDraft(new DraftId(new Namespace("ns", 0L), "testDraftNotFound"));
   }
 
   @Test
   public void testTableListAndDetail() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
 
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testTableListAndDetail");
     Stage src = new Stage("src",
@@ -117,20 +121,22 @@ public class DraftServiceTest extends SystemAppTestBase {
     DeltaSource mockSource = new MockSource(mockTableRegistry, null);
     Configurer mockConfigurer = new MockConfigurer(mockSource, null);
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, mockConfigurer));
-    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, mockConfigurer, "deebee", null, "taybull"));
+    DBTable dbTable = new DBTable("deebee", null, "taybull");
+    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, mockConfigurer, dbTable));
   }
 
   @Test(expected = DraftNotFoundException.class)
   public void testListTablesFromNonexistantDraft() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
     service.listDraftTables(new DraftId(new Namespace("ns", 0L), "testListTablesFromNonexistantDraft"),
                             new MockConfigurer(null, null));
   }
 
   @Test
   public void testAssessTable() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
-    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessTable");
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
+    Namespace namespace = new Namespace("ns", 0L);
+    DraftId draftId = new DraftId(namespace, "testAssessTable");
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTarget(new Stage("t", new Plugin("oracle", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
@@ -178,18 +184,19 @@ public class DraftServiceTest extends SystemAppTestBase {
                                                                    Collections.emptyList());
     DBTable dbTable = new DBTable("deebee", "taybull");
     // assessTable using DRAFT
-    TableAssessmentResponse actualWithDraft = service.assessTable(draftId, mockConfigurer, dbTable);
+    TableAssessmentResponse actualWithDraft = service.assessTable(namespace, config, mockConfigurer, dbTable);
     Assert.assertEquals(expected, actualWithDraft);
     // assessTable on the fly - with delta config
-    TableAssessmentResponse actualOntheFly = service.assessTable(new Namespace("ns", 0L), config,
+    TableAssessmentResponse actualOntheFly = service.assessTable(namespace, config,
                                                                  mockConfigurer, dbTable);
     Assert.assertEquals(expected, actualOntheFly);
   }
 
   @Test
   public void testAssessPipeline() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
-    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
+    Namespace namespace = new Namespace("ns", 0L);
+    DraftId draftId = new DraftId(namespace, "testAssessPipeline");
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable(
       "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"),
@@ -242,13 +249,13 @@ public class DraftServiceTest extends SystemAppTestBase {
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
                                                          Collections.emptyList(), Collections.emptyList(),
                                                          Collections.emptyList());
-    PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
+    PipelineAssessment actual = service.assessPipeline(namespace, config, mockConfigurer);
     Assert.assertEquals(expected, actual);
   }
 
   @Test
   public void testAssessPipelineWithoutSaving() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
     DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipelineInterim");
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable(
@@ -309,8 +316,9 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   @Test
   public void testAssessPipelineWithTransformations() throws Exception {
-    DraftService service = new DraftService(getTransactionRunner(), NoOpPropertyEvaluator.INSTANCE);
-    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
+    DraftService service = new DraftService(getTransactionRunner(), MACRO_EVALUATOR);
+    Namespace namespace = new Namespace("ns", 0L);
+    DraftId draftId = new DraftId(namespace, "testAssessPipeline");
     // configure the pipeline to read 2 out of the 3 columns from the table
     SourceTable sourceTable = new SourceTable(
       "deebee", "taybull", new HashSet<>(Arrays.asList(new SourceColumn("id"), new SourceColumn("name"),
@@ -395,7 +403,7 @@ public class DraftServiceTest extends SystemAppTestBase {
     PipelineAssessment expected = new PipelineAssessment(Collections.singletonList(summaryAssessment),
                                                          Collections.emptyList(), Collections.emptyList(),
                                                          Collections.emptyList());
-    PipelineAssessment actual = service.assessPipeline(draftId, mockConfigurer);
+    PipelineAssessment actual = service.assessPipeline(namespace, config, mockConfigurer);
     Assert.assertEquals(expected, actual);
   }
 
@@ -403,7 +411,8 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   @Test
   public void testMacroEvaluation() throws Exception {
-    DraftId draftId = new DraftId(new Namespace("ns", 0L), "testAssessPipeline");
+    Namespace namespace = new Namespace("ns", 0L);
+    DraftId draftId = new DraftId(namespace, "testAssessPipeline");
 
     TableList expectedList = new TableList(Collections.singletonList(new TableSummary("deebee", "taybull", 3, null)));
     List<ColumnDetail> columns = new ArrayList<>();
@@ -432,13 +441,15 @@ public class DraftServiceTest extends SystemAppTestBase {
                                                                             schema, expectedTableAssessment,
                                                                             expectedTableAssessment);
     PropertyEvaluator propertyEvaluator = new MockPropertyEvaluator(pluginProps);
+    MacroEvaluator macroEvaluator = new MacroEvaluator(propertyEvaluator);
+
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTarget(new Stage("tgt", new Plugin("mock", DeltaTarget.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))
       .setTables(Collections.singletonList(new SourceTable("deebee", "taybull")))
       .build();
 
-    DraftService service = new DraftService(getTransactionRunner(), propertyEvaluator);
+    DraftService service = new DraftService(getTransactionRunner(), macroEvaluator);
     service.saveDraft(draftId, new DraftRequest("label", config));
 
     List<FullColumnAssessment> fullColumns = columnAssessments.stream()
@@ -449,7 +460,8 @@ public class DraftServiceTest extends SystemAppTestBase {
                                                                              Collections.emptyList());
     Configurer configurer = new PropertyBasedMockConfigurer();
     Assert.assertEquals(expectedList, service.listDraftTables(draftId, configurer));
-    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, "deebee", null, "taybull"));
-    Assert.assertEquals(expectedAssessment, service.assessTable(draftId, configurer, new DBTable("deebee", "taybull")));
+    DBTable dbTable = new DBTable("deebee", null, "taybull");
+    Assert.assertEquals(expectedDetail, service.describeDraftTable(draftId, configurer, dbTable));
+    Assert.assertEquals(expectedAssessment, service.assessTable(namespace, config, configurer, new DBTable("deebee", "taybull")));
   }
 }

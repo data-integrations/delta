@@ -16,6 +16,8 @@
 
 package io.cdap.delta.store;
 
+import io.cdap.delta.macros.PropertyEvaluator;
+
 import java.util.Map;
 
 /**

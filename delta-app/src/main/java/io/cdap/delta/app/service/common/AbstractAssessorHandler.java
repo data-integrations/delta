@@ -24,6 +24,7 @@ import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.service.SQLTypeSerializer;
+import io.cdap.delta.macros.MacroEvaluator;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.store.DBStateStoreService;
 import io.cdap.delta.store.DraftService;
@@ -90,7 +91,16 @@ public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
 
   protected DraftService getDraftService() {
     SystemHttpServiceContext context = getContext();
-    return new DraftService(context, new SystemServicePropertyEvaluator(context));
+    return new DraftService(context, getMacroEvaluator(context));
+  }
+
+  protected MacroEvaluator getMacroEvaluator(){
+    SystemHttpServiceContext context = getContext();
+    return getMacroEvaluator(context);
+  }
+
+  protected MacroEvaluator getMacroEvaluator(SystemHttpServiceContext context){
+    return new MacroEvaluator(new SystemServicePropertyEvaluator(context));
   }
 
   protected StateStore getStateStore() {

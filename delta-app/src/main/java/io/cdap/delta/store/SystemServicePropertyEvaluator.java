@@ -19,6 +19,7 @@ package io.cdap.delta.store;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.macro.MacroParserOptions;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
+import io.cdap.delta.macros.PropertyEvaluator;
 
 import java.util.Map;
 
