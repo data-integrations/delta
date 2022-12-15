@@ -30,6 +30,8 @@ import io.cdap.delta.store.DraftService;
 import io.cdap.delta.store.Namespace;
 import io.cdap.delta.store.StateStore;
 import io.cdap.delta.store.SystemServicePropertyEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -39,6 +41,7 @@ import java.sql.SQLType;
  * Common functionality for Assessor services.
  */
 public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractAssessorHandler.class);
 
   protected static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(SQLType.class, new SQLTypeSerializer())
@@ -65,6 +68,7 @@ public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
       }
       namespace = new Namespace(namespaceSummary.getName(), namespaceSummary.getGeneration());
     } catch (IOException e) {
+      LOG.error("Error in getting namespace details", e);
       responder.sendError(HttpURLConnection.HTTP_INTERNAL_ERROR,
                           String.format("Unable to check if namespace '%s' exists.", namespaceName));
       return;
@@ -73,10 +77,13 @@ public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
     try {
       endpoint.respond(namespace);
     } catch (CodedException e) {
+      LOG.error("Error in assessment handler", e);
       responder.sendError(e.getCode(), e.getMessage());
     } catch (TableNotFoundException e) {
+      LOG.error("Error in getting table details", e);
       responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, e.getMessage());
     } catch (Exception e) {
+      LOG.error("Internal Error", e);
       responder.sendError(HttpURLConnection.HTTP_INTERNAL_ERROR, e.getMessage());
     }
   }
