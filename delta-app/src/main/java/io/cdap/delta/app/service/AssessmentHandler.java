@@ -142,6 +142,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       if (getContext().isRemoteTaskEnabled()) {
         executeRemotely(namespace, draft.getConfig(), null, RemoteListTablesTask.class, responder);
       } else {
+        LOG.warn("Local execution");
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableList tableList = getDraftService().listDraftTables(draftId, draft,
                                                                 new DefaultConfigurer(pluginConfigurer));
@@ -177,6 +178,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       if (getContext().isRemoteTaskEnabled()) {
         executeRemotely(namespace, draft.getConfig(), requestContent, RemoteDescribeTableTask.class, responder);
       } else {
+        LOG.warn("Local execution");
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableDetail tableDetail = getDraftService()
           .describeDraftTable(draftId, new DefaultConfigurer(pluginConfigurer), dbTable);
@@ -199,6 +201,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       if (getContext().isRemoteTaskEnabled()) {
         executeRemotely(namespace, draft.getConfig(), null, RemoteAssessPipelineTask.class, responder);
       } else {
+        LOG.warn("Local execution");
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         PipelineAssessment assessment =
           getDraftService().assessPipeline(namespace, draft, new DefaultConfigurer(pluginConfigurer));
@@ -226,6 +229,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       if (getContext().isRemoteTaskEnabled()) {
         executeRemotely(namespace, deltaConfig, null, RemoteAssessPipelineTask.class, responder);
       } else {
+        LOG.warn("Local execution");
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         PipelineAssessment assessment =
           getDraftService().assessPipeline(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer));
@@ -261,6 +265,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       if (getContext().isRemoteTaskEnabled()) {
         executeRemotely(namespace, draft.getConfig(), requestContent, RemoteAssessTableTask.class, responder);
       } else {
+        LOG.warn("Local execution");
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableAssessmentResponse assessment = getDraftService()
           .assessTable(namespace, draft, new DefaultConfigurer(pluginConfigurer), dbTable);
@@ -291,6 +296,7 @@ public class AssessmentHandler extends AbstractAssessorHandler {
       if (getContext().isRemoteTaskEnabled()) {
         executeRemotely(namespace, deltaConfig, GSON.toJson(dbTable), RemoteAssessTableTask.class, responder);
       } else {
+        LOG.warn("Local execution");
         PluginConfigurer pluginConfigurer = getContext().createPluginConfigurer(namespaceName);
         TableAssessmentResponse assessment = getDraftService()
           .assessTable(namespace, deltaConfig, new DefaultConfigurer(pluginConfigurer),
