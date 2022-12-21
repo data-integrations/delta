@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Cask Data, Inc.
+ * Copyright © 2020-2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -24,7 +24,7 @@ import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.service.Assessor;
-import io.cdap.delta.macros.MacroEvaluator;
+import io.cdap.delta.macros.ConfigMacroEvaluator;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
 import io.cdap.delta.proto.DraftRequest;
@@ -42,10 +42,10 @@ import java.util.Optional;
 public class DraftService {
   private static final Logger LOG = LoggerFactory.getLogger(DraftService.class);
   private final TransactionRunner txRunner;
-  private final MacroEvaluator macroEvaluator;
+  private final ConfigMacroEvaluator macroEvaluator;
   private final Assessor assessor;
 
-  public DraftService(TransactionRunner transactionRunner, MacroEvaluator macroEvaluator) {
+  public DraftService(TransactionRunner transactionRunner, ConfigMacroEvaluator macroEvaluator) {
     this.txRunner = transactionRunner;
     this.macroEvaluator = macroEvaluator;
     this.assessor = new Assessor();

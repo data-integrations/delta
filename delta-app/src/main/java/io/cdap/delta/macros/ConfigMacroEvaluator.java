@@ -25,28 +25,24 @@ import java.util.Map;
 /**
  * Evaluates macros in delta config
  */
-public class MacroEvaluator {
+public class ConfigMacroEvaluator {
  private final PropertyEvaluator propertyEvaluator;
 
- public MacroEvaluator(PropertyEvaluator propertyEvaluator) {
+ public ConfigMacroEvaluator(PropertyEvaluator propertyEvaluator) {
   this.propertyEvaluator = propertyEvaluator;
  }
 
  public DeltaConfig evaluateMacros(Namespace namespace, DeltaConfig config) {
-  DeltaConfig.Builder builder = DeltaConfig.builder()
-    .setDescription(config.getDescription())
-    .setResources(config.getResources())
-    .setSource(config.getSource())
-    .setOffsetBasePath(config.getOffsetBasePath())
-    .setTables(config.getTables())
-    .setTableTransformations(config.getTableTransformations())
-    .setSource(evaluateMacros(namespace.getName(), config.getSource()));
+  DeltaConfig.Builder builder = DeltaConfig.builder(config);
 
+  Stage source = config.getSource();
+  if (source != null) {
+   builder.setSource(evaluateMacros(namespace.getName(), source));
+  }
   Stage target = config.getTarget();
   if (target != null) {
    builder.setTarget(evaluateMacros(namespace.getName(), target));
   }
-
   return builder.build();
  }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Cask Data, Inc.
+ * Copyright © 2020-2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -36,7 +36,7 @@ import io.cdap.delta.api.assessment.TableDetail;
 import io.cdap.delta.api.assessment.TableList;
 import io.cdap.delta.api.assessment.TableSummary;
 import io.cdap.delta.api.assessment.TableSummaryAssessment;
-import io.cdap.delta.macros.MacroEvaluator;
+import io.cdap.delta.macros.ConfigMacroEvaluator;
 import io.cdap.delta.macros.PropertyEvaluator;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.ColumnTransformation;
@@ -74,7 +74,7 @@ import java.util.stream.Collectors;
  */
 public class DraftServiceTest extends SystemAppTestBase {
 
-  private static final MacroEvaluator MACRO_EVALUATOR = new MacroEvaluator(NoOpPropertyEvaluator.INSTANCE);
+  private static final ConfigMacroEvaluator MACRO_EVALUATOR = new ConfigMacroEvaluator(NoOpPropertyEvaluator.INSTANCE);
 
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
@@ -441,7 +441,7 @@ public class DraftServiceTest extends SystemAppTestBase {
                                                                             schema, expectedTableAssessment,
                                                                             expectedTableAssessment);
     PropertyEvaluator propertyEvaluator = new MockPropertyEvaluator(pluginProps);
-    MacroEvaluator macroEvaluator = new MacroEvaluator(propertyEvaluator);
+    ConfigMacroEvaluator macroEvaluator = new ConfigMacroEvaluator(propertyEvaluator);
 
     DeltaConfig config = DeltaConfig.builder()
       .setSource(new Stage("src", new Plugin("mock", DeltaSource.PLUGIN_TYPE, Collections.emptyMap(), Artifact.EMPTY)))

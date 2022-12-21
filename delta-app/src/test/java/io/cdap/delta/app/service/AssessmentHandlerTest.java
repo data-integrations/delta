@@ -32,7 +32,7 @@ import io.cdap.delta.app.service.common.AbstractAssessorHandler;
 import io.cdap.delta.app.service.remote.RemoteAssessPipelineTask;
 import io.cdap.delta.app.service.remote.RemoteAssessTableTask;
 import io.cdap.delta.app.service.remote.RemoteListTablesTask;
-import io.cdap.delta.macros.MacroEvaluator;
+import io.cdap.delta.macros.ConfigMacroEvaluator;
 import io.cdap.delta.proto.Artifact;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.proto.DeltaConfig;
@@ -106,7 +106,7 @@ public class AssessmentHandlerTest {
   remoteAssessmentHandler.initialize(remoteEnabledContext);
 
   PowerMockito.whenNew(DraftService.class)
-    .withArguments(Mockito.any(TransactionRunner.class), Mockito.any(MacroEvaluator.class))
+    .withArguments(Mockito.any(TransactionRunner.class), Mockito.any(ConfigMacroEvaluator.class))
     .thenReturn(draftService);
   Mockito.when(draftService.getDraft(Mockito.any())).thenReturn(draft);
 
