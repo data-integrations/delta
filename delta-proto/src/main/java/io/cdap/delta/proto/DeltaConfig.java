@@ -248,8 +248,41 @@ public class DeltaConfig extends Config {
                            getRetryConfig(), getParallelism());
   }
 
+  /**
+   * Create a {@link DeltaConfig.Builder}
+   * @return builder
+   */
   public static Builder builder() {
     return new Builder();
+  }
+
+  /**
+   * Create a {@link DeltaConfig.Builder} initializing properties from an existing Delta Config
+   * @param config {@link DeltaConfig}
+   * @return builder
+   */
+  public static Builder builder(DeltaConfig config) {
+    Builder builder = DeltaConfig.builder()
+      .setSource(config.getSource())
+      .setTarget(config.getTarget())
+      .setDescription(config.getDescription())
+      .setOffsetBasePath(config.getOffsetBasePath())
+      .setResources(config.getResources())
+      .setTables(config.getTables())
+      .setTableTransformations(config.getTableTransformations());
+    if (config.getDmlBlacklist() != null) {
+      builder.setDMLBlacklist(config.getDmlBlacklist());
+    }
+    if (config.getDdlBlacklist() != null) {
+      builder.setDDLBlacklist(config.getDdlBlacklist());
+    }
+    if (config.getRetryConfig() != null) {
+      builder.setRetryConfig(config.getRetryConfig());
+    }
+    if (config.getParallelism() != null) {
+      builder.setParallelism(config.getParallelism());
+    }
+    return builder;
   }
 
   /**
