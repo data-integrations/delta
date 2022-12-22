@@ -62,6 +62,10 @@
     <guava.version>13.0.1</guava.version>
     <junit.version>4.12</junit.version>
     <slf4j.version>1.7.25</slf4j.version>
+    <jacoco.version>0.8.8</jacoco.version>
+
+    <!-- Need default value when coverage is not collected -->
+    <argLine />
   </properties>
 
   <repositories>
@@ -155,9 +159,9 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.14.1</version>
+          <version>2.17</version>
           <configuration>
-            <argLine>-Xmx512m</argLine>
+            <argLine>@{argLine} -Xmx512m</argLine>
             <systemPropertyVariables>
               <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
             </systemPropertyVariables>
@@ -220,6 +224,7 @@
                   <exclude>**/org/apache/hadoop/**</exclude>
                   <!-- exclude resource files-->
                   <exclude>**/resources/**</exclude>
+                  <exclude>delta-coverage/target/**</exclude>
                 </excludes>
               </configuration>
             </execution>
@@ -359,6 +364,46 @@
               <nexusUrl>https://oss.sonatype.org</nexusUrl>
               <serverId>sonatype.release</serverId>
             </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>coverage</id>
+      <modules>
+        <module>delta-coverage</module>
+      </modules>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-site-plugin</artifactId>
+            <version>3.7.1</version>
+          </plugin>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <executions>
+              <execution>
+                <id>prepare-agent</id>
+                <goals>
+                  <goal>prepare-agent</goal>
+                </goals>
+              </execution>
+              <execution>
+                <id>report</id>
+                <goals>
+                  <goal>report</goal>
+                </goals>
+                <configuration>
+                  <formats>
+                    <format>XML</format>
+                    <format>HTML</format>
+                  </formats>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
