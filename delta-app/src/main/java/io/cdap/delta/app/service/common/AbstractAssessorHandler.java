@@ -1,5 +1,5 @@
 /*
- * Copyright © 2021 Cask Data, Inc.
+ * Copyright © 2021-2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -24,6 +24,7 @@ import io.cdap.cdap.api.service.http.HttpServiceResponder;
 import io.cdap.cdap.api.service.http.SystemHttpServiceContext;
 import io.cdap.delta.api.assessment.TableNotFoundException;
 import io.cdap.delta.app.service.SQLTypeSerializer;
+import io.cdap.delta.macros.ConfigMacroEvaluator;
 import io.cdap.delta.proto.CodedException;
 import io.cdap.delta.store.DBStateStoreService;
 import io.cdap.delta.store.DraftService;
@@ -90,7 +91,16 @@ public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
 
   protected DraftService getDraftService() {
     SystemHttpServiceContext context = getContext();
-    return new DraftService(context, new SystemServicePropertyEvaluator(context));
+    return new DraftService(context, getMacroEvaluator(context));
+  }
+
+  protected ConfigMacroEvaluator getMacroEvaluator() {
+    SystemHttpServiceContext context = getContext();
+    return getMacroEvaluator(context);
+  }
+
+  protected ConfigMacroEvaluator getMacroEvaluator(SystemHttpServiceContext context) {
+    return new ConfigMacroEvaluator(new SystemServicePropertyEvaluator(context));
   }
 
   protected StateStore getStateStore() {
