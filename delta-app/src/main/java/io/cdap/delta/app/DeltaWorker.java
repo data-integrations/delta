@@ -137,17 +137,16 @@ public class DeltaWorker extends AbstractWorker {
   @Override
   protected void configure() {
     setName(NAME);
-    RuntimeConfigurer runtimeConfigurer = applicationConfigurer.getRuntimeConfigurer();
     Map<String, String> props = new HashMap<>();
     // generation is used in cases where pipeline X is created, then deleted, then created again.
     // in those situations, we don't want to start from the offset that it had before it was deleted,
     // so we include the generation as part of the path when storing state.
     props.put(GENERATION, String.valueOf(System.currentTimeMillis()));
 
-    // if this is runtime deploy, add the generation time at initial deploy since the offset is dependent on
-    // this timestamp
-    if (runtimeConfigurer != null && runtimeConfigurer.getDeployedApplicationSpec() != null) {
-      WorkerSpecification workerSpec = runtimeConfigurer.getDeployedApplicationSpec().getWorkers().get(NAME);
+    //Offset is dependent on generation (timestamp), this is stored once during initial deployment.
+    //Use this from app spec during runtime as well as upgrade calls.
+    if (applicationConfigurer != null && applicationConfigurer.getDeployedApplicationSpec() != null) {
+      WorkerSpecification workerSpec = applicationConfigurer.getDeployedApplicationSpec().getWorkers().get(NAME);
       props.put(GENERATION, workerSpec.getProperties().get(GENERATION));
     }
 
