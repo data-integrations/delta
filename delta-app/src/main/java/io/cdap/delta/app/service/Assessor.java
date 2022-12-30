@@ -372,7 +372,7 @@ public class Assessor {
     }
     // add columns present only in the target and not the source
     targetAssessment.getColumns().stream()
-      .filter(t -> !addedColumns.contains(t.getName()))
+      .filter(t -> !addedColumns.contains(t.getName()) && !addedColumns.contains(t.getSourceName()))
       .forEach(t -> fullColumns.add(new FullColumnAssessment(t.getSupport(), null, null, t.getName(), t.getType(),
                                                              t.getSuggestion())));
 
