@@ -76,9 +76,6 @@ public class DraftServiceTest extends SystemAppTestBase {
 
   private static final ConfigMacroEvaluator MACRO_EVALUATOR = new ConfigMacroEvaluator(NoOpPropertyEvaluator.INSTANCE);
 
-  @ClassRule
-  public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
-
   @Before
   public void setupTest() throws Exception {
     getStructuredTableAdmin().create(DraftStore.TABLE_SPEC);

@@ -34,9 +34,6 @@ import java.util.Collection;
 
 public class DBReplicationStateStoreTest extends SystemAppTestBase {
 
-  @ClassRule
-  public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
-
   @Before
   public void setupTest() throws Exception {
     getStructuredTableAdmin().create(DBReplicationStateStore.TABLE_SPEC);

@@ -38,9 +38,6 @@ public class DBReplicationOffsetStoreTest extends SystemAppTestBase {
 
   private static final Gson GSON = new Gson();
 
-  @ClassRule
-  public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
-
   @Before
   public void setupTest() throws Exception {
     getStructuredTableAdmin().create(DBReplicationOffsetStore.TABLE_SPEC);
