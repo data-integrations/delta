@@ -47,9 +47,6 @@ import java.util.Optional;
  */
 public class DraftStoreTest extends SystemAppTestBase {
 
-  @ClassRule
-  public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
-
   @Before
   public void setupTest() throws Exception {
     getStructuredTableAdmin().create(DraftStore.TABLE_SPEC);

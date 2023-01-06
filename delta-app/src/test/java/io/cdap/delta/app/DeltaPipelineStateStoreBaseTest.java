@@ -115,9 +115,6 @@ public abstract class DeltaPipelineStateStoreBaseTest extends DeltaPipelineTestB
       .build();
   }
 
-  @ClassRule
-  public static final TestConfiguration CONFIG = new TestConfiguration(Constants.Explore.EXPLORE_ENABLED, false);
-
   abstract Long getMaxGenerationNum(ApplicationId appId, String path) throws IOException;
 
   abstract OffsetAndSequence getOffset(DeltaWorkerId id, String path) throws IOException;
