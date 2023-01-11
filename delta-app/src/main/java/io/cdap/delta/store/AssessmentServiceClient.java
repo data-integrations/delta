@@ -24,6 +24,8 @@ import io.cdap.delta.app.service.AssessmentService;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeExecutor;
 import net.jodah.failsafe.RetryPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +37,7 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.ws.rs.HttpMethod;
 
@@ -42,6 +45,12 @@ import javax.ws.rs.HttpMethod;
  * Class to handle Api calls to System Service
  */
 public class AssessmentServiceClient {
+  private static final Logger LOG = LoggerFactory.getLogger(AssessmentServiceClient.class);
+  private static final int MAX_RETRY_ATTEMPTS_DEFAULT = 50;
+  private static final Duration MAX_RETRY_DURATION_DEFAULT = Duration.of(3, ChronoUnit.MINUTES);
+  private static final int DELAY_MILLIS_DEFAULT = 200;
+  private static final long MAX_DELAY_MILLIS_DEFAULT = TimeUnit.SECONDS.toMillis(30);
+  private static final double JITTER_FACTOR_DEFAULT = 0.20D;
 
   private final ServiceDiscoverer serviceDiscoverer;
   private final RetryPolicy retryPolicy;
@@ -49,12 +58,22 @@ public class AssessmentServiceClient {
   private static final String SERVICE_NAME = "State Store (AssessorService)";
 
   public AssessmentServiceClient(ServiceDiscoverer context) {
+    this(context, MAX_RETRY_ATTEMPTS_DEFAULT, MAX_RETRY_DURATION_DEFAULT);
+  }
+
+  public AssessmentServiceClient(ServiceDiscoverer context, int maxRetryCount, Duration maxRetryDuration) {
     this.serviceDiscoverer = context;
-    retryPolicy = new RetryPolicy()
-      .withMaxAttempts(3)
-      .withMaxDuration(Duration.of(10, ChronoUnit.SECONDS))
-      .withDelay(Duration.of(200, ChronoUnit.MILLIS))
-      .withJitter(0.20D);
+    retryPolicy = new RetryPolicy<>()
+      .withMaxAttempts(maxRetryCount)
+      .withMaxDuration(maxRetryDuration)
+      .withBackoff(DELAY_MILLIS_DEFAULT, MAX_DELAY_MILLIS_DEFAULT, ChronoUnit.MILLIS)
+      .withJitter(JITTER_FACTOR_DEFAULT)
+      .onFailedAttempt(failureContext -> {
+        // log on every fifth attempt
+        if (failureContext.getAttemptCount() % 5 == 0) {
+          LOG.warn("Error in calling assessment service", failureContext.getLastFailure());
+        }
+      });
   }
 
   // Api calls to deal directly with byte[]
