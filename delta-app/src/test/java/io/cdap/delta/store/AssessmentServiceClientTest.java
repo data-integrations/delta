@@ -37,16 +37,21 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.apache.twill.discovery.Discoverable;
-import org.apache.twill.discovery.DiscoveryServiceClient;
 import org.apache.twill.discovery.InMemoryDiscoveryService;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.mockito.Mockito;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import javax.ws.rs.GET;
@@ -56,15 +61,18 @@ import javax.ws.rs.Path;
 
 public class AssessmentServiceClientTest {
 
+  private static final int RETRY_COUNT = 5;
+  private static final Duration RETRY_DURATION = Duration.ofSeconds(5);
   private static NettyHttpService httpService;
   private static ServiceDiscoverer serviceDiscoverer;
+  private static ProgramId programId;
+  private static RemoteClientFactory remoteClientFactory;
 
   @Rule
   public ExpectedException exceptionRule = ExpectedException.none();
 
   @BeforeClass
   public static void init() throws Exception {
-
     //Deploy a mock service to test RemoteHttpClient
     httpService = NettyHttpService.builder("dummy_service")
                                   .setHttpHandlers(new MockDummyServiceHandler())
@@ -77,10 +85,10 @@ public class AssessmentServiceClientTest {
                                                        AssessmentService.NAME);
     discoveryService.register(new Discoverable(discoveryName, httpService.getBindAddress()));
 
-    ProgramId programId = new ProgramId(NamespaceId.SYSTEM.getNamespace(),
-                                "delta", ProgramType.SERVICE,
-                                AssessmentService.NAME);
-    RemoteClientFactory remoteClientFactory = new RemoteClientFactory(
+    programId = new ProgramId(NamespaceId.SYSTEM.getNamespace(),
+                                        "delta", ProgramType.SERVICE,
+                                        AssessmentService.NAME);
+    remoteClientFactory = new RemoteClientFactory(
       discoveryService, new DefaultInternalAuthenticator(new AuthenticationTestContext()));
     serviceDiscoverer = new AbstractServiceDiscoverer(programId) {
       @Override
@@ -96,7 +104,7 @@ public class AssessmentServiceClientTest {
     offsetState.put("offset1", "test_me_lsn1");
     OffsetAndSequence offset = new OffsetAndSequence(new Offset(offsetState), 1);
 
-    AssessmentServiceClient assessmentServiceClient = new AssessmentServiceClient(serviceDiscoverer);
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient();
     OffsetAndSequence obj =
       assessmentServiceClient.retryableApiCall("v1/testjson", HttpMethod.GET, OffsetAndSequence.class);
     Assert.assertEquals(offset, obj);
@@ -104,7 +112,7 @@ public class AssessmentServiceClientTest {
 
   @Test
   public void testGETBytesCall() {
-    AssessmentServiceClient assessmentServiceClient = new AssessmentServiceClient(serviceDiscoverer);
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient();
     byte[] result = assessmentServiceClient.retryableApiCall("v1/testbytes", HttpMethod.GET);
     byte[] data = "dummy text".getBytes(StandardCharsets.UTF_8);
     Assert.assertArrayEquals(data, result);
@@ -112,7 +120,7 @@ public class AssessmentServiceClientTest {
 
   @Test
   public void testPOSTCall() {
-    AssessmentServiceClient assessmentServiceClient = new AssessmentServiceClient(serviceDiscoverer);
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient();
     //The http status check in  AssessmentServiceClient will fail if not 200
     assessmentServiceClient.retryableApiCall("v1/test", HttpMethod.POST, "dummy body data");
   }
@@ -120,7 +128,7 @@ public class AssessmentServiceClientTest {
   //Mock a failure in the rest end point until it retries 3 times.
   @Test
   public void testRetries() {
-    AssessmentServiceClient assessmentServiceClient = new AssessmentServiceClient(serviceDiscoverer);
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient();
     String retryCounter = assessmentServiceClient.retryableApiCall("v1/retry", HttpMethod.GET, String.class);
     Assert.assertEquals(String.valueOf(3), retryCounter);
   }
@@ -130,8 +138,62 @@ public class AssessmentServiceClientTest {
     exceptionRule.expect(RuntimeException.class);
     exceptionRule.expectMessage("Failed to call State Store (AssessorService) service with status 400: 0");
 
-    AssessmentServiceClient assessmentServiceClient = new AssessmentServiceClient(serviceDiscoverer);
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient();
     assessmentServiceClient.retryableApiCall("v1/timeout", HttpMethod.GET, String.class);
+  }
+
+  @Test
+  public void testExceptionOnConnectionOpen() {
+    ServiceDiscoverer exceptionServiceDiscoverer = new AbstractServiceDiscoverer(programId) {
+      @Override
+      protected RemoteClientFactory getRemoteClientFactory() {
+        return remoteClientFactory;
+      }
+
+      @Override
+      public HttpURLConnection openConnection(String namespaceId, String applicationId, String serviceId,
+                                              String methodPath) throws IOException {
+        throw new UnknownHostException("host not found");
+      }
+    };
+
+    exceptionRule.expect(RuntimeException.class);
+    exceptionRule.expectMessage("UnknownHostException");
+
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient(exceptionServiceDiscoverer);
+    assessmentServiceClient.retryableApiCall("v1/testjson", HttpMethod.GET, String.class);
+  }
+
+  @Test
+  public void testExceptionOnConnectionResponse() throws IOException {
+    HttpURLConnection urlConnection = Mockito.mock(HttpURLConnection.class);
+    ServiceDiscoverer exceptionServiceDiscoverer = new AbstractServiceDiscoverer(programId) {
+      @Override
+      protected RemoteClientFactory getRemoteClientFactory() {
+        return remoteClientFactory;
+      }
+
+      @Override
+      public HttpURLConnection openConnection(String namespaceId, String applicationId, String serviceId,
+                                              String methodPath) throws IOException {
+        return urlConnection;
+      }
+    };
+    Mockito.when(urlConnection.getResponseCode()).thenThrow(new SocketTimeoutException("error"));
+
+    exceptionRule.expect(RuntimeException.class);
+    exceptionRule.expectMessage("SocketTimeoutException");
+
+    AssessmentServiceClient assessmentServiceClient = createAssessmentServiceClient(exceptionServiceDiscoverer);
+    assessmentServiceClient.retryableApiCall("v1/testjson", HttpMethod.GET, String.class);
+  }
+
+  private AssessmentServiceClient createAssessmentServiceClient() {
+    return createAssessmentServiceClient(serviceDiscoverer);
+  }
+
+  private AssessmentServiceClient createAssessmentServiceClient(ServiceDiscoverer discoverer) {
+    return new AssessmentServiceClient(discoverer, RETRY_COUNT, RETRY_DURATION);
   }
 
   public static final class MockDummyServiceHandler extends AbstractHttpHandler {
