@@ -60,14 +60,6 @@ jobs:
           -Dmaven.wagon.http.retryHandler.count=3
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=25
 
-      - name: Archive build artifacts
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: Build debug files
-          path: |
-            **/target/rat.txt
-            **/target/surefire-reports/*
 
       - name: Validate PR
         id: validate_pr
@@ -84,7 +76,6 @@ jobs:
           JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
         run: >-
           mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -fae -T 2 -B -V
-          -Dmaven.repo.local=$HOME/.m2/repository11
           -DcloudBuild
           -Pcoverage
           -Dmaven.wagon.http.retryHandler.count=3
@@ -93,23 +84,3 @@ jobs:
           -Dsonar.pullrequest.branch=${{ steps.validate_pr.outputs.pr-branch }}
           -Dsonar.pullrequest.base=${{ steps.validate_pr.outputs.pr-base }}
           -Dsonar.branch.name=${{ github.event.workflow_run.head_branch }}
-
-      - name: Archive build artifacts
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: Build debug files
-          path: |
-            **/target/rat.txt
-            **/target/surefire-reports/*
-
-      - name: Surefire Report
-        # Pinned 3.5.2 version
-        uses: mikepenz/action-junit-report@16a9560bd02f11e7e3bf6b3e2ef6bba6c9d07c32
-        if: always()
-        with:
-          report_paths: '**/target/surefire-reports/TEST-*.xml'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          detailed_summary: true
-          commit: ${{ github.event.workflow_run.head_sha }}
-          check_name: Sonar Build Test Report
