@@ -14,24 +14,21 @@
  * the License.
  */
 
-package io.cdap.delta.store;
-
-import io.cdap.delta.macros.PropertyEvaluator;
+package io.cdap.delta.macros;
 
 import java.util.Map;
 
 /**
- * Mock property evaluator that always returns a pre-defined map.
+ * Evaluates macros in a map of properties.
  */
-public class MockPropertyEvaluator implements PropertyEvaluator {
-  private final Map<String, String> properties;
+public interface PropertyEvaluator {
 
-  public MockPropertyEvaluator(Map<String, String> properties) {
-    this.properties = properties;
-  }
-
-  @Override
-  public Map<String, String> evaluate(String namespace, Map<String, String> properties) {
-    return this.properties;
-  }
+  /**
+   * Evaluate any macros in the properties.
+   *
+   * @param namespace namespace that the evaluation is taking place in
+   * @param properties properties to evaluate
+   * @return evaluated properties
+   */
+  Map<String, String> evaluate(String namespace, Map<String, String> properties);
 }

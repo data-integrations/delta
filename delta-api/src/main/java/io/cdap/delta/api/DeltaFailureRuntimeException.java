@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Cask Data, Inc.
+ * Copyright © 2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,21 +14,19 @@
  * the License.
  */
 
-package io.cdap.delta.store;
-
-import java.util.Map;
+package io.cdap.delta.api;
 
 /**
- * Evaluates macros in a map of properties.
+ * Thrown when an error is encountered that cannot be recovered from, which should result in the pipeline to fail
+ * without retrying anything.
  */
-public interface PropertyEvaluator {
+public class DeltaFailureRuntimeException extends RuntimeException {
 
-  /**
-   * Evaluate any macros in the properties.
-   *
-   * @param namespace namespace that the evaluation is taking place in
-   * @param properties properties to evaluate
-   * @return evaluated properties
-   */
-  Map<String, String> evaluate(String namespace, Map<String, String> properties);
+  public DeltaFailureRuntimeException(String message) {
+    super(message);
+  }
+
+  public DeltaFailureRuntimeException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
