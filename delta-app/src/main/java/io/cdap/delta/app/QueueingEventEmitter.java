@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 /**
  * An event emitter that enqueues change events in an in-memory queue.
  * Also filters out events that should be ignored.
- *
+ * <p>
  * If emitting an event is interrupted, all subsequent emit calls will be no-ops.
  */
 public class QueueingEventEmitter implements EventEmitter {
@@ -81,6 +81,8 @@ public class QueueingEventEmitter implements EventEmitter {
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+
+
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events

@@ -61,6 +61,7 @@ import io.cdap.delta.store.StateStoreMigrator;
 import io.cdap.transformation.DefaultTransformationContext;
 import io.cdap.transformation.TransformationUtil;
 import io.cdap.transformation.api.Transformation;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
@@ -470,6 +471,7 @@ public class DeltaWorker extends AbstractWorker {
   }
 
   @SuppressWarnings("unchecked")
+  @WithSpan
   private void applyEvent(Sequenced<? extends ChangeEvent> event) throws Exception {
     switch (event.getEvent().getChangeType()) {
       case DDL:
