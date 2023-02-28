@@ -31,7 +31,7 @@ public interface EventEmitter {
    * @throws InterruptedException if it was interrupted while blocked on emitting the event.
    *   The event is dropped in this scenario.
    */
-  void emit(DDLEvent event) throws InterruptedException;
+  boolean emit(DDLEvent event) throws InterruptedException;
 
   /**
    * Emits a DML event within its own transaction.
@@ -41,5 +41,5 @@ public interface EventEmitter {
    * @throws InterruptedException if it was interrupted while blocked on emitting the event.
    *   The event is dropped in this scenario.
    */
-  void emit(DMLEvent event) throws InterruptedException;
+  boolean emit(DMLEvent event) throws InterruptedException;
 }

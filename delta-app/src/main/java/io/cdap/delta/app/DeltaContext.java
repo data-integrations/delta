@@ -16,8 +16,6 @@
 
 package io.cdap.delta.app;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.macro.InvalidMacroException;
 import io.cdap.cdap.api.macro.MacroEvaluator;
 import io.cdap.cdap.api.metrics.Metrics;
@@ -32,6 +30,7 @@ import io.cdap.delta.api.Offset;
 import io.cdap.delta.api.ReplicationError;
 import io.cdap.delta.api.SourceProperties;
 import io.cdap.delta.api.SourceTable;
+import io.cdap.delta.app.metrics.MetricsHandler;
 import io.cdap.delta.proto.DBTable;
 import io.cdap.delta.store.StateStore;
 import org.slf4j.Logger;
@@ -53,14 +52,11 @@ import javax.annotation.Nullable;
 public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaContext.class);
   private static final String STATE_PREFIX = "state-";
-  private static final String PROGRAM_METRIC_ENTITY = "ent";
-  private static final String DOT_SEPARATOR = ".";
+
   private final DeltaWorkerId id;
   private final String runId;
-  private final Metrics metrics;
   private final StateStore stateStore;
   private final WorkerContext workerContext;
-  private final Map<String, EventMetrics> tableEventMetrics;
   private final PipelineStateService stateService;
   private final int maxRetrySeconds;
   private final Map<String, String> runtimeArguments;
@@ -69,6 +65,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private final Set<SourceTable> tables;
   private long sequenceNumber;
   private final AtomicReference<Offset> committedOffset;
+  private final MetricsHandler metricsHandler;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                WorkerContext workerContext, PipelineStateService stateService,
@@ -76,10 +73,8 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
                @Nullable SourceProperties sourceProperties, List<SourceTable> tables) {
     this.id = id;
     this.runId = runId;
-    this.metrics = metrics;
     this.stateStore = stateStore;
     this.workerContext = workerContext;
-    this.tableEventMetrics = new HashMap<>();
     this.stateService = stateService;
     this.maxRetrySeconds = maxRetrySeconds;
     this.runtimeArguments = Collections.unmodifiableMap(new HashMap<>(runtimeArguments));
@@ -87,11 +82,12 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.sourceProperties = sourceProperties;
     this.tables = Collections.unmodifiableSet(new HashSet<>(tables));
     this.committedOffset = new AtomicReference<>(null);
+    this.metricsHandler = new MetricsHandler(id, metrics, tables);
   }
 
   @Override
   public void incrementCount(DMLOperation op) {
-    getEventMetricsForTable(op.getDatabaseName(), op.getSchemaName(), op.getTableName()).incrementDMLCount(op);
+    metricsHandler.incrementConsumeCount(op);
   }
 
   @Override
@@ -101,17 +97,29 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
       // This can happen for DDL operations such as CREATE_DATABASE
       return;
     }
-    getEventMetricsForTable(op.getDatabaseName(), op.getSchemaName(), tableName).incrementDDLCount();
+    metricsHandler.incrementConsumeCount(op);
+  }
+
+  @Override
+  public void incrementPublishCount(DMLOperation op) {
+    metricsHandler.incrementPublishCount(op);
+  }
+
+  @Override
+  public void incrementPublishCount(DDLOperation op) {
+    String tableName = op.getTableName();
+    if (tableName == null) {
+      // This can happen for DDL operations such as CREATE_DATABASE
+      return;
+    }
+    metricsHandler.incrementPublishCount(op);
   }
 
   @Override
   public void commitOffset(Offset offset, long sequenceNumber) throws IOException {
     stateStore.writeOffset(id, new OffsetAndSequence(offset, sequenceNumber));
     committedOffset.set(offset);
-    for (EventMetrics eventMetrics : tableEventMetrics.values()) {
-      eventMetrics.emitMetrics();
-    }
-    clearMetrics();
+    metricsHandler.emitMetrics();
   }
 
   @Override
@@ -123,13 +131,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   public void setTableError(String database, @Nullable String schema, String table,
                             ReplicationError error) throws IOException {
     stateService.setTableError(new DBTable(database, schema, table), error);
-    getEventMetricsForTable(database, schema, table).emitDMLErrorMetric();
-  }
-
-  private EventMetrics getEventMetricsForTable(String database, String schema, String table) {
-    String fullyQualifiedTableName = Joiner.on(DOT_SEPARATOR).skipNulls().join(database, schema, table);
-    return tableEventMetrics.computeIfAbsent(
-      table, s -> new EventMetrics(metrics.child(ImmutableMap.of(PROGRAM_METRIC_ENTITY, fullyQualifiedTableName))));
+    metricsHandler.emitDMLErrorMetric(database, schema, table);
   }
 
   @Override
@@ -169,7 +171,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
 
   @Override
   public Metrics getMetrics() {
-    return metrics;
+    return metricsHandler.getMetrics();
   }
 
   @Override
@@ -268,7 +270,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   }
 
   void clearMetrics() {
-    tableEventMetrics.clear();
+    metricsHandler.clearMetrics();
   }
 
   void throwFailureIfExists() throws Throwable {

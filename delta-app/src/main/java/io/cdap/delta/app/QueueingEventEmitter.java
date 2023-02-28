@@ -58,36 +58,38 @@ public class QueueingEventEmitter implements EventEmitter {
   }
 
   @Override
-  public void emit(DDLEvent event) {
+  public boolean emit(DDLEvent event) {
     if (interrupted || shouldIgnore(event)) {
-      return;
+      return false;
     }
 
     try {
       // don't assign sequence number to DDL event
       eventQueue.put(new Sequenced<>(event));
+      return true;
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events
       interrupted = true;
     }
+    return false;
   }
 
   @Override
-  public void emit(DMLEvent event) {
+  public boolean emit(DMLEvent event) {
     if (interrupted || shouldIgnore(event)) {
-      return;
+      return false;
     }
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
-
-
+      return true;
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events
       interrupted = true;
     }
+    return false;
   }
 
   private boolean shouldIgnore(DDLEvent event) {
