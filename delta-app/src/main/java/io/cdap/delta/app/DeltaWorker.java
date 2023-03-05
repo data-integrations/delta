@@ -571,11 +571,11 @@ public class DeltaWorker extends AbstractWorker {
     offset = offsetAndSequence.getOffset();
     QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, offsetAndSequence.getSequenceNumber(),
                                                             eventQueue);
-    MonitoredEventEmitter monitoredEmitter = new MonitoredEventEmitter(emitter, deltaContext);
+//    MonitoredEventEmitter monitoredEmitter = new MonitoredEventEmitter(emitter, deltaContext);
 
     LOG.info("Starting from last committed offset {}", offset.get());
 
-    eventReader = source.createReader(readerDefinition, deltaContext, monitoredEmitter);
+    eventReader = source.createReader(readerDefinition, deltaContext, emitter);
     eventConsumer = target.createConsumer(deltaContext);
 
     LOG.info("Starting Event Reader...");

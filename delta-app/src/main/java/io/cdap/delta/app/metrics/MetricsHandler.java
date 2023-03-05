@@ -62,8 +62,8 @@ public class MetricsHandler {
     String prefix = String.format("metrics-deltaworker-%d", id.getInstanceId());
     this.executorService = Executors.newScheduledThreadPool(1,
                                                             Threads.createDaemonThreadFactory(prefix + "-%d"));
-    this.executorService.scheduleAtFixedRate(() -> logEventStats(), LOG_STATS_INTERVAL,
-                                             LOG_STATS_INTERVAL, TimeUnit.SECONDS);
+   /* this.executorService.scheduleAtFixedRate(() -> logEventStats(), LOG_STATS_INTERVAL,
+                                             LOG_STATS_INTERVAL, TimeUnit.SECONDS);*/
   }
 
   public void emitMetrics() {
