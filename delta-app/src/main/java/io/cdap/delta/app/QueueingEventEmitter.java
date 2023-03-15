@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 /**
  * An event emitter that enqueues change events in an in-memory queue.
  * Also filters out events that should be ignored.
- *
+ * <p>
  * If emitting an event is interrupted, all subsequent emit calls will be no-ops.
  */
 public class QueueingEventEmitter implements EventEmitter {
@@ -43,17 +43,20 @@ public class QueueingEventEmitter implements EventEmitter {
   private final Set<DDLOperation.Type> ddlBlacklist;
   private final Map<DBTable, SourceTable> tableDefinitions;
   private final BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue;
+  private final DeltaContext deltaContext;
   private long sequenceNumber;
   private volatile boolean interrupted;
 
   QueueingEventEmitter(EventReaderDefinition readerDefinition, long sequenceNumber,
-                       BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue) {
+                       BlockingQueue<Sequenced<? extends ChangeEvent>> eventQueue,
+                       DeltaContext deltaContext) {
     this.sequenceNumber = sequenceNumber;
     this.dmlBlacklist = readerDefinition.getDmlBlacklist();
     this.ddlBlacklist = readerDefinition.getDdlBlacklist();
     this.tableDefinitions = readerDefinition.getTables().stream()
       .collect(Collectors.toMap(t -> new DBTable(t.getDatabase(), t.getTable()), t -> t));
     this.eventQueue = eventQueue;
+    this.deltaContext = deltaContext;
     this.interrupted = false;
   }
 
@@ -66,6 +69,7 @@ public class QueueingEventEmitter implements EventEmitter {
     try {
       // don't assign sequence number to DDL event
       eventQueue.put(new Sequenced<>(event));
+      deltaContext.incrementPublishCount(event.getOperation());
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events
@@ -81,6 +85,7 @@ public class QueueingEventEmitter implements EventEmitter {
 
     try {
       eventQueue.put(new Sequenced<>(event, ++sequenceNumber));
+      deltaContext.incrementPublishCount(event.getOperation());
     } catch (InterruptedException e) {
       // this should only happen when the event consumer is stopped
       // in that case, don't emit any more events

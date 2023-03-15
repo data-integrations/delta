@@ -30,6 +30,7 @@ import io.cdap.delta.api.SortKey;
 import io.cdap.delta.api.SourceTable;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,18 +60,24 @@ public class QueueingEventEmitterTest {
     .setRow(StructuredRecord.builder(SCHEMA).set("id", 0).build())
     .setSortKeys(Arrays.asList(new SortKey(Schema.Type.LONG, System.currentTimeMillis())))
     .build();
+  private DeltaContext deltaContext = Mockito.mock(DeltaContext.class);
 
   @Test
   public void testEmit() throws Exception {
     BlockingQueue<Sequenced<? extends ChangeEvent>> queue = new ArrayBlockingQueue<>(2);
     EventReaderDefinition readerDefinition = new EventReaderDefinition(Collections.emptySet(), Collections.emptySet(),
                                                                        Collections.emptySet());
-    QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue);
+    QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue, deltaContext);
     emitter.emit(DDL);
     emitter.emit(DML);
 
     Assert.assertEquals(new Sequenced<>(DDL), queue.poll());
     Assert.assertEquals(new Sequenced<>(DML, 1L), queue.poll());
+
+    Mockito.verify(deltaContext, Mockito.times(1))
+      .incrementPublishCount(Mockito.any(DDLOperation.class));
+    Mockito.verify(deltaContext, Mockito.times(1))
+      .incrementPublishCount(Mockito.any(DMLOperation.class));
   }
 
   @Test
@@ -82,11 +89,16 @@ public class QueueingEventEmitterTest {
                       Collections.singleton(DDLOperation.Type.CREATE_TABLE)));
     EventReaderDefinition readerDefinition = new EventReaderDefinition(tables, Collections.emptySet(),
                                                                        Collections.emptySet());
-    QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue);
+    QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, 0L, queue, deltaContext);
     emitter.emit(DDL);
     emitter.emit(DML);
 
     Assert.assertTrue(queue.isEmpty());
+
+    Mockito.verify(deltaContext, Mockito.never())
+      .incrementPublishCount(Mockito.any(DDLOperation.class));
+    Mockito.verify(deltaContext, Mockito.never())
+      .incrementPublishCount(Mockito.any(DMLOperation.class));
   }
 
 }

@@ -186,5 +186,6 @@ public class DeltaWorkerTest {
     deltaWorker.initialize(workerContext);
     exception.expect(DeltaFailureRuntimeException.class);
     deltaWorker.run();
+    deltaWorker.stop();
   }
 }

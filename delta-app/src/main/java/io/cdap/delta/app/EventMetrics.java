@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Cask Data, Inc.
+ * Copyright © 2023 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,28 +18,24 @@ package io.cdap.delta.app;
 
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.delta.api.DMLOperation;
-
-import java.util.HashMap;
-import java.util.Map;
+import io.cdap.delta.app.metrics.EventCounts;
 
 /**
  * Emits metrics about DDL and DML events.
  */
 public class EventMetrics {
   private final Metrics metrics;
-  private final Map<DMLOperation.Type, Integer> dmlEventCounts;
-  private int ddlEventCount;
+  private EventCounts eventCounts;
   private long oldestTimeStampInMillis;
   private int bytesProcessed;
 
   public EventMetrics(Metrics metrics) {
     this.metrics = metrics;
-    this.dmlEventCounts = new HashMap<>();
-    clear();
+    this.eventCounts = new EventCounts();
   }
 
   public synchronized void incrementDMLCount(DMLOperation op) {
-    dmlEventCounts.put(op.getType(), dmlEventCounts.get(op.getType()) + 1);
+    eventCounts.incrementDMLCount(op.getType());
     if (oldestTimeStampInMillis == 0) {
       oldestTimeStampInMillis = op.getIngestTimestampMillis();
     } else {
@@ -49,7 +45,7 @@ public class EventMetrics {
   }
 
   public synchronized void incrementDDLCount() {
-    ddlEventCount++;
+    eventCounts.incrementDDLCount();
   }
 
   public synchronized void emitDMLErrorMetric() {
@@ -57,23 +53,32 @@ public class EventMetrics {
   }
 
   public synchronized void emitMetrics() {
-    for (DMLOperation.Type op : dmlEventCounts.keySet()) {
-      metrics.count(String.format("dml.%ss", op.name().toLowerCase()), dmlEventCounts.get(op));
+    for (DMLOperation.Type op : eventCounts.getDmlEventCounts().keySet()) {
+      metrics.count(String.format("dml.%ss", op.name().toLowerCase()), eventCounts.getDMLCount(op));
     }
+    metrics.count("ddl", eventCounts.getDDLCount());
 
     metrics.count("dml.data.processed.bytes", bytesProcessed);
     metrics.gauge("dml.latency.seconds", oldestTimeStampInMillis == 0L ? 0
       : (System.currentTimeMillis() - oldestTimeStampInMillis) / 1000);
-    metrics.count("ddl", ddlEventCount);
     clear();
   }
 
   public synchronized void clear() {
+    eventCounts.clear();
     bytesProcessed = 0;
-    ddlEventCount = 0;
     oldestTimeStampInMillis = 0;
-    for (DMLOperation.Type op : DMLOperation.Type.values()) {
-      dmlEventCounts.put(op, 0);
-    }
+  }
+
+  public EventCounts getEventCounts() {
+    return eventCounts;
+  }
+
+  public long getOldestTimeStampInMillis() {
+    return oldestTimeStampInMillis;
+  }
+
+  public int getBytesProcessed() {
+    return bytesProcessed;
   }
 }
