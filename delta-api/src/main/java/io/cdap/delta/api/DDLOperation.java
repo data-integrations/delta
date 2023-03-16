@@ -17,6 +17,8 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 /**
@@ -113,5 +115,18 @@ public class DDLOperation {
   @Override
   public int hashCode() {
     return Objects.hash(databaseName, schemaName, tableName, prevTableName, type);
+  }
+
+  @Override
+  public String toString() {
+    String database = "databaseName=" + databaseName;
+    String operationType = "type=" + type;
+    String schema = schemaName != null ? "schemaName=" + schemaName : null;
+    String table = tableName != null ? "tableName=" + tableName : null;
+    String prevTable = prevTableName != null ? "prevTableName=" + prevTableName : null;
+    String operation = Stream.of(database, operationType, schema, table, prevTable)
+                             .filter(s -> s != null && !s.isEmpty())
+                             .collect(Collectors.joining(", "));
+    return "{" + operation + "}";
   }
 }

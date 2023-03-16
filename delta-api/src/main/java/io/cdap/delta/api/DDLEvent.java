@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 /**
@@ -68,6 +70,22 @@ public class DDLEvent extends ChangeEvent {
     return Objects.equals(operation, ddlEvent.operation) &&
       Objects.equals(schema, ddlEvent.schema) &&
       Objects.equals(primaryKey, ddlEvent.primaryKey);
+  }
+  @Override
+  public String toString() {
+    String operationString = "operation=" + operation;
+    String isSnapshotString = "isSnapshot=" + this.isSnapshot();
+    String changeTypeString = "changeType=" + this.getChangeType();
+    String primaryKeyString = primaryKey == null || primaryKey.isEmpty() ?
+                              null : "primaryKey=" + "[" + String.join(",", primaryKey) + "]";
+    String offsetString = this.getOffset().get() != null ? "offset=" + this.getOffset().get() : null;
+    String sourceTimeString  = this.getSourceTimestampMillis() != null ? "sourceTimestampMillis=" +
+                              this.getSourceTimestampMillis() : null;
+    String ddlEvent = Stream.of(changeTypeString, operationString, primaryKeyString, offsetString,
+                                    isSnapshotString, sourceTimeString)
+                            .filter(s -> s != null && !s.isEmpty())
+                            .collect(Collectors.joining(", "));
+    return "{" + ddlEvent + "}";
   }
 
   @Override
