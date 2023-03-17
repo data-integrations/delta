@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class EventCounts {
   private static final AtomicInteger ZERO = new AtomicInteger(0);
-  protected Map<DMLOperation.Type, AtomicInteger> dmlEventCounts;
-  protected AtomicInteger ddlEventCount;
+  private Map<DMLOperation.Type, AtomicInteger> dmlEventCounts;
+  private AtomicInteger ddlEventCount;
 
   public EventCounts() {
     ddlEventCount = new AtomicInteger();
