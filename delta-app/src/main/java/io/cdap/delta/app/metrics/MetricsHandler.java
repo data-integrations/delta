@@ -156,7 +156,7 @@ public class MetricsHandler {
     AtomicReference<EventCounts> aggregateCountRef = tableConsumedEventCounts.get(table);
     if (aggregateCountRef != null) {
       EventCounts agrregateEventCounts = aggregateCountRef.get();
-      agrregateEventCounts.incrementDDLCount(eventCounts.getDDLCount());
+      agrregateEventCounts.incrementDDLCount(eventCounts.getDdlEventCount());
       Map<DMLOperation.Type, AtomicInteger> dmlCounts = eventCounts.getDmlEventCounts();
       dmlCounts.forEach((type, count) ->
                           agrregateEventCounts.incrementDMLCount(type, count.get())
@@ -179,7 +179,7 @@ public class MetricsHandler {
       if (hasEvents(currEventCounts)) {
         //Replace only if there are events
         currEventCounts = counts.getAndSet(new EventCounts());
-        totalDdlEvents.addAndGet(currEventCounts.getDDLCount());
+        totalDdlEvents.addAndGet(currEventCounts.getDdlEventCount());
         totalDmlEvents.addAndGet(getTotalDmlEvents(currEventCounts));
         tableStats.add(String.format("%s Stats [Table=%s] [%s]", component,
                                      table, getStats(currEventCounts)));

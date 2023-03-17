@@ -64,10 +64,6 @@ public class EventCounts {
     return ddlEventCount.get();
   }
 
-  public int getDDLCount() {
-    return ddlEventCount.get();
-  }
-
   public int getDMLCount(DMLOperation.Type type) {
     return dmlEventCounts.getOrDefault(type, ZERO).get();
   }

@@ -56,7 +56,7 @@ public class EventMetrics {
     for (DMLOperation.Type op : eventCounts.getDmlEventCounts().keySet()) {
       metrics.count(String.format("dml.%ss", op.name().toLowerCase()), eventCounts.getDMLCount(op));
     }
-    metrics.count("ddl", eventCounts.getDDLCount());
+    metrics.count("ddl", eventCounts.getDdlEventCount());
 
     metrics.count("dml.data.processed.bytes", bytesProcessed);
     metrics.gauge("dml.latency.seconds", oldestTimeStampInMillis == 0L ? 0
