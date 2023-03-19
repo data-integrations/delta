@@ -50,6 +50,10 @@ public class Offset {
     Offset offset = (Offset) o;
     return Objects.equals(state, offset.state);
   }
+  @Override
+  public String toString() {
+    return state.toString();
+  }
 
   @Override
   public int hashCode() {

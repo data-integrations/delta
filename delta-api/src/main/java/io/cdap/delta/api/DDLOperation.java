@@ -17,8 +17,7 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.StringJoiner;
 import javax.annotation.Nullable;
 
 /**
@@ -119,14 +118,18 @@ public class DDLOperation {
 
   @Override
   public String toString() {
-    String database = "databaseName=" + databaseName;
-    String operationType = "type=" + type;
-    String schema = schemaName != null ? "schemaName=" + schemaName : null;
-    String table = tableName != null ? "tableName=" + tableName : null;
-    String prevTable = prevTableName != null ? "prevTableName=" + prevTableName : null;
-    String operation = Stream.of(database, operationType, schema, table, prevTable)
-                             .filter(s -> s != null && !s.isEmpty())
-                             .collect(Collectors.joining(", "));
-    return "{" + operation + "}";
+    StringJoiner stringJoiner = new StringJoiner(", ", "{", "}");
+    stringJoiner.add("databaseName=" + databaseName);
+    stringJoiner.add("type=" + type);
+    if (schemaName != null) {
+      stringJoiner.add("schemaName=" + schemaName);
+    }
+    if (tableName != null) {
+      stringJoiner.add("tableName=" + tableName);
+    }
+    if (prevTableName != null) {
+      stringJoiner.add("prevTableName=" + prevTableName);
+    }
+    return stringJoiner.toString();
   }
 }
