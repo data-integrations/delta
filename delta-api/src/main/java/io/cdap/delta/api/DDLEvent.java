@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 import javax.annotation.Nullable;
 
 /**
@@ -68,6 +69,21 @@ public class DDLEvent extends ChangeEvent {
     return Objects.equals(operation, ddlEvent.operation) &&
       Objects.equals(schema, ddlEvent.schema) &&
       Objects.equals(primaryKey, ddlEvent.primaryKey);
+  }
+  @Override
+  public String toString() {
+    StringJoiner stringJoiner = new StringJoiner(", ", "{", "}");
+    stringJoiner.add("operation=" + operation);
+    stringJoiner.add("isSnapshot=" + this.isSnapshot());
+    stringJoiner.add("changeType=" + this.getChangeType());
+    stringJoiner.add("offset=" + this.getOffset());
+    if (primaryKey != null && !primaryKey.isEmpty()) {
+      stringJoiner.add("primaryKey=" + primaryKey);
+    }
+    if (this.getSourceTimestampMillis() != null) {
+      stringJoiner.add("sourceTimestampMillis=" + this.getSourceTimestampMillis());
+    }
+    return stringJoiner.toString();
   }
 
   @Override

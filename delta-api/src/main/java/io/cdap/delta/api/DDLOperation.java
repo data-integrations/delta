@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import java.util.StringJoiner;
 import javax.annotation.Nullable;
 
 /**
@@ -113,5 +114,22 @@ public class DDLOperation {
   @Override
   public int hashCode() {
     return Objects.hash(databaseName, schemaName, tableName, prevTableName, type);
+  }
+
+  @Override
+  public String toString() {
+    StringJoiner stringJoiner = new StringJoiner(", ", "{", "}");
+    stringJoiner.add("databaseName=" + databaseName);
+    stringJoiner.add("type=" + type);
+    if (schemaName != null) {
+      stringJoiner.add("schemaName=" + schemaName);
+    }
+    if (tableName != null) {
+      stringJoiner.add("tableName=" + tableName);
+    }
+    if (prevTableName != null) {
+      stringJoiner.add("prevTableName=" + prevTableName);
+    }
+    return stringJoiner.toString();
   }
 }
