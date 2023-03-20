@@ -22,7 +22,6 @@ import com.google.gson.reflect.TypeToken;
 import io.cdap.cdap.api.Resources;
 import io.cdap.cdap.api.app.ApplicationConfigurer;
 import io.cdap.cdap.api.app.ApplicationSpecification;
-import io.cdap.cdap.api.app.RuntimeConfigurer;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.macro.MacroEvaluator;
@@ -466,6 +465,12 @@ public class DeltaWorker extends AbstractWorker {
         // log and proceed to exit
         LOG.warn("Event consumer failed to stop.", e);
       }
+      try {
+        deltaContext.close();
+      } catch (Exception e) {
+        // log and proceed to exit
+        LOG.warn("Delta Context failed to close.", e);
+      }
     }
   }
 
@@ -568,7 +573,7 @@ public class DeltaWorker extends AbstractWorker {
     OffsetAndSequence offsetAndSequence = deltaContext.loadOffset();
     offset = offsetAndSequence.getOffset();
     QueueingEventEmitter emitter = new QueueingEventEmitter(readerDefinition, offsetAndSequence.getSequenceNumber(),
-                                                            eventQueue);
+                                                            eventQueue, deltaContext);
 
     LOG.info("Starting from last committed offset {}", offset.get());
 
