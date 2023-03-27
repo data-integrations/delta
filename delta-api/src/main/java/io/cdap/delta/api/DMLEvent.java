@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 import javax.annotation.Nullable;
 
 /**
@@ -119,6 +120,22 @@ public class DMLEvent extends ChangeEvent {
       Objects.equals(previousRow, dmlEvent.previousRow) &&
       Objects.equals(transactionId, dmlEvent.transactionId) &&
       Objects.equals(sortKeys, dmlEvent.sortKeys);
+  }
+
+  @Override
+  public String toString() {
+    StringJoiner stringJoiner = new StringJoiner(", ", "{", "}");
+    stringJoiner.add("operation=" + operation);
+    stringJoiner.add("isSnapshot=" + this.isSnapshot());
+    stringJoiner.add("changeType=" + this.getChangeType());
+    stringJoiner.add("offset=" + this.getOffset());
+    if (this.getSourceTimestampMillis() != null) {
+      stringJoiner.add("sourceTimestampMillis=" + this.getSourceTimestampMillis());
+    }
+    if (sortKeys != null && !sortKeys.isEmpty()) {
+      stringJoiner.add("sortKeys=" + sortKeys);
+    }
+    return stringJoiner.toString();
   }
 
   @Override

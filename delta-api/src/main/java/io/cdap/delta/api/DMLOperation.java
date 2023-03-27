@@ -17,6 +17,7 @@
 package io.cdap.delta.api;
 
 import java.util.Objects;
+import java.util.StringJoiner;
 import javax.annotation.Nullable;
 
 /**
@@ -86,6 +87,20 @@ public class DMLOperation {
     return Objects.equals(databaseName, that.databaseName) && Objects.equals(schemaName, that.schemaName) &&
       Objects.equals(tableName, that.tableName) && type == that.type &&
       ingestTimestampMillis == that.ingestTimestampMillis && sizeInBytes == that.sizeInBytes;
+  }
+
+  @Override
+  public String toString() {
+    StringJoiner stringJoiner = new StringJoiner(", ", "{", "}");
+    stringJoiner.add("databaseName=" + databaseName);
+    stringJoiner.add("type=" + type);
+    if (schemaName != null) {
+      stringJoiner.add("schemaName=" + schemaName);
+    }
+    stringJoiner.add("tableName=" + tableName);
+    stringJoiner.add("ingestTimestampMillis=" + ingestTimestampMillis);
+    stringJoiner.add("sizeInBytes=" + sizeInBytes);
+    return stringJoiner.toString();
   }
 
   @Override
