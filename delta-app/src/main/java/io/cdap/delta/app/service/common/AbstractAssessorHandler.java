@@ -64,6 +64,7 @@ public class AbstractAssessorHandler extends AbstractSystemHttpServiceHandler {
     try {
       NamespaceSummary namespaceSummary = context.getAdmin().getNamespaceSummary(namespaceName);
       if (namespaceSummary == null) {
+        LOG.error(String.format("Namespace '%s' not found", namespaceName));
         responder.sendError(HttpURLConnection.HTTP_NOT_FOUND, String.format("Namespace '%s' not found", namespaceName));
         return;
       }

@@ -458,6 +458,7 @@ public class DeltaWorker extends AbstractWorker {
       });
     } catch (Exception e) {
       // ignore and try to stop consumer
+      LOG.warn("Event reader failed to stop.", e);
     } finally {
       try {
         eventConsumer.stop();

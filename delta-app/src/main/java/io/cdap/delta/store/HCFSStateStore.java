@@ -21,12 +21,15 @@ import io.cdap.delta.api.DeltaPipelineId;
 import io.cdap.delta.api.Offset;
 import io.cdap.delta.app.DeltaWorkerId;
 import io.cdap.delta.app.OffsetAndSequence;
+import io.cdap.delta.app.service.common.AbstractAssessorHandler;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,6 +45,7 @@ import javax.annotation.Nullable;
  * Is used only during migration
  */
 public class HCFSStateStore implements StateStore {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractAssessorHandler.class);
   private static final String OFFSET_KEY = "offset";
   private final FileSystem fileSystem;
   private final Path basePath;
@@ -120,6 +124,7 @@ public class HCFSStateStore implements StateStore {
           workerInstances.add(Integer.parseInt(fileName));
         } catch (NumberFormatException e) {
           // should not happen unless somebody manually modified the directories
+          LOG.error(String.format("Worker instance '%s' isn't valid.", fileName), e);
         }
       }
     }

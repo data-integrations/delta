@@ -57,7 +57,7 @@ public class TableTransformation {
           columnTransformation.validate();
         } catch (IllegalArgumentException e) {
           throw new IllegalArgumentException(String.format("ColumnTransformations validation failed for table %s." +
-                                                             " Reason: %s.", tableName, e.getMessage()));
+                                                             " Reason: %s.", tableName, e.getMessage()), e);
         }
       }
     }

@@ -160,7 +160,7 @@ public class Assessor {
     try {
       transformations = TransformationUtil.loadTransformations(configurer, tableLevelTransformations, selectedTable);
     } catch (TransformationException e) {
-      LOG.debug("Failed to apply transformation: ", e);
+      LOG.error("Failed to apply transformation: ", e);
       List<Problem> transformationErrors = new ArrayList<>();
       transformationErrors.add(new Problem("Transformation Loading failed", e.getMessage(),
                                            "Please ensure the applied transformation's plugin is uploaded'",
@@ -241,12 +241,15 @@ public class Assessor {
           tableAssessments.add(summarize(db, sourceTable.getSchema(), sourceTable, assessment));
           transformationIssues.addAll(assessment.getTransformationIssues());
         } catch (TableNotFoundException e) {
+          LOG.error(String.format("Table '%s' in database '%s' was not found.", table, db), e);
           connectivityIssues.add(
             new Problem("Table Not Found",
                         String.format("Table '%s' in database '%s' was not found.", table, db),
                         "Check the table information and permissions",
                         null));
         } catch (IOException e) {
+          LOG.error(String.format("Unable to fetch details about table '%s' in database '%s'",
+                  table, db), e);
           connectivityIssues.add(
             new Problem("Table Describe Error",
                         String.format("Unable to fetch details about table '%s' in database '%s': %s",
@@ -254,7 +257,7 @@ public class Assessor {
                         "Check permissions and database connectivity",
                         null));
         } catch (TransformationException e) {
-          LOG.debug("Failed to apply transformation: ", e);
+          LOG.error("Failed to apply transformation: ", e);
           transformationIssues.add(new Problem("Transformation Loading failed", e.getMessage(),
                                                "Please ensure the applied transformation's plugin is uploaded'",
                                                "", Problem.Severity.ERROR, e.getTableName(), e.getColumnName()));
@@ -333,7 +336,7 @@ public class Assessor {
                                                          rowSchema.toSchema());
         columnRenameInfo = rowSchema.getRenameInfo();
       } catch (TransformationException e) {
-        LOG.debug("Failed to apply transformation: ", e);
+        LOG.error("Failed to apply transformation: ", e);
         transformationIssues.add(new Problem("Transformation failed", e.getMessage(),
                                              "Please ensure the applied transformation is valid",
                                              "The job cannot be deployed with invalid transformations",
