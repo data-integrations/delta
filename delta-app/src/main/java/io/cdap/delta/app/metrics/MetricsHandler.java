@@ -17,6 +17,7 @@
 package io.cdap.delta.app.metrics;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.metrics.Metrics;
 import io.cdap.delta.api.DDLOperation;
@@ -45,6 +46,7 @@ public class MetricsHandler {
   private static final Logger LOG = LoggerFactory.getLogger(MetricsHandler.class);
   private static final String PROGRAM_METRIC_ENTITY = "ent";
   private static final String DOT_SEPARATOR = ".";
+  private static final Joiner JOINER = Joiner.on(DOT_SEPARATOR).skipNulls();
   private static final String DEFAULT_AGGR_STATS_INTERVAL_SEC = "600"; // 10 min
   static final String AGGREGATE_STATS_FREQUENCY_ARG = "aggregate.stats.frequency.sec";
 
@@ -140,7 +142,7 @@ public class MetricsHandler {
   }
 
   private String getFullyQualifiedTableName(String database, String schema, String table) {
-    return Joiner.on(DOT_SEPARATOR).skipNulls().join(database, schema, table);
+    return JOINER.join(database, schema, table);
   }
 
 
