@@ -45,7 +45,7 @@ import javax.annotation.Nullable;
  * Is used only during migration
  */
 public class HCFSStateStore implements StateStore {
-  private static final Logger LOG = LoggerFactory.getLogger(AbstractAssessorHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HCFSStateStore.class);
   private static final String OFFSET_KEY = "offset";
   private final FileSystem fileSystem;
   private final Path basePath;
@@ -124,7 +124,7 @@ public class HCFSStateStore implements StateStore {
           workerInstances.add(Integer.parseInt(fileName));
         } catch (NumberFormatException e) {
           // should not happen unless somebody manually modified the directories
-          LOG.error(String.format("Worker instance '%s' isn't valid.", fileName), e);
+          LOG.error("Worker instance {} is invalid.", fileName, e);
         }
       }
     }
