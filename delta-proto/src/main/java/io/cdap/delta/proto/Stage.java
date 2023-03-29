@@ -161,7 +161,7 @@ public class Stage {
     try {
       plugin.validate();
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException(String.format("Stage '%s' is invalid: %s", name, e.getMessage()));
+      throw new IllegalArgumentException(String.format("Stage '%s' is invalid: %s", name, e.getMessage()), e);
     }
   }
 

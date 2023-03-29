@@ -130,7 +130,7 @@ public class OffsetStateHandler extends AbstractAssessorHandler {
       offset = GSON.fromJson(targetReader, OffsetAndSequence.class);
     } catch (JsonParseException e) {
       throw new CodedException(HttpURLConnection.HTTP_BAD_REQUEST, "The offset json data " +
-        "does not conform to class OffsetAndSequence ");
+        "does not conform to class OffsetAndSequence.", e);
     }
 
     if (offset == null || offset.getOffset() == null) {
