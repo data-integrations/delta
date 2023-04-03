@@ -327,7 +327,8 @@ public class DeltaWorker extends AbstractWorker {
             return;
           }
 
-          LOG.warn("Encountered an error. Events will be replayed from the last successful commit.", failure);
+          LOG.warn("Encountered an error (Attempt:{}). Events will be replayed from the last successful commit.",
+                   failureContext.getAttemptCount(), failure);
           // if there was an error applying the event, stop the current reader and consumer
           // and restart from the last commit. We cannot just retry applying the single event because that would force
           // targets to persist their changes before they can return from applyDML or applyDDL.
@@ -385,7 +386,8 @@ public class DeltaWorker extends AbstractWorker {
                             // log the fact that we are failing to start from the last commit
                             if (e1.getAttemptCount() == 1 ||
                               Duration.of(1, ChronoUnit.MINUTES).minus(e1.getElapsedTime()).isNegative()) {
-                              LOG.warn("Unable to reset state to the latest commit point.", e1.getLastFailure());
+                              LOG.warn("Unable to reset state to the latest commit point (Attempt:{})",
+                                       e1.getAttemptCount(), e1.getLastFailure());
                             }
                           }))
             .run(this::startFromLastCommit);
