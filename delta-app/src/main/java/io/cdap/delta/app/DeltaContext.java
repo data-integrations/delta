@@ -66,6 +66,7 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
   private long sequenceNumber;
   private final AtomicReference<Offset> committedOffset;
   private final MetricsHandler metricsHandler;
+  private final PipelineConfigService pipelineConfigService;
 
   DeltaContext(DeltaWorkerId id, String runId, Metrics metrics, StateStore stateStore,
                WorkerContext workerContext, PipelineStateService stateService,
@@ -82,7 +83,8 @@ public class DeltaContext implements DeltaSourceContext, DeltaTargetContext {
     this.sourceProperties = sourceProperties;
     this.tables = Collections.unmodifiableSet(new HashSet<>(tables));
     this.committedOffset = new AtomicReference<>(null);
-    this.metricsHandler = new MetricsHandler(id, metrics, tables, runtimeArguments);
+    this.pipelineConfigService = new PipelineConfigService(runtimeArguments);
+    this.metricsHandler = new MetricsHandler(id, metrics, tables, pipelineConfigService);
   }
 
   @Override
