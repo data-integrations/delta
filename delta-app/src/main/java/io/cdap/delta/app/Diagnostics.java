@@ -39,7 +39,7 @@ public class Diagnostics {
       ThreadInfo[] threadInfos = threadMXBean.dumpAllThreads(true, true);
 
       for (ThreadInfo threadInfo : threadInfos) {
-        LOG.info("" + threadInfo);
+        LOG.info(threadInfo.toString());
       }
     } catch (Exception e) {
       LOG.warn("Error in capturing diagnostic thread dump", e);
