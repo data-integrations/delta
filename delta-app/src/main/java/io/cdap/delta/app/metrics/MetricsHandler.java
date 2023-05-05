@@ -23,7 +23,9 @@ import io.cdap.delta.api.DDLOperation;
 import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.app.DeltaWorkerId;
+import io.cdap.delta.app.Diagnostics;
 import io.cdap.delta.app.EventMetrics;
+import io.cdap.delta.app.PipelineConfigService;
 import org.apache.twill.common.Threads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,19 +47,21 @@ public class MetricsHandler {
   private static final Logger LOG = LoggerFactory.getLogger(MetricsHandler.class);
   private static final String PROGRAM_METRIC_ENTITY = "ent";
   private static final String DOT_SEPARATOR = ".";
-  private static final String DEFAULT_AGGR_STATS_INTERVAL_SEC = "600"; // 10 min
-  static final String AGGREGATE_STATS_FREQUENCY_ARG = "aggregate.stats.frequency.sec";
+  private static final String SOURCE_PLUGIN = "SourcePlugin";
+  private static final String TARGET_PLUGIN = "TargetPlugin";
 
   private final Metrics metrics;
+  private PipelineConfigService pipelineConfigService;
   private final Map<String, EventMetrics> consumerTableEventMetrics;
   private final Map<String, AtomicReference<EventCounts>> tablePublishedEventCounts;
   private final Map<String, AtomicReference<EventCounts>> tableConsumedEventCounts;
-  private final int logAggregateStatsIntervalSec;
   private final ScheduledExecutorService aggregateStatsExecutor;
+  private final int logAggregateStatsIntervalSec;
 
   public MetricsHandler(DeltaWorkerId id, Metrics metrics, List<SourceTable> tables,
-                        Map<String, String> runtimeArguments) {
+                        PipelineConfigService config) {
     this.metrics = metrics;
+    this.pipelineConfigService = config;
     this.consumerTableEventMetrics = new HashMap<>();
     //HashMap is fine as we are not structurally modifying the map after initialization
     this.tablePublishedEventCounts = new HashMap<>();
@@ -72,9 +76,8 @@ public class MetricsHandler {
     String prefix = String.format("metrics-deltaworker-%d", id.getInstanceId());
     this.aggregateStatsExecutor = Executors.newScheduledThreadPool(1,
                                                                    Threads.createDaemonThreadFactory(prefix + "-%d"));
-    logAggregateStatsIntervalSec = Integer.parseInt(
-      runtimeArguments.getOrDefault(AGGREGATE_STATS_FREQUENCY_ARG, DEFAULT_AGGR_STATS_INTERVAL_SEC));
 
+    this.logAggregateStatsIntervalSec = pipelineConfigService.getLogAggregateStatsIntervalSec();
     this.aggregateStatsExecutor.scheduleAtFixedRate(this::logEventStats, logAggregateStatsIntervalSec,
                                                     logAggregateStatsIntervalSec, TimeUnit.SECONDS);
   }
@@ -143,7 +146,6 @@ public class MetricsHandler {
     return Joiner.on(DOT_SEPARATOR).skipNulls().join(database, schema, table);
   }
 
-
   private String getFullyQualifiedTableName(DMLOperation op) {
     return getFullyQualifiedTableName(op.getDatabaseName(), op.getSchemaName(), op.getTableName());
   }
@@ -165,8 +167,8 @@ public class MetricsHandler {
   }
 
   private void logEventStats() {
-    logComponentStats("SourcePlugin", tablePublishedEventCounts);
-    logComponentStats("TargetPlugin", tableConsumedEventCounts);
+    logComponentStats(SOURCE_PLUGIN, tablePublishedEventCounts);
+    logComponentStats(TARGET_PLUGIN, tableConsumedEventCounts);
   }
 
   private void logComponentStats(String component, Map<String, AtomicReference<EventCounts>> tableEventCounts) {
@@ -188,6 +190,15 @@ public class MetricsHandler {
     LOG.info("{} Stats Summary [Interval={} sec] [DDL Events={}] [DML Events={}]",
              component, logAggregateStatsIntervalSec, totalDdlEvents, totalDmlEvents);
     tableStats.forEach(s -> LOG.info(s));
+
+    //Log diagnostic info in case no events are processed by target plugin in the previous interval
+    if (TARGET_PLUGIN.equals(component) &&
+      (totalDdlEvents.get() + totalDmlEvents.get()) == 0 &&
+      pipelineConfigService.isDiagnosticModeEnabled()) {
+      LOG.info("Capturing diagnostic info as no events have been processed by " +
+                 "target plugin in the last {} sec", logAggregateStatsIntervalSec);
+      Diagnostics.logDiagnosticInfo();
+    }
   }
 
   private int getTotalDmlEvents(EventCounts eventCounts) {

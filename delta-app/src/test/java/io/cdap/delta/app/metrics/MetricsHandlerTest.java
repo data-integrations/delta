@@ -26,6 +26,7 @@ import io.cdap.delta.api.DMLOperation;
 import io.cdap.delta.api.DeltaPipelineId;
 import io.cdap.delta.api.SourceTable;
 import io.cdap.delta.app.DeltaWorkerId;
+import io.cdap.delta.app.PipelineConfigService;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import static io.cdap.delta.app.metrics.MetricsHandler.AGGREGATE_STATS_FREQUENCY_ARG;
+import static io.cdap.delta.app.PipelineConfigService.AGGREGATE_STATS_FREQUENCY_ARG;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsHandlerTest {
@@ -83,9 +84,11 @@ public class MetricsHandlerTest {
     Map<String, String> runtimeArgs = new HashMap<>();
     runtimeArgs.put(AGGREGATE_STATS_FREQUENCY_ARG, "4");
 
+    PipelineConfigService configService = new PipelineConfigService(runtimeArgs);
+
     Mockito.when(metrics.child(Mockito.any())).thenReturn(metrics);
 
-    metricsHandler = new MetricsHandler(deltaWorkerId, metrics, tables, runtimeArgs);
+    metricsHandler = new MetricsHandler(deltaWorkerId, metrics, tables, configService);
 
     metricsHandler.clearMetrics();
     listAppender.list.clear();
