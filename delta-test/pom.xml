@@ -23,7 +23,7 @@
   <parent>
     <groupId>io.cdap.delta</groupId>
     <artifactId>delta</artifactId>
-    <version>0.8.2-SNAPSHOT</version>
+    <version>0.8.2</version>
   </parent>
 
   <artifactId>delta-test</artifactId>
