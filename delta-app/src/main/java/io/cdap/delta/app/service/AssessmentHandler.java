@@ -379,9 +379,10 @@ public class AssessmentHandler extends AbstractAssessorHandler {
     DeltaConfig deltaConfig = getMacroEvaluator().evaluateMacros(namespace, config);
     RemoteAssessmentRequest remoteRequest = new RemoteAssessmentRequest(namespace.getName(), deltaConfig, request);
     RunnableTaskRequest runnableTaskRequest =
-      RunnableTaskRequest.getBuilder(remoteExecutionTaskClass.getName()).
-        withParam(GSON.toJson(remoteRequest)).
-        build();
+      RunnableTaskRequest.getBuilder(remoteExecutionTaskClass.getName())
+          .withParam(GSON.toJson(remoteRequest))
+          .withNamespace(namespace.getName())
+          .build();
     try {
       byte[] bytes = getContext().runTask(runnableTaskRequest);
       responder.sendString(new String(bytes, StandardCharsets.UTF_8));
