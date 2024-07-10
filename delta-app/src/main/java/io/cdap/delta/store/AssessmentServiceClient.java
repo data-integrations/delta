@@ -47,7 +47,7 @@ import javax.ws.rs.HttpMethod;
 public class AssessmentServiceClient {
   private static final Logger LOG = LoggerFactory.getLogger(AssessmentServiceClient.class);
   private static final int MAX_RETRY_ATTEMPTS_DEFAULT = 50;
-  private static final Duration MAX_RETRY_DURATION_DEFAULT = Duration.of(3, ChronoUnit.MINUTES);
+  private static final Duration MAX_RETRY_DURATION_DEFAULT = Duration.of(10, ChronoUnit.MINUTES);
   private static final int DELAY_MILLIS_DEFAULT = 200;
   private static final long MAX_DELAY_MILLIS_DEFAULT = TimeUnit.SECONDS.toMillis(30);
   private static final double JITTER_FACTOR_DEFAULT = 0.20D;
@@ -69,8 +69,8 @@ public class AssessmentServiceClient {
       .withBackoff(DELAY_MILLIS_DEFAULT, MAX_DELAY_MILLIS_DEFAULT, ChronoUnit.MILLIS)
       .withJitter(JITTER_FACTOR_DEFAULT)
       .onFailedAttempt(failureContext -> {
-        // log on every fifth attempt
-        if (failureContext.getAttemptCount() % 5 == 0) {
+        // log on every Odd failure attempt i.e. 1,3,5 
+        if ((failureContext.getAttemptCount()+1) % 2 == 0) {
           LOG.warn("Error in calling assessment service", failureContext.getLastFailure());
         }
       });
