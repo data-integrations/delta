@@ -19,7 +19,7 @@
 
   <groupId>io.cdap.delta</groupId>
   <artifactId>delta</artifactId>
-  <version>0.9.1</version>
+  <version>${revision}</version>
   <name>Delta Pipelines</name>
   <packaging>pom</packaging>
   <description>CDAP Delta pipelines</description>
@@ -63,6 +63,7 @@
     <junit.version>4.12</junit.version>
     <slf4j.version>1.7.25</slf4j.version>
     <jacoco.version>0.8.8</jacoco.version>
+    <revision>0.9.1</revision>
 
     <!-- Need default value when coverage is not collected -->
     <argLine />
