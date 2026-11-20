@@ -63,6 +63,12 @@
       <artifactId>gson</artifactId>
       <version>2.2.4</version>
     </dependency>
+    <!-- Compile scope on purpose: the mocks in src/main use JUnit, so users of delta-test get it. -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+    </dependency>
   </dependencies>
 
 </project>
