@@ -49,6 +49,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -57,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 
 @RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.xml.*", "org.w3c.*", "com.sun.org.apache.xerces.*"})
 @PrepareForTest({AbstractAssessorHandler.class})
 public class AssessmentHandlerTest {
  private static final String NAMESPACE = "namespace";
