@@ -44,6 +44,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -70,6 +71,7 @@ import static org.mockito.Mockito.when;
  * Tests for {@link DeltaWorker}.
  */
 @RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.xml.*", "org.w3c.*", "com.sun.org.apache.xerces.*"})
 @PrepareForTest({WorkerSpecification.class, DefaultApplicationSpecification.class, DeltaWorker.class})
 public class DeltaWorkerTest {
   @Rule
