@@ -57,10 +57,10 @@
   <properties>
     <jee.version>7</jee.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>6.11.0</cdap.version>
+    <cdap.version>6.11.7-SNAPSHOT</cdap.version>
     <hadoop.version>3.3.6</hadoop.version>
     <failsafe.version>2.3.3</failsafe.version>
-    <guava.version>13.0.1</guava.version>
+    <guava.version>33.8.0-jre</guava.version>
     <junit.version>4.13.2</junit.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jacoco.version>0.8.8</jacoco.version>
